@@ -1,0 +1,91 @@
+{
+  "theme": "light",
+  "archetype": "1_organic_earthy",
+  "domain": "agriculture_government_sericulture",
+  "colors": {
+    "background": "#F8F7F4",
+    "surface": "#FFFFFF",
+    "primary": "#2D5134",
+    "primary_hover": "#213D26",
+    "secondary": "#D9A036",
+    "accent": "#9E4735",
+    "text_main": "#1A1D1A",
+    "text_muted": "#5C635B",
+    "border": "#E6E4DF",
+    "success": "#3B6E44",
+    "warning": "#C78622",
+    "error": "#A13B35",
+    "sidebar_bg": "#F0EDE5",
+    "sidebar_text": "#2D5134"
+  },
+  "typography": {
+    "heading_font": "Manrope",
+    "body_font": "IBM Plex Sans",
+    "h1": "text-4xl tracking-tight font-extrabold text-[#1A1D1A]",
+    "h2": "text-2xl tracking-tight font-bold text-[#1A1D1A]",
+    "h3": "text-xl font-semibold text-[#1A1D1A]",
+    "body": "text-base leading-relaxed text-[#1A1D1A]",
+    "small": "text-sm text-[#5C635B]",
+    "label": "text-xs uppercase tracking-[0.1em] font-semibold text-[#5C635B]"
+  },
+  "spacing_and_layout": {
+    "dashboard_grid": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+    "widget_padding": "p-6",
+    "border_radius": "rounded-md",
+    "shadows": "shadow-sm",
+    "surface_style": "Flat solid surfaces with 1px delicate borders (border-[#E6E4DF]). Avoid heavy drop shadows to maintain an earthy, grounded feel."
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#2D5134] text-white hover:bg-[#213D26] rounded-md px-4 py-2 font-medium transition-colors",
+      "secondary": "bg-transparent border border-[#2D5134] text-[#2D5134] hover:bg-[#F0EDE5] rounded-md px-4 py-2 font-medium transition-colors"
+    },
+    "tables": {
+      "density": "high",
+      "style": "Flat table structure, border-b on rows, py-2 px-3 cells for high density readability. Sticky header with bg-[#F8F7F4]."
+    },
+    "wizard": {
+      "style": "Stepper with horizontal timeline. Active step highlighted with #D9A036 (Muga Yellow). Completed steps in #2D5134 (Mulberry Green)."
+    },
+    "cards": {
+      "style": "bg-white border border-[#E6E4DF] rounded-md overflow-hidden"
+    },
+    "leaflet_map": {
+      "style": "border border-[#E6E4DF] rounded-md overflow-hidden h-[400px] z-0 (ensure z-index doesn't overlap Shadcn dropdowns/dialogs)"
+    }
+  },
+  "icons_library": "@phosphor-icons/react",
+  "media": {
+    "images": {
+      "login_hero": {
+        "url": "https://images.unsplash.com/photo-1640292343595-889db1c8262e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxoYW5kbG9vbSUyMHdlYXZpbmclMjBpbmRpYXxlbnwwfHx8fDE3ODExNTQ5ODV8MA&ixlib=rb-4.1.0&q=85",
+        "description": "Handloom weaving in India, representing the sericulture end-product.",
+        "usage": "Use as a large side-panel image on the login screen, with a dark green overlay (bg-[#2D5134]/40) to make white welcome text readable."
+      },
+      "dashboard_illustration": {
+        "url": "https://images.pexels.com/photos/29039798/pexels-photo-29039798.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Indian farmer in lush green fields.",
+        "usage": "Use selectively in 'Welcome back' hero widgets on the dashboard or empty states."
+      },
+      "empty_state_icon": {
+        "url": "https://images.pexels.com/photos/36880696/pexels-photo-36880696.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Mulberry leaves.",
+        "usage": "Use as a decorative background or soft empty-state visual with high transparency."
+      }
+    }
+  },
+  "accessibility": {
+    "contrast_ratio": "Ensure all text meets 4.5:1 against backgrounds.",
+    "focus_states": "focus:outline-none focus:ring-2 focus:ring-[#D9A036] focus:ring-offset-2",
+    "data_testid_rule": "All interactive elements MUST include data-testid attribute in kebab-case."
+  },
+  "instructions_to_main_agent": [
+    "Use Light Theme with Archetype 1 (Organic & Earthy).",
+    "Dashboards should use 'Control Room' dense bento grid (grid-cols-4) with gap-4 or gap-6.",
+    "Do NOT use pure white for the app background. Use #F8F7F4. Cards are pure white #FFFFFF.",
+    "Avoid Inter and generic fonts. Use Manrope for headings and IBM Plex Sans for body.",
+    "Forms and Wizards must be strictly linear and use Shadcn Form, Input, Select, etc. Add generous padding (p-6) inside form cards.",
+    "For Leaflet Maps, enforce z-index rules (z-10 or z-0) so Shadcn dropdowns (z-50) appear above the map.",
+    "Add 'data-testid' to all buttons, inputs, tabs, and links."
+  ]
+}

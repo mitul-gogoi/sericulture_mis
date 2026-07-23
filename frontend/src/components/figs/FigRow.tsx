@@ -1,0 +1,33 @@
+"use client";
+import { Eye } from "@phosphor-icons/react";
+import type { Fig, District, SericultureCircle, SilkTypeActivityProduct } from "@/lib/types";
+
+const stapLabel = (s: SilkTypeActivityProduct) => `${s.silk_type_name} · ${s.activity_name} · ${s.product_name}`;
+
+export function FigRow({ f, staps, districts, allCircles, onView }: {
+  f: Fig; staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; onView: () => void;
+}) {
+  const stap = staps.find((s) => s.id === f.stap_id);
+  const district = districts.find((d) => d.id === f.district_id);
+  const circle = allCircles.find((c) => c.id === f.seri_circle_id);
+  const names = f.member_names || [];
+  const shown = names.slice(0, 3).join(", ");
+  const extra = names.length > 3 ? ` +${names.length - 3} more` : "";
+  return (
+    <tr>
+      <td className="font-mono text-xs">{f.fig_code}</td>
+      <td className="font-semibold">{f.fig_name}</td>
+      <td>{stap ? stapLabel(stap) : "—"}</td>
+      <td>{district?.district_name || "—"}</td>
+      <td>{circle?.circle_name || "—"}</td>
+      <td>{f.total_members}</td>
+      <td className="text-xs">{names.length ? `${shown}${extra}` : "—"}</td>
+      <td>{f.is_active ? <span className="badge badge-success">Active</span> : <span className="badge badge-muted">Inactive</span>}</td>
+      <td>
+        <button onClick={onView} className="btn-secondary px-2 py-1 text-xs inline-flex items-center gap-1" data-testid={`view-fig-${f.id}`}>
+          <Eye size={14} weight="bold" /> View
+        </button>
+      </td>
+    </tr>
+  );
+}

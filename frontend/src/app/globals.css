@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
+
+:root {
+  --bg: #F8F7F4;
+  --surface: #FFFFFF;
+  --primary: #2D5134;
+  --primary-hover: #213D26;
+  --secondary: #D9A036;
+  --accent: #9E4735;
+  --text: #1A1D1A;
+  --text-muted: #5C635B;
+  --border: #E6E4DF;
+  --success: #3B6E44;
+  --warning: #C78622;
+  --error: #A13B35;
+  --info: #2E6F8E;
+  --sidebar: #F0EDE5;
+}
+
+html, body { height: 100%; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4, h5, h6, .font-heading {
+  font-family: 'Manrope', sans-serif;
+  letter-spacing: -0.01em;
+}
+.leaflet-container { z-index: 0; }
+
+.label-tag {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+table.seri-table { width: 100%; border-collapse: collapse; }
+table.seri-table th, table.seri-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 14px; text-align: left; }
+table.seri-table th { background: var(--bg); color: var(--text-muted); font-weight: 600; font-family: 'Manrope', sans-serif; letter-spacing: 0.04em; font-size: 12px; text-transform: uppercase; }
+table.seri-table tr:hover { background: #FBFAF7; }
+
+.btn-primary { background: var(--primary); color: #fff; padding: 9px 16px; border-radius: 6px; font-weight: 600; font-family: 'Manrope', sans-serif; transition: background 0.15s; }
+.btn-primary:hover { background: var(--primary-hover); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 5px; }
+.btn-secondary { background: transparent; color: var(--primary); padding: 9px 16px; border-radius: 6px; font-weight: 600; border: 1px solid var(--primary); font-family: 'Manrope', sans-serif; }
+.btn-secondary:hover { background: var(--sidebar); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+
+.input { width: 100%; border: 1px solid var(--border); background: #fff; padding: 9px 12px; border-radius: 6px; font-size: 14px; font-family: 'IBM Plex Sans', sans-serif; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.input:focus { border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(217,160,54,0.18); }
+
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 6px; color: var(--text); font-size: 14px; font-weight: 500; font-family: 'Manrope', sans-serif; transition: background 0.15s; }
+.nav-item:hover { background: #E6E1D5; }
+.nav-item.active { background: var(--primary); color: #fff; }
+
+.badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-family: 'Manrope', sans-serif; }
+.badge-success { background: #E5EFE7; color: var(--success); }
+.badge-warning { background: #FBEFD6; color: var(--warning); }
+.badge-error { background: #F5DDDB; color: var(--error); }
+.badge-muted { background: #EFEDE6; color: var(--text-muted); }
+
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+
+.wizard-step { flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 3px solid var(--border); font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 13px; color: var(--text-muted); }
+.wizard-step.active { border-color: var(--secondary); color: var(--text); }
+.wizard-step.done { border-color: var(--primary); color: var(--primary); }
+.wizard-step .num { width: 22px; height: 22px; border-radius: 999px; background: var(--border); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; }
+.wizard-step.active .num { background: var(--secondary); }
+.wizard-step.done .num { background: var(--primary); }
