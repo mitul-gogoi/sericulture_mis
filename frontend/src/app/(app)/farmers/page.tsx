@@ -16,7 +16,7 @@ import { FarmerFilterPanel, type FarmerReportFilters } from "@/components/farmer
 import { FarmerRegisterModal, type FarmerForm } from "@/components/farmers/FarmerRegisterModal";
 import { FarmerEditModal, type FarmerEditForm } from "@/components/farmers/FarmerEditModal";
 import { FarmerViewModal } from "@/components/farmers/FarmerViewModal";
-import type { Farmer, District, SericultureCircle, SilkTypeActivityProduct, Caste, Religion, EducationLevel, Activity, Land, AssetType, AssetInstance } from "@/lib/types";
+import type { Farmer, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, Caste, Religion, EducationLevel, Activity, Land, AssetType, AssetInstance } from "@/lib/types";
 
 const MultiSeriesTrendChart = dynamic(() => import("../dashboard/charts").then((m) => m.MultiSeriesTrendChart), { ssr: false });
 
@@ -112,6 +112,7 @@ export default function FarmersPage() {
   const chartData = (trend?.months ?? []).map((m, i) => ({ label: m, Farmers: trend?.farmers_monthly[i] ?? 0 }));
 
   const { data: districts = [] } = useQuery<District[]>({ queryKey: ["districts"], queryFn: async () => (await api.get("/master/districts")).data });
+  const { data: subdivisionCdcs = [] } = useQuery<SubdivisionCdc[]>({ queryKey: ["subdivision-cdc-all"], queryFn: async () => (await api.get("/master/subdivision-cdc")).data });
   const { data: staps = [] } = useQuery<SilkTypeActivityProduct[]>({ queryKey: ["staps", "output"], queryFn: async () => (await api.get("/master/silk-type-activity-products?role=OUTPUT")).data });
   const { data: castes = [] } = useQuery<Caste[]>({ queryKey: ["castes"], queryFn: async () => (await api.get("/master/castes")).data });
   const { data: religions = [] } = useQuery<Religion[]>({ queryKey: ["religions"], queryFn: async () => (await api.get("/master/religions")).data });
@@ -349,7 +350,7 @@ export default function FarmersPage() {
         <FarmerRegisterModal
           form={form} setForm={setForm} onClose={() => setOpen(false)} onSubmit={submit}
           isStateAdmin={user?.role === "STATE_ADMIN"}
-          districts={districts} circles={circles} educationLevels={educationLevels} castes={castes}
+          districts={districts} circles={circles} subdivisionCdcs={subdivisionCdcs} educationLevels={educationLevels} castes={castes}
           religions={religions} activities={activities} staps={staps} assetTypes={assetTypes}
         />
       )}
@@ -358,7 +359,7 @@ export default function FarmersPage() {
         <FarmerEditModal
           editing={editing} editForm={editForm} setEditForm={setEditForm}
           onClose={() => { setEditing(null); setEditForm(null); }} onSubmit={submitEdit}
-          editCircles={editCircles} educationLevels={educationLevels} castes={castes} religions={religions}
+          editCircles={editCircles} subdivisionCdcs={subdivisionCdcs} educationLevels={educationLevels} castes={castes} religions={religions}
           activities={activities} staps={staps} assetTypes={assetTypes}
           editLands={editLands} editAssets={editAssets}
           editNewLands={editNewLands} setEditNewLands={setEditNewLands}
@@ -370,7 +371,7 @@ export default function FarmersPage() {
       {viewing && (
         <FarmerViewModal
           viewing={viewing} onClose={() => setViewing(null)}
-          viewCircles={viewCircles} viewLands={viewLands} viewAssets={viewAssets}
+          viewCircles={viewCircles} subdivisionCdcs={subdivisionCdcs} viewLands={viewLands} viewAssets={viewAssets}
           districts={districts} castes={castes} religions={religions} educationLevels={educationLevels}
           activities={activities} staps={staps}
         />

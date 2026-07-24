@@ -4,7 +4,8 @@ import FileUpload from "@/components/FileUpload";
 import { LandRowsEditor, type LandRow } from "@/components/LandRowsEditor";
 import { AssetRowsEditor, type AssetRow } from "@/components/AssetRowsEditor";
 import { StapGroupPicker } from "./StapGroupPicker";
-import type { District, SericultureCircle, Caste, Religion, EducationLevel, Activity, AssetType, SilkTypeActivityProduct } from "@/lib/types";
+import { sdoCdcName } from "@/lib/sdoCdc";
+import type { District, SericultureCircle, SubdivisionCdc, Caste, Religion, EducationLevel, Activity, AssetType, SilkTypeActivityProduct } from "@/lib/types";
 
 const stapLabel = (s: SilkTypeActivityProduct) => `${s.silk_type_name} · ${s.activity_name} · ${s.product_name}`;
 
@@ -23,11 +24,11 @@ export interface FarmerForm {
 
 export function FarmerRegisterModal({
   form, setForm, onClose, onSubmit, isStateAdmin,
-  districts, circles, educationLevels, castes, religions, activities, staps, assetTypes,
+  districts, circles, subdivisionCdcs, educationLevels, castes, religions, activities, staps, assetTypes,
 }: {
   form: FarmerForm; setForm: (f: FarmerForm) => void; onClose: () => void; onSubmit: (e: React.FormEvent) => void;
   isStateAdmin: boolean;
-  districts: District[]; circles: SericultureCircle[]; educationLevels: EducationLevel[]; castes: Caste[];
+  districts: District[]; circles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[]; educationLevels: EducationLevel[]; castes: Caste[];
   religions: Religion[]; activities: Activity[]; staps: SilkTypeActivityProduct[]; assetTypes: AssetType[];
 }) {
   return (
@@ -83,6 +84,8 @@ export function FarmerRegisterModal({
               <option value="">Select</option>
               {circles.map((c) => <option key={c.id} value={c.id}>{c.circle_name}</option>)}
             </select></div>
+          <div><label className="label-tag">Sub-division Office (SDO)/ CDC Office</label>
+            <input disabled className="input mt-1" value={sdoCdcName(form.seri_circle_id, circles, subdivisionCdcs)} /></div>
           <div className="col-span-full"><label className="label-tag">Village</label><input required className="input mt-1" value={form.village_name} onChange={(e) => setForm({ ...form, village_name: e.target.value })} /></div>
           <div><label className="label-tag">Panchayat</label><input className="input mt-1" value={form.gaon_panchayat} onChange={(e) => setForm({ ...form, gaon_panchayat: e.target.value })} /></div>
           <div><label className="label-tag">Development Block</label><input className="input mt-1" value={form.development_block} onChange={(e) => setForm({ ...form, development_block: e.target.value })} /></div>

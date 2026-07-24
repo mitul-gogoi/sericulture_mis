@@ -6,7 +6,8 @@ import { LandsList } from "@/components/LandsList";
 import { AssetRowsEditor, type AssetRow } from "@/components/AssetRowsEditor";
 import { AssetsList } from "@/components/AssetsList";
 import { StapGroupPicker } from "./StapGroupPicker";
-import type { Farmer, SericultureCircle, Caste, Religion, EducationLevel, Activity, AssetType, SilkTypeActivityProduct, Land, AssetInstance } from "@/lib/types";
+import { sdoCdcName } from "@/lib/sdoCdc";
+import type { Farmer, SericultureCircle, SubdivisionCdc, Caste, Religion, EducationLevel, Activity, AssetType, SilkTypeActivityProduct, Land, AssetInstance } from "@/lib/types";
 
 const stapLabel = (s: SilkTypeActivityProduct) => `${s.silk_type_name} · ${s.activity_name} · ${s.product_name}`;
 
@@ -24,13 +25,13 @@ export interface FarmerEditForm {
 
 export function FarmerEditModal({
   editing, editForm, setEditForm, onClose, onSubmit,
-  editCircles, educationLevels, castes, religions, activities, staps, assetTypes,
+  editCircles, subdivisionCdcs, educationLevels, castes, religions, activities, staps, assetTypes,
   editLands, editAssets, editNewLands, setEditNewLands, editNewAssets, setEditNewAssets,
   onDeleteLand, onDeleteAsset,
 }: {
   editing: Farmer; editForm: FarmerEditForm; setEditForm: (f: FarmerEditForm) => void;
   onClose: () => void; onSubmit: (e: React.FormEvent) => void;
-  editCircles: SericultureCircle[]; educationLevels: EducationLevel[]; castes: Caste[]; religions: Religion[];
+  editCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[]; educationLevels: EducationLevel[]; castes: Caste[]; religions: Religion[];
   activities: Activity[]; staps: SilkTypeActivityProduct[]; assetTypes: AssetType[];
   editLands: Land[]; editAssets: AssetInstance[];
   editNewLands: LandRow[]; setEditNewLands: (rows: LandRow[]) => void;
@@ -83,6 +84,8 @@ export function FarmerEditModal({
               <option value="">Select</option>
               {editCircles.map((c) => <option key={c.id} value={c.id}>{c.circle_name}</option>)}
             </select></div>
+          <div><label className="label-tag">Sub-division Office (SDO)/ CDC Office</label>
+            <input disabled className="input mt-1" value={sdoCdcName(editForm.seri_circle_id, editCircles, subdivisionCdcs)} /></div>
           <div className="col-span-full"><label className="label-tag">Village</label><input required className="input mt-1" value={editForm.village_name} onChange={(e) => setEditForm({ ...editForm, village_name: e.target.value })} /></div>
           <div><label className="label-tag">Panchayat</label><input className="input mt-1" value={editForm.gaon_panchayat} onChange={(e) => setEditForm({ ...editForm, gaon_panchayat: e.target.value })} /></div>
           <div><label className="label-tag">Development Block</label><input className="input mt-1" value={editForm.development_block} onChange={(e) => setEditForm({ ...editForm, development_block: e.target.value })} /></div>

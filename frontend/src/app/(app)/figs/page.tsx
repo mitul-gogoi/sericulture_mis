@@ -15,7 +15,7 @@ import { FigRegisterModal, type FigCreateForm } from "@/components/figs/FigRegis
 import { FigDetailModal } from "@/components/figs/FigDetailModal";
 import { type FigEditFormState } from "@/components/figs/FigEditForm";
 import { type PresForm } from "@/components/figs/FigPresidentPanel";
-import type { Fig, FigDetail, Farmer, District, SericultureCircle, SilkTypeActivityProduct, FigSettings } from "@/lib/types";
+import type { Fig, FigDetail, Farmer, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, FigSettings } from "@/lib/types";
 
 const MultiSeriesTrendChart = dynamic(() => import("../dashboard/charts").then((m) => m.MultiSeriesTrendChart), { ssr: false });
 
@@ -92,6 +92,7 @@ export default function FIGsPage() {
   const minMembers = figSettings?.min_members ?? 1;
   const { data: districts = [] } = useQuery<District[]>({ queryKey: ["districts"], queryFn: async () => (await api.get("/master/districts")).data });
   const { data: allCircles = [] } = useQuery<SericultureCircle[]>({ queryKey: ["circles-all-figs"], queryFn: async () => (await api.get("/master/sericulture-circles")).data });
+  const { data: subdivisionCdcs = [] } = useQuery<SubdivisionCdc[]>({ queryKey: ["subdivision-cdc-all"], queryFn: async () => (await api.get("/master/subdivision-cdc")).data });
   const { data: circles = [] } = useQuery<SericultureCircle[]>({
     queryKey: ["circles-fig", form.district_id || user?.district_id],
     queryFn: async () => {
@@ -292,13 +293,13 @@ export default function FIGsPage() {
         <FigRegisterModal
           form={form} setForm={setForm} onClose={() => { setOpen(false); resetCreateForm(); }} onSubmit={submit}
           isStateAdmin={user?.role === "STATE_ADMIN"} userDistrictId={user?.district_id} minMembers={minMembers}
-          districts={districts} circles={circles} staps={staps} unassignedFarmers={unassignedFarmers}
+          districts={districts} circles={circles} subdivisionCdcs={subdivisionCdcs} staps={staps} unassignedFarmers={unassignedFarmers}
         />
       )}
 
       {detailId && detail && (
         <FigDetailModal
-          detail={detail} staps={staps} districts={districts} allCircles={allCircles}
+          detail={detail} staps={staps} districts={districts} allCircles={allCircles} subdivisionCdcs={subdivisionCdcs}
           editingFig={editingFig} editForm={editForm} setEditForm={setEditForm}
           onEditClick={openFigEdit} onSaveEdit={saveFigEdit} onCancelEdit={() => { setEditingFig(false); setEditForm(null); }}
           canEditDetails={canEditDetails} canToggleActive={canToggleActive} canManageMembership={canManageMembership}

@@ -1,7 +1,8 @@
 "use client";
 import { X } from "@phosphor-icons/react";
 import { stapOptgroups } from "./stapOptgroups";
-import type { District, SericultureCircle, SilkTypeActivityProduct, Farmer } from "@/lib/types";
+import { sdoCdcName } from "@/lib/sdoCdc";
+import type { District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, Farmer } from "@/lib/types";
 
 export interface FigCreateForm {
   fig_name: string; stap_id: string; seri_circle_id: string; district_id: string; formation_date: string;
@@ -12,11 +13,11 @@ export interface FigCreateForm {
 
 export function FigRegisterModal({
   form, setForm, onClose, onSubmit, isStateAdmin, userDistrictId, minMembers,
-  districts, circles, staps, unassignedFarmers,
+  districts, circles, subdivisionCdcs, staps, unassignedFarmers,
 }: {
   form: FigCreateForm; setForm: (f: FigCreateForm) => void; onClose: () => void; onSubmit: (e: React.FormEvent) => void;
   isStateAdmin: boolean; userDistrictId?: string | null; minMembers: number;
-  districts: District[]; circles: SericultureCircle[]; staps: SilkTypeActivityProduct[]; unassignedFarmers: Farmer[];
+  districts: District[]; circles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[]; staps: SilkTypeActivityProduct[]; unassignedFarmers: Farmer[];
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(26,29,26,0.45)" }}>
@@ -49,6 +50,8 @@ export function FigRegisterModal({
             <select required className="input mt-1" value={form.seri_circle_id} onChange={(e) => setForm({ ...form, seri_circle_id: e.target.value })}>
               <option value="">Select</option>{circles.map((c) => <option key={c.id} value={c.id}>{c.circle_name}</option>)}
             </select></div>
+          <div><label className="label-tag">Sub-division Office (SDO)/ CDC Office</label>
+            <input disabled className="input mt-1" value={sdoCdcName(form.seri_circle_id, circles, subdivisionCdcs)} /></div>
           <div className="col-span-full"><label className="label-tag">Address line</label><input className="input mt-1" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
           <div className="col-span-full"><label className="label-tag">Village/ Town/ City</label><input className="input mt-1" value={form.village_name} onChange={(e) => setForm({ ...form, village_name: e.target.value })} /></div>
           <div><label className="label-tag">Panchayat</label><input className="input mt-1" value={form.panchayat_name} onChange={(e) => setForm({ ...form, panchayat_name: e.target.value })} /></div>

@@ -3,16 +3,17 @@ import { X } from "@phosphor-icons/react";
 import { ViewField } from "@/components/ViewField";
 import { LandsList } from "@/components/LandsList";
 import { AssetsList } from "@/components/AssetsList";
-import type { Farmer, District, SericultureCircle, Caste, Religion, EducationLevel, Activity, SilkTypeActivityProduct, Land, AssetInstance } from "@/lib/types";
+import { sdoCdcName } from "@/lib/sdoCdc";
+import type { Farmer, District, SericultureCircle, SubdivisionCdc, Caste, Religion, EducationLevel, Activity, SilkTypeActivityProduct, Land, AssetInstance } from "@/lib/types";
 
 const stapLabel = (s: SilkTypeActivityProduct) => `${s.silk_type_name} · ${s.activity_name} · ${s.product_name}`;
 
 export function FarmerViewModal({
-  viewing, onClose, viewCircles, viewLands, viewAssets,
+  viewing, onClose, viewCircles, subdivisionCdcs, viewLands, viewAssets,
   districts, castes, religions, educationLevels, activities, staps,
 }: {
   viewing: Farmer; onClose: () => void;
-  viewCircles: SericultureCircle[]; viewLands: Land[]; viewAssets: AssetInstance[];
+  viewCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[]; viewLands: Land[]; viewAssets: AssetInstance[];
   districts: District[]; castes: Caste[]; religions: Religion[]; educationLevels: EducationLevel[];
   activities: Activity[]; staps: SilkTypeActivityProduct[];
 }) {
@@ -50,6 +51,7 @@ export function FarmerViewModal({
           <ViewField label="Family members (female)" value={viewing.family_member_female} />
           <ViewField label="District" value={districtName(viewing.district_id)} />
           <ViewField label="Sericulture Circle" value={circleName(viewing.seri_circle_id)} />
+          <ViewField label="Sub-division Office (SDO)/ CDC Office" value={sdoCdcName(viewing.seri_circle_id, viewCircles, subdivisionCdcs)} />
           <div className="col-span-full"><ViewField label="Village" value={viewing.village_name} /></div>
           <ViewField label="Panchayat" value={viewing.gaon_panchayat} />
           <ViewField label="Development Block" value={viewing.development_block} />

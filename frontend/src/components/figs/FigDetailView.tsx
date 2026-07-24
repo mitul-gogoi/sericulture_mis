@@ -1,10 +1,11 @@
 "use client";
 import { ViewField } from "@/components/ViewField";
 import { stapLabel } from "./stapOptgroups";
-import type { FigDetail, District, SericultureCircle, SilkTypeActivityProduct } from "@/lib/types";
+import { sdoCdcName } from "@/lib/sdoCdc";
+import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct } from "@/lib/types";
 
-export function FigDetailView({ detail, staps, districts, allCircles }: {
-  detail: FigDetail; staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[];
+export function FigDetailView({ detail, staps, districts, allCircles, subdivisionCdcs }: {
+  detail: FigDetail; staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[];
 }) {
   const stap = staps.find((s) => s.id === detail.stap_id);
   const president = detail.members?.find((m) => m.role === "President");
@@ -16,6 +17,7 @@ export function FigDetailView({ detail, staps, districts, allCircles }: {
         <ViewField label="Primary silk type / activity / product" value={stap ? stapLabel(stap) : null} />
         <ViewField label="District" value={districts.find((d) => d.id === detail.district_id)?.district_name} />
         <ViewField label="Sericulture Circle" value={allCircles.find((c) => c.id === detail.seri_circle_id)?.circle_name} />
+        <ViewField label="Sub-division Office (SDO)/ CDC Office" value={sdoCdcName(detail.seri_circle_id, allCircles, subdivisionCdcs)} />
         <div className="col-span-full"><ViewField label="Address line" value={detail.address} /></div>
         <div className="col-span-full"><ViewField label="Village/ Town/ City" value={detail.village_name} /></div>
         <ViewField label="Panchayat" value={detail.panchayat_name} />

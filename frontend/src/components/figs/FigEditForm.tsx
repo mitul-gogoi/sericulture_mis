@@ -1,6 +1,7 @@
 "use client";
 import { stapOptgroups } from "./stapOptgroups";
-import type { FigDetail, District, SericultureCircle, SilkTypeActivityProduct } from "@/lib/types";
+import { sdoCdcName } from "@/lib/sdoCdc";
+import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct } from "@/lib/types";
 
 export interface FigEditFormState {
   fig_name: string; stap_id: string; formation_date: string; meeting_venue: string;
@@ -9,10 +10,10 @@ export interface FigEditFormState {
 }
 
 export function FigEditForm({
-  detail, editForm, setEditForm, staps, districts, allCircles, onCancel, onSave,
+  detail, editForm, setEditForm, staps, districts, allCircles, subdivisionCdcs, onCancel, onSave,
 }: {
   detail: FigDetail; editForm: FigEditFormState; setEditForm: (f: FigEditFormState) => void;
-  staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[];
+  staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[];
   onCancel: () => void; onSave: () => void;
 }) {
   return (
@@ -33,6 +34,8 @@ export function FigEditForm({
           <input disabled className="input mt-1" value={districts.find((d) => d.id === detail.district_id)?.district_name || ""} /></div>
         <div><label className="label-tag">Sericulture Circle</label>
           <input disabled className="input mt-1" value={allCircles.find((c) => c.id === detail.seri_circle_id)?.circle_name || ""} /></div>
+        <div><label className="label-tag">Sub-division Office (SDO)/ CDC Office</label>
+          <input disabled className="input mt-1" value={sdoCdcName(detail.seri_circle_id, allCircles, subdivisionCdcs)} /></div>
         <div className="col-span-full"><label className="label-tag">Address line</label><input className="input mt-1" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} /></div>
         <div className="col-span-full"><label className="label-tag">Village/ Town/ City</label><input className="input mt-1" value={editForm.village_name} onChange={(e) => setEditForm({ ...editForm, village_name: e.target.value })} /></div>
         <div><label className="label-tag">Panchayat</label><input className="input mt-1" value={editForm.panchayat_name} onChange={(e) => setEditForm({ ...editForm, panchayat_name: e.target.value })} /></div>
