@@ -45,14 +45,29 @@ def root():
 
 @app.on_event("startup")
 def startup():
-    # Run Alembic migrations to head (single source of truth for schema)
+    # Run Alembic migrations to head (single source of truth for schema).
+    # Retried a few times as defensive robustness against a slow/flaky first
+    # connection to a remote DB — connect_timeout (set in alembic/env.py)
+    # turns a stuck connection into a fast failure instead of hanging forever.
     from alembic.config import Config
     from alembic import command
     import os
+    import time
     backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     cfg = Config(os.path.join(backend_dir, "alembic.ini"))
     cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
-    command.upgrade(cfg, "head")
+
+    attempts = 5
+    for attempt in range(1, attempts + 1):
+        try:
+            command.upgrade(cfg, "head")
+            break
+        except Exception as exc:
+            if attempt == attempts:
+                raise
+            logger.warning(f"Alembic upgrade attempt {attempt}/{attempts} failed: {exc}. Retrying in 3s...")
+            time.sleep(3)
+
     db = SessionLocal()
     try:
         seed_all(db)
