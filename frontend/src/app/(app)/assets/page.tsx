@@ -145,6 +145,7 @@ export default function AssetsPage() {
       </div>
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead>
             <tr>
@@ -189,6 +190,7 @@ export default function AssetsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {showAdd && (

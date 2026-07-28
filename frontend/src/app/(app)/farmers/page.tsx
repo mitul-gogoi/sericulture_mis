@@ -297,6 +297,7 @@ export default function FarmersPage() {
       />
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Code</th><th>Name</th><th>Mobile</th><th>Village</th><th>Gender</th><th>Status</th>{(canView || canRegisterEdit || canToggleActive) && <th>Actions</th>}</tr></thead>
           <tbody>
@@ -307,6 +308,7 @@ export default function FarmersPage() {
             {farmers.length === 0 && <tr><td colSpan={(canView || canRegisterEdit || canToggleActive) ? 7 : 6} className="text-center py-8" style={{ color: "var(--text-muted)" }}>{!hasSearched ? "Use Search to view farmers" : "No farmers found"}</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       {isReportRole && hasSearched && (

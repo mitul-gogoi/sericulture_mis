@@ -111,6 +111,7 @@ export default function DistrictAdminsPage() {
       )}
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Name</th><th>Mobile</th><th>District</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
           <tbody data-testid="users-da-tbody">
@@ -139,6 +140,7 @@ export default function DistrictAdminsPage() {
             {users.length === 0 && <tr><td colSpan={5} className="text-center py-6" style={{ color: "var(--text-muted)" }}>No DA accounts yet.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

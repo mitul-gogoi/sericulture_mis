@@ -279,6 +279,7 @@ export default function BeneficiariesPage() {
       )}
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th><UsersThree size={14} weight="bold" className="inline mr-1" />Beneficiary</th><th>Scheme</th><th className="text-right">Amount (₹)</th><th>Material</th><th>Date</th><th>Status</th></tr></thead>
           <tbody>
@@ -305,6 +306,7 @@ export default function BeneficiariesPage() {
             {beneficiaries.length === 0 && <tr><td colSpan={6} className="text-center py-6" style={{ color: "var(--text-muted)" }}>No beneficiaries registered yet.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

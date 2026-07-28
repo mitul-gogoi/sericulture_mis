@@ -96,6 +96,7 @@ export default function SchemeAllocationsPage() {
       )}
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th><Stack size={14} weight="bold" className="inline mr-1" />Scheme</th><th>District</th><th className="text-right">Allocated (₹)</th><th className="text-right">Utilised (₹)</th><th className="text-right">Remaining (₹)</th></tr></thead>
           <tbody>
@@ -111,6 +112,7 @@ export default function SchemeAllocationsPage() {
             {allocations.length === 0 && <tr><td colSpan={5} className="text-center py-6" style={{ color: "var(--text-muted)" }}>No allocations yet.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

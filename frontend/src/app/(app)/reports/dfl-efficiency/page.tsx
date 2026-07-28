@@ -46,6 +46,7 @@ export default function DflEfficiencyPage() {
       </div>
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Silk Type</th><th>Cocoon (kg)</th><th>DFL brushed</th><th>kg cocoon / DFL</th></tr></thead>
           <tbody>
@@ -60,6 +61,7 @@ export default function DflEfficiencyPage() {
             {rows.length === 0 && <tr><td colSpan={4} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No data yet</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

@@ -82,6 +82,7 @@ export default function LandsPage() {
       )}
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Farmer</th><th>Dag/Patta</th><th>Area (bigha)</th><th>Hectare</th><th>Status</th><th>Overlap</th><th></th></tr></thead>
           <tbody>
@@ -114,6 +115,7 @@ export default function LandsPage() {
             {lands.length === 0 && <tr><td colSpan={7} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No land parcels yet</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       {gpsLand && (

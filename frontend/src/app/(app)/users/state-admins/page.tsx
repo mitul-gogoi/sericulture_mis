@@ -93,6 +93,7 @@ export default function StateAdminsPage() {
       )}
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Name</th><th>Mobile</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
           <tbody data-testid="users-sa-tbody">
@@ -126,6 +127,7 @@ export default function StateAdminsPage() {
             {users.length === 0 && <tr><td colSpan={4} className="text-center py-6" style={{ color: "var(--text-muted)" }}>No State Admin accounts yet.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

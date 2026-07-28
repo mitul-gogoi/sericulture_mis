@@ -8,7 +8,7 @@ import {
   GraduationCap, Bell, ChartBar, SignOut, UserCircle, Leaf, ListChecks,
   CaretDown, CaretRight, Stack, MapPin, Buildings, Users as UsersIco, Star,
   Butterfly, FlowArrow, Package, TreeStructure, ChartLineUp, Warning,
-  ArrowsDownUp, Gauge, Compass, Tag, Wrench,
+  ArrowsDownUp, Gauge, Compass, Tag, Wrench, List, X,
 } from "@phosphor-icons/react";
 import type { Role } from "@/lib/types";
 
@@ -143,10 +143,16 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!user && typeof window !== "undefined") window.location.replace("/login");
   }, [user]);
+
+  // Close the mobile drawer whenever the route changes (covers back/forward + programmatic nav)
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
 
   // Auto-expand a collapsible group when the current route matches one of its items
   useEffect(() => {
@@ -180,13 +186,43 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex" style={{ background: "var(--bg)" }}>
-      <aside className="w-64 flex-shrink-0 flex flex-col" style={{ background: "var(--sidebar)", borderRight: "1px solid var(--border)" }}>
-        <div className="px-5 py-5 flex items-center gap-2 border-b" style={{ borderColor: "var(--border)" }}>
-          <Leaf size={26} weight="duotone" color="#2D5134" />
-          <div>
-            <div className="font-heading font-extrabold text-[15px] leading-tight">Sericulture MIS</div>
-            <div className="label-tag mt-0.5">Directorate · Assam</div>
+      {/* Mobile-only top bar — the drawer's own header (logo) is off-canvas by default below md:,
+          so this persistent bar is what gives a phone user something to tap to open the menu. */}
+      <div className="md:hidden fixed top-0 inset-x-0 z-40 flex items-center justify-between px-4 py-3"
+           style={{ background: "var(--sidebar)", borderBottom: "1px solid var(--border)" }}>
+        <div className="flex items-center gap-2">
+          <Leaf size={22} weight="duotone" color="#2D5134" />
+          <span className="font-heading font-extrabold text-[14px]">Sericulture MIS</span>
+        </div>
+        <button type="button" onClick={() => setSidebarOpen(true)} data-testid="mobile-menu-toggle"
+                aria-label="Open menu" className="p-2">
+          <List size={24} weight="bold" />
+        </button>
+      </div>
+
+      {/* Backdrop overlay — mobile only, shown while the drawer is open */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-30 md:hidden" style={{ background: "rgba(26,29,26,0.45)" }}
+             onClick={() => setSidebarOpen(false)} data-testid="sidebar-overlay" />
+      )}
+
+      <aside
+        className={`fixed md:static inset-y-0 left-0 z-40 w-64 flex-shrink-0 flex flex-col
+                    transform transition-transform duration-200 ease-in-out
+                    ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0`}
+        style={{ background: "var(--sidebar)", borderRight: "1px solid var(--border)" }}>
+        <div className="px-5 py-5 flex items-center justify-between gap-2 border-b" style={{ borderColor: "var(--border)" }}>
+          <div className="flex items-center gap-2">
+            <Leaf size={26} weight="duotone" color="#2D5134" />
+            <div>
+              <div className="font-heading font-extrabold text-[15px] leading-tight">Sericulture MIS</div>
+              <div className="label-tag mt-0.5">Directorate · Assam</div>
+            </div>
           </div>
+          <button type="button" onClick={() => setSidebarOpen(false)} data-testid="sidebar-close"
+                  aria-label="Close menu" className="md:hidden p-1">
+            <X size={20} weight="bold" />
+          </button>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-3 overflow-y-auto">
           {groups.map((g) => {
@@ -208,7 +244,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                   {isOpen && (
                     <div className="space-y-1" data-testid={`nav-group-items-${groupSlug}`}>
                       {g.items.map((it) => (
-                        <Link key={it.href} href={it.href}
+                        <Link key={it.href} href={it.href} onClick={() => setSidebarOpen(false)}
                           data-testid={`nav-${it.label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
                           className={`nav-item ${activeHref === it.href ? "active" : ""}`}>
                           <it.icon size={18} weight="bold" />
@@ -225,7 +261,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <div className="label-tag px-3 mb-1">{g.group}</div>
                 <div className="space-y-1">
                   {g.items.map((it) => (
-                    <Link key={it.href} href={it.href}
+                    <Link key={it.href} href={it.href} onClick={() => setSidebarOpen(false)}
                       data-testid={`nav-${it.label.toLowerCase().replace(/[^a-z]+/g, "-")}`}
                       className={`nav-item ${activeHref === it.href ? "active" : ""}`}>
                       <it.icon size={18} weight="bold" />
@@ -248,8 +284,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-x-hidden">
-        <div className="px-8 py-6 max-w-[1500px] mx-auto">{children}</div>
+      <main className="flex-1 min-w-0 overflow-x-hidden pt-[60px] md:pt-0">
+        <div className="px-4 py-4 md:px-8 md:py-6 max-w-[1500px] mx-auto">{children}</div>
       </main>
     </div>
   );

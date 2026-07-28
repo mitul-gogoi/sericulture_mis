@@ -42,6 +42,7 @@ export default function MeetingsPage() {
           <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Past monthly meeting submissions for your FIG</p>
         </div>
         <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="seri-table">
             <thead><tr><th>Month</th><th>Meeting title</th><th>Date</th><th>Venue</th><th>Minutes</th></tr></thead>
             <tbody>
@@ -64,6 +65,7 @@ export default function MeetingsPage() {
               {meetings.length === 0 && <tr><td colSpan={5} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No submissions yet</td></tr>}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     );
@@ -89,6 +91,7 @@ export default function MeetingsPage() {
         <input type="month" data-testid="submission-status-month" className="input max-w-xs" value={month} onChange={(e) => setMonth(e.target.value)} />
       </div>
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>FIG</th>{isSA && <th>District</th>}<th>Status</th><th>Submitted on</th></tr></thead>
           <tbody>
@@ -106,6 +109,7 @@ export default function MeetingsPage() {
             {figs.length === 0 && <tr><td colSpan={isSA ? 4 : 3} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No FIGs registered yet</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

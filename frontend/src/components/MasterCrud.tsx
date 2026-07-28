@@ -311,6 +311,7 @@ export function MasterCrud<T extends { id: string; is_active: boolean }>(props: 
         ) : filtered.length === 0 ? (
           <div className="p-6 text-sm" style={{ color: "var(--text-muted)" }} data-testid={`master-empty-${endpoint}`}>No records yet.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="seri-table">
             <thead>
               <tr>
@@ -363,6 +364,7 @@ export function MasterCrud<T extends { id: string; is_active: boolean }>(props: 
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

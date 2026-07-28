@@ -87,6 +87,7 @@ export default function FigPresidentsPage() {
       )}
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Name</th><th>Mobile</th><th>FIG</th><th>District</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
           <tbody data-testid="users-fp-tbody">
@@ -117,6 +118,7 @@ export default function FigPresidentsPage() {
             {users.length === 0 && <tr><td colSpan={6} className="text-center py-6" style={{ color: "var(--text-muted)" }}>No FIG President accounts yet. Assign a president under FIG Management.</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

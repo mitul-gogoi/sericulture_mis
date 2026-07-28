@@ -243,6 +243,7 @@ export default function FIGsPage() {
       )}
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Code</th><th>Name</th><th>Silk Type / Activity / Product</th><th>District</th><th>Sericulture Circle</th><th>Total Members</th><th>Members</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
@@ -252,6 +253,7 @@ export default function FIGsPage() {
             {figsRows.length === 0 && <tr><td colSpan={9} className="text-center py-8" style={{ color: "var(--text-muted)" }}>{!hasSearched && user?.role !== "FIG_PRESIDENT" ? "Use Search to view FIGs" : "No FIGs found"}</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       {hasSearched && (

@@ -186,6 +186,7 @@ export function DrillDownExplorer<T extends { id: string; name: string }>(props:
         </div>
       ) : (
         <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="seri-table">
             <thead><tr>{resolvedColumns.map((c) => <th key={c.key} className={c.className}>{c.label}</th>)}</tr></thead>
             <tbody>
@@ -205,6 +206,7 @@ export function DrillDownExplorer<T extends { id: string; name: string }>(props:
               )}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

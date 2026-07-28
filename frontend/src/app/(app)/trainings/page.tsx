@@ -135,6 +135,7 @@ export default function TrainingsPage() {
       </div>
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Topic</th><th>Scheme</th><th>Proposed dates</th><th>Venue</th><th>Status</th><th></th></tr></thead>
           <tbody>
@@ -171,6 +172,7 @@ export default function TrainingsPage() {
             {reqs.length === 0 && <tr><td colSpan={6} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No requests</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
 
       {open && (

@@ -34,6 +34,7 @@ export default function YieldsPage() {
         </select>
       </div>
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Month</th><th>Farmer</th><th>Product</th><th>Type</th><th>Planned</th><th>Actual</th><th>Stock</th><th>Earning</th><th>Loss reason</th></tr></thead>
           <tbody>
@@ -53,6 +54,7 @@ export default function YieldsPage() {
             {yields.length === 0 && <tr><td colSpan={9} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No yield data</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

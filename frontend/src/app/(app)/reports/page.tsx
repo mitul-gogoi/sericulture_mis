@@ -56,6 +56,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Product</th><th>Planned</th><th>Actual</th><th>Earning</th><th>Records</th></tr></thead>
           <tbody>
@@ -71,6 +72,7 @@ export default function ReportsPage() {
             {ys.length === 0 && <tr><td colSpan={5} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No data yet</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

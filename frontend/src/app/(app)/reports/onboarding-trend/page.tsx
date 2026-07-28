@@ -50,6 +50,7 @@ export default function OnboardingTrendPage() {
       </div>
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>Month</th><th>Farmers Registered</th><th>FIGs Formed</th></tr></thead>
           <tbody>
@@ -63,6 +64,7 @@ export default function OnboardingTrendPage() {
             {months.length === 0 && <tr><td colSpan={3} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No data yet</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

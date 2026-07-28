@@ -66,6 +66,7 @@ export default function ActivityEfficiencyPage() {
       </div>
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>District</th><th>Output Qty</th><th>Input Qty</th><th>Efficiency Ratio</th></tr></thead>
           <tbody>
@@ -83,6 +84,7 @@ export default function ActivityEfficiencyPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

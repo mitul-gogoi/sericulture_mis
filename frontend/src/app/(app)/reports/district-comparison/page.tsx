@@ -48,6 +48,7 @@ export default function DistrictComparisonPage() {
       </div>
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>District</th><th>FIGs</th><th>Submission %</th><th>Yield achievement %</th><th>GPS verified %</th><th>Scheme utilization %</th></tr></thead>
           <tbody>
@@ -64,6 +65,7 @@ export default function DistrictComparisonPage() {
             {rows.length === 0 && <tr><td colSpan={6} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No data yet</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

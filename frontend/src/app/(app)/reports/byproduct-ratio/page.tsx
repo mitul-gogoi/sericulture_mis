@@ -47,6 +47,7 @@ export default function ByproductRatioPage() {
       </div>
 
       <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
         <table className="seri-table">
           <thead><tr><th>District</th><th>Byproduct</th><th>Unit</th><th>Byproduct Qty</th><th>Parent Actual Yield</th><th>Ratio %</th></tr></thead>
           <tbody>
@@ -63,6 +64,7 @@ export default function ByproductRatioPage() {
             {rows.length === 0 && <tr><td colSpan={6} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No data yet</td></tr>}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
