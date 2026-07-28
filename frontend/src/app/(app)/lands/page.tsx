@@ -123,7 +123,7 @@ export default function LandsPage() {
           <div className="card w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: "var(--border)" }}>
               <div><h3 className="font-heading text-xl font-bold">GPS submission · {gpsLand.farmer?.first_name} {gpsLand.farmer?.last_name}</h3>
-                <div className="text-xs" style={{ color: "var(--text-muted)" }}>Enter each boundary point's coordinates (min {MIN_GPS_POINTS}), or click on the map.</div></div>
+                <div className="text-xs" style={{ color: "var(--text-muted)" }}>Enter each boundary point's coordinates (min {MIN_GPS_POINTS}), or press and hold on the map.</div></div>
               <button onClick={closeGps}><X size={20} /></button>
             </div>
             <div className="p-5">

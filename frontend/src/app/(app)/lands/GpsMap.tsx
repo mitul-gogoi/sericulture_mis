@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { MapContainer, TileLayer, Polygon, Marker, Circle, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Polygon, Marker, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import { GpsFix } from "@phosphor-icons/react";
 import { toast } from "sonner";
@@ -25,14 +25,12 @@ const redIcon = new L.DivIcon({
   iconSize: [25, 41], iconAnchor: [12, 41],
 });
 
-function Click({ onAdd }: { onAdd: (p: { latitude: number; longitude: number }) => void }) {
-  useMapEvents({ click(e) { onAdd({ latitude: e.latlng.lat, longitude: e.latlng.lng }); } });
-  return null;
-}
-
 const LONG_PRESS_MS = 550;
 const MOVE_TOLERANCE_PX = 15;
 
+// Unified via Pointer Events (not separate touch/mouse listeners) so a "press and
+// hold" gesture behaves identically whether it's a finger or a mouse — a quick
+// tap or a quick click must never add a point, only a genuine sustained hold does.
 function LongPress({ onAdd }: { onAdd: (p: { latitude: number; longitude: number }) => void }) {
   const map = useMap();
   const onAddRef = useRef(onAdd);
@@ -45,15 +43,18 @@ function LongPress({ onAdd }: { onAdd: (p: { latitude: number; longitude: number
     let lastPos: L.Point | null = null;
     let fired = false;
     let unmounted = false;
+    let activePointerId: number | null = null;
+    const activePointers = new Set<number>();
 
     const clearTimer = () => { if (timer) { clearTimeout(timer); timer = null; } };
 
-    function onTouchStart(e: TouchEvent) {
+    function onPointerDown(e: PointerEvent) {
+      activePointers.add(e.pointerId);
+      if (activePointers.size !== 1) { clearTimer(); return; } // 2nd pointer down mid-gesture = pinch, never a candidate
       clearTimer();
       fired = false;
-      if (e.touches.length !== 1) { startPos = lastPos = null; return; }
-      const t = e.touches[0];
-      startPos = lastPos = L.point(t.clientX, t.clientY);
+      activePointerId = e.pointerId;
+      startPos = lastPos = L.point(e.clientX, e.clientY);
       timer = setTimeout(() => {
         timer = null;
         if (unmounted || !startPos || !lastPos) return;
@@ -65,36 +66,40 @@ function LongPress({ onAdd }: { onAdd: (p: { latitude: number; longitude: number
       }, LONG_PRESS_MS);
     }
 
-    function onTouchMove(e: TouchEvent) {
-      if (!timer) return;
-      if (e.touches.length !== 1) { clearTimer(); return; }
-      const t = e.touches[0];
-      lastPos = L.point(t.clientX, t.clientY);
+    function onPointerMove(e: PointerEvent) {
+      if (!timer || e.pointerId !== activePointerId) return;
+      lastPos = L.point(e.clientX, e.clientY);
       if (startPos && lastPos.distanceTo(startPos) > MOVE_TOLERANCE_PX) clearTimer();
     }
 
-    function onTouchEnd(e: TouchEvent) {
+    function onPointerUp(e: PointerEvent) {
+      activePointers.delete(e.pointerId);
+      if (e.pointerId !== activePointerId) return;
       clearTimer();
       if (fired) { e.preventDefault(); fired = false; }
+      activePointerId = null;
     }
 
-    function onTouchCancel() { clearTimer(); fired = false; }
+    function onPointerCancel(e: PointerEvent) {
+      activePointers.delete(e.pointerId);
+      if (e.pointerId === activePointerId) { clearTimer(); fired = false; activePointerId = null; }
+    }
 
     function onContextMenu(e: Event) { if (L.Browser.mobile) e.preventDefault(); }
 
-    L.DomEvent.on(container, "touchstart", onTouchStart as L.DomEvent.EventHandlerFn);
-    L.DomEvent.on(container, "touchmove", onTouchMove as L.DomEvent.EventHandlerFn);
-    L.DomEvent.on(container, "touchend", onTouchEnd as L.DomEvent.EventHandlerFn);
-    L.DomEvent.on(container, "touchcancel", onTouchCancel as L.DomEvent.EventHandlerFn);
+    L.DomEvent.on(container, "pointerdown", onPointerDown as L.DomEvent.EventHandlerFn);
+    L.DomEvent.on(container, "pointermove", onPointerMove as L.DomEvent.EventHandlerFn);
+    L.DomEvent.on(container, "pointerup", onPointerUp as L.DomEvent.EventHandlerFn);
+    L.DomEvent.on(container, "pointercancel", onPointerCancel as L.DomEvent.EventHandlerFn);
     L.DomEvent.on(container, "contextmenu", onContextMenu as L.DomEvent.EventHandlerFn);
 
     return () => {
       unmounted = true;
       clearTimer();
-      L.DomEvent.off(container, "touchstart", onTouchStart as L.DomEvent.EventHandlerFn);
-      L.DomEvent.off(container, "touchmove", onTouchMove as L.DomEvent.EventHandlerFn);
-      L.DomEvent.off(container, "touchend", onTouchEnd as L.DomEvent.EventHandlerFn);
-      L.DomEvent.off(container, "touchcancel", onTouchCancel as L.DomEvent.EventHandlerFn);
+      L.DomEvent.off(container, "pointerdown", onPointerDown as L.DomEvent.EventHandlerFn);
+      L.DomEvent.off(container, "pointermove", onPointerMove as L.DomEvent.EventHandlerFn);
+      L.DomEvent.off(container, "pointerup", onPointerUp as L.DomEvent.EventHandlerFn);
+      L.DomEvent.off(container, "pointercancel", onPointerCancel as L.DomEvent.EventHandlerFn);
       L.DomEvent.off(container, "contextmenu", onContextMenu as L.DomEvent.EventHandlerFn);
     };
   }, [map]);
@@ -161,7 +166,6 @@ export default function GpsMap({ points, onAdd }: { points: { latitude: number; 
         `}</style>
         <MapContainer center={MAP_CENTER} zoom={13} tapHold={false} style={{ width: "100%", height: "100%" }} className="border rounded overflow-hidden">
           <TileLayer attribution="© OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          <Click onAdd={onAdd} />
           <LongPress onAdd={onAdd} />
           <FlyToLocation location={current} />
           {points.map((p) => {
