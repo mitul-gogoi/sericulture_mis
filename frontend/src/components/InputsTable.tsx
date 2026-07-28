@@ -83,35 +83,37 @@ export function InputsTable({ options, schemes, value, onChange, getAutoFillQty 
   }
 
   return (
-    <table className="seri-table">
-      <thead>
-        <tr><th>Input</th><th>Quantity</th><th>Source</th></tr>
-      </thead>
-      <tbody>
-        {ungrouped.map((o) => {
-          const row = value[o.product_id] || {};
-          return (
-            <InputRow key={o.product_id} o={o} row={row}
-              schemes={schemes} onChange={onChange} getAutoFillQty={getAutoFillQty} />
-          );
-        })}
-        {Array.from(grouped.entries()).map(([label, opts]) => (
-          <Fragment key={`group-${label}`}>
-            <tr>
-              <td colSpan={3} className="text-xs font-semibold pt-2" style={{ color: "var(--text-muted)" }}>
-                {label} — what did you use?
-              </td>
-            </tr>
-            {opts.map((o) => {
-              const row = value[o.product_id] || {};
-              return (
-                <InputRow key={o.product_id} o={o} row={row}
-                  schemes={schemes} onChange={onChange} getAutoFillQty={getAutoFillQty} />
-              );
-            })}
-          </Fragment>
-        ))}
-      </tbody>
-    </table>
+    <div className="overflow-x-auto">
+      <table className="seri-table">
+        <thead>
+          <tr><th>Input</th><th>Quantity</th><th>Source</th></tr>
+        </thead>
+        <tbody>
+          {ungrouped.map((o) => {
+            const row = value[o.product_id] || {};
+            return (
+              <InputRow key={o.product_id} o={o} row={row}
+                schemes={schemes} onChange={onChange} getAutoFillQty={getAutoFillQty} />
+            );
+          })}
+          {Array.from(grouped.entries()).map(([label, opts]) => (
+            <Fragment key={`group-${label}`}>
+              <tr>
+                <td colSpan={3} className="text-xs font-semibold pt-2" style={{ color: "var(--text-muted)" }}>
+                  {label} — what did you use?
+                </td>
+              </tr>
+              {opts.map((o) => {
+                const row = value[o.product_id] || {};
+                return (
+                  <InputRow key={o.product_id} o={o} row={row}
+                    schemes={schemes} onChange={onChange} getAutoFillQty={getAutoFillQty} />
+                );
+              })}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

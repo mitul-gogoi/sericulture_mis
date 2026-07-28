@@ -361,8 +361,8 @@ export default function MonthlySubmissionPage() {
             <p className="text-sm" style={{ color: "var(--text-muted)" }}>
               Record every activity each present member is doing this month — inputs consumed and outputs (primary + byproducts) produced.
             </p>
-            <div className="flex gap-4" style={{ minHeight: 400 }}>
-              <div className="w-56 flex-shrink-0 border rounded overflow-y-auto" style={{ borderColor: "var(--border)", maxHeight: 600 }} data-testid="submission-farmer-sidebar">
+            <div className="flex flex-col md:flex-row gap-4" style={{ minHeight: 400 }}>
+              <div className="w-full md:w-56 flex-shrink-0 border rounded overflow-y-auto max-h-48 md:max-h-[600px]" style={{ borderColor: "var(--border)" }} data-testid="submission-farmer-sidebar">
                 {presentMembers.map((m) => {
                   const farmer = m.farmer;
                   const stapIds = activityStapIds(farmer?.stap_ids || []);
