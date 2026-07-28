@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Polygon, Marker, Circle, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import { GpsFix } from "@phosphor-icons/react";
@@ -27,6 +27,78 @@ const redIcon = new L.DivIcon({
 
 function Click({ onAdd }: { onAdd: (p: { latitude: number; longitude: number }) => void }) {
   useMapEvents({ click(e) { onAdd({ latitude: e.latlng.lat, longitude: e.latlng.lng }); } });
+  return null;
+}
+
+const LONG_PRESS_MS = 550;
+const MOVE_TOLERANCE_PX = 15;
+
+function LongPress({ onAdd }: { onAdd: (p: { latitude: number; longitude: number }) => void }) {
+  const map = useMap();
+  const onAddRef = useRef(onAdd);
+  useEffect(() => { onAddRef.current = onAdd; }, [onAdd]);
+
+  useEffect(() => {
+    const container = map.getContainer();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let startPos: L.Point | null = null;
+    let lastPos: L.Point | null = null;
+    let fired = false;
+    let unmounted = false;
+
+    const clearTimer = () => { if (timer) { clearTimeout(timer); timer = null; } };
+
+    function onTouchStart(e: TouchEvent) {
+      clearTimer();
+      fired = false;
+      if (e.touches.length !== 1) { startPos = lastPos = null; return; }
+      const t = e.touches[0];
+      startPos = lastPos = L.point(t.clientX, t.clientY);
+      timer = setTimeout(() => {
+        timer = null;
+        if (unmounted || !startPos || !lastPos) return;
+        if (lastPos.distanceTo(startPos) > MOVE_TOLERANCE_PX) return;
+        const latlng = map.mouseEventToLatLng({ clientX: lastPos.x, clientY: lastPos.y } as unknown as MouseEvent);
+        fired = true;
+        onAddRef.current({ latitude: latlng.lat, longitude: latlng.lng });
+        toast.success(`Point added at ${latlng.lat.toFixed(6)}, ${latlng.lng.toFixed(6)}`);
+      }, LONG_PRESS_MS);
+    }
+
+    function onTouchMove(e: TouchEvent) {
+      if (!timer) return;
+      if (e.touches.length !== 1) { clearTimer(); return; }
+      const t = e.touches[0];
+      lastPos = L.point(t.clientX, t.clientY);
+      if (startPos && lastPos.distanceTo(startPos) > MOVE_TOLERANCE_PX) clearTimer();
+    }
+
+    function onTouchEnd(e: TouchEvent) {
+      clearTimer();
+      if (fired) { e.preventDefault(); fired = false; }
+    }
+
+    function onTouchCancel() { clearTimer(); fired = false; }
+
+    function onContextMenu(e: Event) { if (L.Browser.mobile) e.preventDefault(); }
+
+    L.DomEvent.on(container, "touchstart", onTouchStart as L.DomEvent.EventHandlerFn);
+    L.DomEvent.on(container, "touchmove", onTouchMove as L.DomEvent.EventHandlerFn);
+    L.DomEvent.on(container, "touchend", onTouchEnd as L.DomEvent.EventHandlerFn);
+    L.DomEvent.on(container, "touchcancel", onTouchCancel as L.DomEvent.EventHandlerFn);
+    L.DomEvent.on(container, "contextmenu", onContextMenu as L.DomEvent.EventHandlerFn);
+
+    return () => {
+      unmounted = true;
+      clearTimer();
+      L.DomEvent.off(container, "touchstart", onTouchStart as L.DomEvent.EventHandlerFn);
+      L.DomEvent.off(container, "touchmove", onTouchMove as L.DomEvent.EventHandlerFn);
+      L.DomEvent.off(container, "touchend", onTouchEnd as L.DomEvent.EventHandlerFn);
+      L.DomEvent.off(container, "touchcancel", onTouchCancel as L.DomEvent.EventHandlerFn);
+      L.DomEvent.off(container, "contextmenu", onContextMenu as L.DomEvent.EventHandlerFn);
+    };
+  }, [map]);
+
   return null;
 }
 
@@ -81,10 +153,16 @@ export default function GpsMap({ points, onAdd }: { points: { latitude: number; 
         </button>
         {current && <span className="text-xs" style={{ color: "var(--text-muted)" }}>Accuracy: ~{Math.round(current.accuracy)}m</span>}
       </div>
-      <div style={{ height: 420 }} className="border rounded overflow-hidden">
-        <MapContainer center={MAP_CENTER} zoom={13} style={{ width: "100%", height: "100%" }}>
+      <div className="gps-map-wrap" style={{ height: 420 }}>
+        <style>{`
+          .gps-map-wrap .leaflet-container, .gps-map-wrap .leaflet-tile {
+            -webkit-touch-callout: none;
+          }
+        `}</style>
+        <MapContainer center={MAP_CENTER} zoom={13} tapHold={false} style={{ width: "100%", height: "100%" }} className="border rounded overflow-hidden">
           <TileLayer attribution="© OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <Click onAdd={onAdd} />
+          <LongPress onAdd={onAdd} />
           <FlyToLocation location={current} />
           {points.map((p) => {
             const pos: [number, number] = [p.latitude, p.longitude];
