@@ -32,6 +32,7 @@ export default function ProductsPage() {
 
   return (
     <MasterCrud<Product>
+      hasUsageCheck
       title="Products"
       description="Every primary and byproduct output (cocoon, raw silk, DFLs, pupae, reel waste, etc.), each tied to a silk type (or left generic for materials shared across silk types), tagged with unit of measure and perishability."
       endpoint="products"

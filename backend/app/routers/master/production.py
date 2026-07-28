@@ -9,7 +9,7 @@ from app.core.db import get_session, commit_or_conflict, delete_or_conflict
 from app.core.deps import get_current_user
 from app.models import (
     SilkType, Activity, Product, SilkTypeActivityProduct, InputSourceType, StapSourceType,
-    InputSourceCategory, User, Yield_, ByproductEntry, YieldInputEntry, Stock,
+    InputSourceCategory, User, Yield_, ByproductEntry, YieldInputEntry, Stock, Training, Fig, Farmer,
 )
 from ._common import _SA, _q, _get_or_404, ActiveToggleIn
 
@@ -276,6 +276,15 @@ def create_activity(body: ActivityIn, user: User = Depends(_SA), db: Session = D
 def update_activity(activity_id: str, body: ActivityIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
     a = _get_or_404(db, Activity, activity_id, "Activity")
     _get_or_404(db, SilkType, body.silk_type_id, "Silk type")
+    if body.silk_type_id != a.silk_type_id:
+        has_mappings = db.query(SilkTypeActivityProduct).filter(
+            SilkTypeActivityProduct.activity_id == activity_id
+        ).first() is not None
+        if has_mappings:
+            raise HTTPException(400,
+                "Cannot change this activity's silk type — it already has Map-Activity-to-Product "
+                "mapping(s) tied to its current silk type. Deactivate this activity and create a "
+                "new one under the correct silk type instead.")
     a.activity_name = body.activity_name.strip()
     a.silk_type_id = body.silk_type_id
     a.step_no = body.step_no
@@ -293,6 +302,23 @@ def toggle_activity(activity_id: str, body: ActiveToggleIn, user: User = Depends
     a.is_active = body.is_active
     db.commit()
     return {"ok": True, "is_active": a.is_active}
+
+
+@router.get("/activities/{activity_id}/usage")
+def activity_usage(activity_id: str, user: User = Depends(_SA), db: Session = Depends(get_session)):
+    _get_or_404(db, Activity, activity_id, "Activity")
+    stap_rows = db.query(SilkTypeActivityProduct).filter(SilkTypeActivityProduct.activity_id == activity_id).all()
+    active_stap = sum(1 for m in stap_rows if m.is_active)
+    yields = db.query(Yield_).filter(Yield_.activity_id == activity_id).count()
+    trainings = db.query(Training).filter(Training.activity_id == activity_id).count()
+    blockers = []
+    if active_stap:
+        blockers.append(f"{active_stap} active Map-Activity-to-Product mapping(s)")
+    if yields:
+        blockers.append(f"{yields} yield record(s)")
+    if trainings:
+        blockers.append(f"{trainings} training(s)")
+    return {"blockers": blockers}
 
 
 @router.delete("/activities/{activity_id}")
@@ -371,6 +397,24 @@ def _product_reference_summary(db: Session, product_id: str) -> dict:
         "yield_input_entries": db.query(YieldInputEntry).filter(YieldInputEntry.product_id == product_id).count(),
         "stock": db.query(Stock).filter(Stock.product_id == product_id).count(),
     }
+
+
+@router.get("/products/{product_id}/usage")
+def product_usage(product_id: str, user: User = Depends(_SA), db: Session = Depends(get_session)):
+    _get_or_404(db, Product, product_id, "Product")
+    refs = _product_reference_summary(db, product_id)
+    blockers = []
+    if refs["stap_active"]:
+        blockers.append(f"{len(refs['stap_active'])} active Map-Activity-to-Product mapping(s)")
+    if refs["yields"]:
+        blockers.append(f"{refs['yields']} yield record(s)")
+    if refs["byproduct_entries"]:
+        blockers.append(f"{refs['byproduct_entries']} byproduct entr{'y' if refs['byproduct_entries'] == 1 else 'ies'}")
+    if refs["yield_input_entries"]:
+        blockers.append(f"{refs['yield_input_entries']} yield input entr{'y' if refs['yield_input_entries'] == 1 else 'ies'}")
+    if refs["stock"]:
+        blockers.append(f"{refs['stock']} stock row(s)")
+    return {"blockers": blockers}
 
 
 @router.delete("/products/{product_id}")
@@ -532,11 +576,57 @@ def toggle_stap(stap_id: str, body: ActiveToggleIn, user: User = Depends(_SA), d
     return {"ok": True, "is_active": m.is_active}
 
 
+def _stap_reference_summary(db: Session, stap_id: str) -> dict:
+    """Everything still pointing at this STAP row: real transactional history (Yield_) plus the
+    two soft (JSON/plain-string) references — Fig.stap_id and Farmer.stap_ids/primary_stap_id —
+    that the DB's own FKs can't see, so delete_stap can name them instead of a generic 400.
+    Farmer.stap_ids is a plain JSON column (not JSONB), so containment is checked in Python
+    rather than a Postgres @> operator — fine at this app's farmer-table scale."""
+    figs = db.query(Fig).filter(Fig.stap_id == stap_id).all()
+    farmers = [
+        f for f in db.query(Farmer).all()
+        if f.primary_stap_id == stap_id or stap_id in (f.stap_ids or [])
+    ]
+    return {
+        "yields": db.query(Yield_).filter(Yield_.stap_id == stap_id).count(),
+        "figs": [{"id": f.id, "fig_name": f.fig_name} for f in figs],
+        "farmers": [{"id": f.id, "name": f"{f.first_name} {f.last_name}"} for f in farmers],
+    }
+
+
+@router.get("/silk-type-activity-products/{stap_id}/usage")
+def stap_usage(stap_id: str, user: User = Depends(_SA), db: Session = Depends(get_session)):
+    _get_or_404(db, SilkTypeActivityProduct, stap_id, "Mapping")
+    refs = _stap_reference_summary(db, stap_id)
+    blockers = []
+    if refs["yields"]:
+        blockers.append(f"{refs['yields']} yield record(s)")
+    if refs["figs"]:
+        blockers.append(f"{len(refs['figs'])} FIG(s) using this as their primary production")
+    if refs["farmers"]:
+        blockers.append(f"{len(refs['farmers'])} farmer(s) assigned this activity")
+    return {"blockers": blockers}
+
+
 @router.delete("/silk-type-activity-products/{stap_id}")
 def delete_stap(stap_id: str, user: User = Depends(_SA), db: Session = Depends(get_session)):
     m = _get_or_404(db, SilkTypeActivityProduct, stap_id, "Mapping")
     if m.is_active:
         raise HTTPException(400, "Deactivate this mapping before deleting it")
+    refs = _stap_reference_summary(db, stap_id)
+    parts = []
+    if refs["yields"]:
+        parts.append(f"{refs['yields']} yield record(s)")
+    if refs["figs"]:
+        names = ", ".join(f["fig_name"] for f in refs["figs"])
+        parts.append(f"{len(refs['figs'])} FIG(s) still set to this as their primary production: {names}")
+    if refs["farmers"]:
+        names = ", ".join(f["name"] for f in refs["farmers"][:5])
+        more = f" and {len(refs['farmers']) - 5} more" if len(refs["farmers"]) > 5 else ""
+        parts.append(f"{len(refs['farmers'])} farmer(s) still assigned this activity: {names}{more}")
+    if parts:
+        raise HTTPException(400, "Cannot delete — this mapping is still referenced by: " + "; ".join(parts) +
+                             ". Reassign these to a different mapping first.")
     db.query(StapSourceType).filter(StapSourceType.stap_id == stap_id).delete()
     delete_or_conflict(db, m, "Cannot delete — this mapping is still referenced elsewhere")
     return {"ok": True}

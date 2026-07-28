@@ -136,6 +136,26 @@ export default function MapActivityToProductPage() {
     deleteMut.mutate(m.id);
   }
 
+  async function onToggle(m: SilkTypeActivityProduct) {
+    if (m.is_active) {
+      try {
+        const res = await api.get(`/master/silk-type-activity-products/${m.id}/usage`);
+        const blockers: string[] = res.data?.blockers || [];
+        if (blockers.length > 0) {
+          const proceed = window.confirm(
+            `"${m.activity_name} → ${m.product_name} (${m.role})" is still in use:\n\n- ${blockers.join("\n- ")}\n\n` +
+            "Deactivating it will hide it from new farmer/FIG assignment going forward, but won't " +
+            "change anything already recorded. Deactivate anyway?"
+          );
+          if (!proceed) return;
+        }
+      } catch {
+        // usage check is a best-effort heads-up — never block the actual toggle on its failure
+      }
+    }
+    toggleMut.mutate({ id: m.id, is_active: !m.is_active });
+  }
+
   function toggle(set: Set<string>, setFn: (s: Set<string>) => void, id: string, checked: boolean) {
     const next = new Set(set);
     if (checked) next.add(id); else next.delete(id);
@@ -359,7 +379,7 @@ export default function MapActivityToProductPage() {
                     <td className="text-right">
                       <div className="inline-flex gap-2">
                         <button
-                          onClick={() => toggleMut.mutate({ id: m.id, is_active: !m.is_active })}
+                          onClick={() => onToggle(m)}
                           disabled={toggleMut.isPending}
                           className={m.is_active ? "btn-secondary btn-sm" : "btn-primary btn-sm"}
                           data-testid={`stap-toggle-${m.id}`}

@@ -39,10 +39,14 @@ export interface MasterCrudProps<T extends { id: string; is_active: boolean }> {
   emptyForm: Record<string, string>;
   searchOn?: (keyof T)[]; // fields to filter locally
   addLabel?: string;
+  // When true, deactivating a row first calls GET /master/{endpoint}/{id}/usage and — if it
+  // reports any blockers — shows them in a confirm dialog before proceeding. Only entities with
+  // a real /usage endpoint (currently: products) should pass this.
+  hasUsageCheck?: boolean;
 }
 
 export function MasterCrud<T extends { id: string; is_active: boolean }>(props: MasterCrudProps<T>) {
-  const { title, description, endpoint, queryKey, columns, fields, buildPayload, toForm, emptyForm, searchOn = [], addLabel } = props;
+  const { title, description, endpoint, queryKey, columns, fields, buildPayload, toForm, emptyForm, searchOn = [], addLabel, hasUsageCheck } = props;
   const { user } = useAuth();
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -98,6 +102,27 @@ export function MasterCrud<T extends { id: string; is_active: boolean }>(props: 
     const name = searchOn.length > 0 ? String(row[searchOn[0]] ?? row.id) : row.id;
     if (!window.confirm(`Delete "${name}" permanently? This cannot be undone.`)) return;
     deleteMut.mutate({ id: row.id });
+  }
+
+  async function onToggle(row: T) {
+    const nextActive = !row.is_active;
+    if (row.is_active && hasUsageCheck) {
+      try {
+        const res = await api.get(`/master/${endpoint}/${row.id}/usage`);
+        const blockers: string[] = res.data?.blockers || [];
+        if (blockers.length > 0) {
+          const proceed = window.confirm(
+            `This is still in use:\n\n- ${blockers.join("\n- ")}\n\n` +
+            "Deactivating it will hide it from new farmer/FIG assignment going forward, but won't " +
+            "change anything already recorded. Deactivate anyway?"
+          );
+          if (!proceed) return;
+        }
+      } catch {
+        // usage check is a best-effort heads-up — never block the actual toggle on its failure
+      }
+    }
+    toggleMut.mutate({ id: row.id, is_active: nextActive });
   }
 
   function deriveOtherMode(nextForm: Record<string, string>): Record<string, boolean> {
@@ -314,7 +339,7 @@ export function MasterCrud<T extends { id: string; is_active: boolean }>(props: 
                         <Pencil size={14} weight="bold" /> Edit
                       </button>
                       <button
-                        onClick={() => toggleMut.mutate({ id: row.id, is_active: !row.is_active })}
+                        onClick={() => onToggle(row)}
                         disabled={toggleMut.isPending}
                         className={row.is_active ? "btn-secondary btn-sm" : "btn-primary btn-sm"}
                         data-testid={`master-toggle-${endpoint}-${row.id}`}

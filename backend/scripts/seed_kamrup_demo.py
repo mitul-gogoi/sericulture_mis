@@ -66,14 +66,14 @@ FIG_PLANS = [
         "circle_name": "Chandrapur", "village": "South Chandrapur",
         "panchayat": "Chandrapur Gaon Panchayat", "post_office": "Chandrapur S.O",
         "police_station": "Panjabari PS", "pin_code": "781021",
-        "silk_type": "Eri", "activity": "Eri Rearing: Mounting and Harvest (Indoor)", "product": "Eri Cocoon",
+        "silk_type": "Eri", "activity": "Eri Rearing", "product": "Eri Cocoon",
         "fig_name": "South Chandrapur Eri Producers FIG", "lat": 26.13, "lng": 91.82,
     },
     {
         "circle_name": "Dispur", "village": "Hatigaon",
         "panchayat": "Hatigaon Gaon Panchayat", "post_office": "Hatigaon S.O",
         "police_station": "Basistha PS", "pin_code": "781006",
-        "silk_type": "Muga", "activity": "Muga Rearing - Mountage and Harvest (Indoor)", "product": "Muga Cocoon",
+        "silk_type": "Muga", "activity": "Muga Rearing", "product": "Muga Cocoon",
         "fig_name": "Hatigaon Muga Rearers FIG", "lat": 26.13, "lng": 91.79,
     },
     {

@@ -69,6 +69,26 @@ export default function ActivitiesPage() {
     if (!window.confirm(`Delete "${a.activity_name}" permanently? This cannot be undone.`)) return;
     deleteMut.mutate(a.id);
   }
+
+  async function onToggle(a: Activity) {
+    if (a.is_active) {
+      try {
+        const res = await api.get(`/master/activities/${a.id}/usage`);
+        const blockers: string[] = res.data?.blockers || [];
+        if (blockers.length > 0) {
+          const proceed = window.confirm(
+            `"${a.activity_name}" is still in use:\n\n- ${blockers.join("\n- ")}\n\n` +
+            "Deactivating it will hide it from new farmer/FIG assignment going forward, but won't " +
+            "change anything already recorded. Deactivate anyway?"
+          );
+          if (!proceed) return;
+        }
+      } catch {
+        // usage check is a best-effort heads-up — never block the actual toggle on its failure
+      }
+    }
+    toggleMut.mutate({ id: a.id, is_active: !a.is_active });
+  }
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (editing) updateMut.mutate(editing.id);
@@ -176,7 +196,7 @@ export default function ActivitiesPage() {
                           <Pencil size={14} weight="bold" /> Edit
                         </button>
                         <button
-                          onClick={() => toggleMut.mutate({ id: a.id, is_active: !a.is_active })}
+                          onClick={() => onToggle(a)}
                           disabled={toggleMut.isPending}
                           className={a.is_active ? "btn-secondary btn-sm" : "btn-primary btn-sm"}
                           data-testid={`master-toggle-activities-${a.id}`}

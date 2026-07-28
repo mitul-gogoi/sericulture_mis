@@ -27,6 +27,8 @@ STEPS = [
     ("Delete Attendance", 'DELETE FROM attendance'),
     ("Delete Meeting", 'DELETE FROM meetings'),
     ("Delete Land", 'DELETE FROM lands'),
+    ("Delete TrainingCertificate (FK blocks Beneficiary delete)", 'DELETE FROM training_certificates'),
+    ("Delete TrainingAttendance (FK blocks Beneficiary delete)", 'DELETE FROM training_attendance'),
     ("Delete Beneficiary", 'DELETE FROM beneficiaries'),
     ("Delete FigMember", 'DELETE FROM fig_members'),
     ("Delete files uploaded by FIG_PRESIDENT users (FK blocks user delete)",
