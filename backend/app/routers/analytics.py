@@ -1,11 +1,10 @@
 """Analytics: drill-down reports for Farmers, FIGs, Lands, Yields/Stock."""
-from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.db import get_session
 from app.core.deps import get_current_user, require_roles
-from app.services.fiscal import period_months
+from app.services.fiscal import period_months, month_range
 from app.services.analytics import (
     scope_district, scope_fig,
     farmers_by_district, farmers_by_circle,
@@ -40,6 +39,23 @@ def _validate_circle_in_district(db: Session, seri_circle_id: str, district_id: 
 def _validate_fig_in_district(db: Session, fig_id: str, district_id: str):
     if not db.query(Fig).filter(Fig.id == fig_id, Fig.district_id == district_id).first():
         raise HTTPException(403, "FIG does not belong to this district")
+
+
+def _resolve_months(month: Optional[str], fiscal_year: Optional[str],
+                     from_month: Optional[str], to_month: Optional[str]) -> Optional[list[str]]:
+    """None means all-time (no filter) — matches the Dashboard tile's `_product_summary_rows`
+    semantics exactly. Only falls back to a custom range when neither month nor fiscal_year
+    was given; a custom range combined with either of those is rejected as ambiguous."""
+    months = period_months(month, fiscal_year)
+    if months is not None:
+        if from_month or to_month:
+            raise HTTPException(400, "Provide either month/fiscal_year or from_month/to_month, not both")
+        return months
+    if from_month or to_month:
+        if not (from_month and to_month):
+            raise HTTPException(400, "from_month and to_month must both be provided")
+        return month_range(from_month, to_month)
+    return None
 
 
 @router.get("/farmers")
@@ -97,13 +113,14 @@ _YIELD_LEVELS = {
 
 @router.get("/products")
 def analytics_products(level: str, product_id: str, month: Optional[str] = None, fiscal_year: Optional[str] = None,
+                       from_month: Optional[str] = None, to_month: Optional[str] = None,
                        district_id: Optional[str] = None, seri_circle_id: Optional[str] = None, fig_id: Optional[str] = None,
                        user: User = Depends(get_current_user), db: Session = Depends(get_session)):
     _require_level(level, _YIELD_LEVELS.get(user.role, set()))
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(404, "Product not found")
-    months = period_months(month, fiscal_year) or [datetime.now(timezone.utc).strftime("%Y-%m")]
+    months = _resolve_months(month, fiscal_year, from_month, to_month)
 
     if level == "district":
         rows = products_by_district(db, product_id, months)
@@ -170,13 +187,14 @@ def analytics_stock(level: str, product_id: str,
 
 @router.get("/inputs")
 def analytics_inputs(level: str, product_id: str, month: Optional[str] = None, fiscal_year: Optional[str] = None,
+                     from_month: Optional[str] = None, to_month: Optional[str] = None,
                      district_id: Optional[str] = None, seri_circle_id: Optional[str] = None, fig_id: Optional[str] = None,
                      user: User = Depends(get_current_user), db: Session = Depends(get_session)):
     _require_level(level, _YIELD_LEVELS.get(user.role, set()))
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
         raise HTTPException(404, "Product not found")
-    months = period_months(month, fiscal_year) or [datetime.now(timezone.utc).strftime("%Y-%m")]
+    months = _resolve_months(month, fiscal_year, from_month, to_month)
 
     if level == "district":
         rows = inputs_by_district(db, product_id, months)
@@ -226,7 +244,7 @@ def activity_efficiency(activity_id: str, month: Optional[str] = None, fiscal_ye
     activity = db.query(Activity).filter(Activity.id == activity_id).first()
     if not activity:
         raise HTTPException(404, "Activity not found")
-    months = period_months(month, fiscal_year) or [datetime.now(timezone.utc).strftime("%Y-%m")]
+    months = period_months(month, fiscal_year)
     resolved_district = scope_district(user, district_id)
     return {
         "months": months,

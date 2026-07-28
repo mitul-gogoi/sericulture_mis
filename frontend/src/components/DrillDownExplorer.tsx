@@ -51,12 +51,22 @@ export interface DrillDownExplorerProps<T extends { id: string; name: string }> 
   initialPath?: Crumb[];
 }
 
+type PeriodMode = "all" | "month" | "fy" | "range";
+
+function monthLabel(m: string): string {
+  const [y, mo] = m.split("-").map(Number);
+  return new Date(y, mo - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
 export function DrillDownExplorer<T extends { id: string; name: string }>(props: DrillDownExplorerProps<T>) {
   const { title, description, endpoint, levels, columns, dimension, lockedRoot, rootLabel = "Assam", initialPath } = props;
   const [path, setPath] = useState<Crumb[]>(initialPath ?? []);
   const [dimId, setDimId] = useState(dimension?.initialId ?? "");
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("all");
   const [month, setMonth] = useState("");
   const [fy, setFy] = useState("");
+  const [fromMonth, setFromMonth] = useState("");
+  const [toMonth, setToMonth] = useState("");
 
   const showPeriodFilter = !!dimension && (dimension.showPeriodFilter ?? true);
 
@@ -71,13 +81,25 @@ export function DrillDownExplorer<T extends { id: string; name: string }>(props:
     parentParam[LEVEL_ID_PARAM[last.level] ?? `${last.level}_id`] = last.id;
   }
 
+  const periodParams: Record<string, string> = !showPeriodFilter ? {} :
+    periodMode === "month" && month ? { month } :
+    periodMode === "fy" && fy ? { fiscal_year: fy } :
+    periodMode === "range" && fromMonth && toMonth ? { from_month: fromMonth, to_month: toMonth } : {};
+
+  const periodBannerText =
+    !showPeriodFilter ? null :
+    periodMode === "month" && month ? `Showing data for ${monthLabel(month)}` :
+    periodMode === "fy" && fy ? `Showing data for FY ${fy}` :
+    periodMode === "range" && fromMonth && toMonth ? `Showing data from ${monthLabel(fromMonth)} to ${monthLabel(toMonth)}` :
+    "Showing all-time totals — cumulative from day one";
+
   const { data, isLoading } = useQuery<AnalyticsResponse<T>>({
-    queryKey: ["analytics", endpoint, effectivePath.map((c) => c.id).join("/"), dimId, month, fy],
+    queryKey: ["analytics", endpoint, effectivePath.map((c) => c.id).join("/"), dimId, periodMode, month, fy, fromMonth, toMonth],
     queryFn: async () => (await api.get(endpoint, {
       params: {
         level: currentLevel,
         ...parentParam,
-        ...(dimension ? { [dimension.paramName]: dimId, ...(showPeriodFilter ? (fy ? { fiscal_year: fy } : month ? { month } : {}) : {}) } : {}),
+        ...(dimension ? { [dimension.paramName]: dimId, ...periodParams } : {}),
       },
     })).data,
     enabled: !dimension || !!dimId,
@@ -107,15 +129,38 @@ export function DrillDownExplorer<T extends { id: string; name: string }>(props:
           </select>
           {showPeriodFilter && (
             <>
-              <label className="label-tag">Month</label>
-              <input type="month" className="input max-w-xs" value={month} onChange={(e) => { setMonth(e.target.value); setFy(""); }} />
-              <label className="label-tag">or fiscal year</label>
-              <select className="input max-w-xs" value={fy} onChange={(e) => { setFy(e.target.value); setMonth(""); }}>
-                <option value="">Select</option>
-                {fyOptions().map((f) => <option key={f} value={f}>{f}</option>)}
+              <label className="label-tag">Period</label>
+              <select className="input max-w-xs" value={periodMode} onChange={(e) => setPeriodMode(e.target.value as PeriodMode)}>
+                <option value="all">All time (from day one)</option>
+                <option value="month">Selected month</option>
+                <option value="fy">Selected year (fiscal year)</option>
+                <option value="range">Custom date range</option>
               </select>
+              {periodMode === "month" && (
+                <input type="month" className="input max-w-xs" value={month} onChange={(e) => setMonth(e.target.value)} />
+              )}
+              {periodMode === "fy" && (
+                <select className="input max-w-xs" value={fy} onChange={(e) => setFy(e.target.value)}>
+                  <option value="">Select fiscal year</option>
+                  {fyOptions().map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              )}
+              {periodMode === "range" && (
+                <>
+                  <label className="label-tag">From</label>
+                  <input type="month" className="input max-w-xs" value={fromMonth} onChange={(e) => setFromMonth(e.target.value)} />
+                  <label className="label-tag">To</label>
+                  <input type="month" className="input max-w-xs" value={toMonth} onChange={(e) => setToMonth(e.target.value)} />
+                </>
+              )}
             </>
           )}
+        </div>
+      )}
+
+      {periodBannerText && dimension && dimId && (
+        <div className="mb-4">
+          <span className="badge badge-muted">{periodBannerText}</span>
         </div>
       )}
 

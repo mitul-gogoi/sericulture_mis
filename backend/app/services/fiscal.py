@@ -37,3 +37,25 @@ def period_months(month: Optional[str], fiscal_year: Optional[str]) -> Optional[
     if month:
         return [month]
     return None
+
+
+def month_range(from_month: str, to_month: str) -> list[str]:
+    """Inclusive "YYYY-MM" list between two months, e.g. ("2026-02","2026-05") ->
+    ["2026-02","2026-03","2026-04","2026-05"]."""
+    if not _MONTH_RE.match(from_month):
+        raise HTTPException(400, f"Invalid from_month format: {from_month!r}, expected YYYY-MM")
+    if not _MONTH_RE.match(to_month):
+        raise HTTPException(400, f"Invalid to_month format: {to_month!r}, expected YYYY-MM")
+    y1, m1 = int(from_month[:4]), int(from_month[5:7])
+    y2, m2 = int(to_month[:4]), int(to_month[5:7])
+    if (y1, m1) > (y2, m2):
+        raise HTTPException(400, "from_month must not be after to_month")
+    months = []
+    y, m = y1, m1
+    while (y, m) <= (y2, m2):
+        months.append(f"{y}-{m:02d}")
+        m += 1
+        if m > 12:
+            m = 1
+            y += 1
+    return months

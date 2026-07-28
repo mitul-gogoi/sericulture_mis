@@ -150,44 +150,50 @@ def _yield_row(r) -> dict:
 
 
 # ---- Products (production, product-dimensioned — same shape as Yields, filtered by product_id) ----
-def products_by_district(db: Session, product_id: str, months: list[str]) -> list[dict]:
-    rows = db.query(Farmer.district_id, District.district_name, *_yield_aggregates()) \
+# months=None means all-time (no filter) — the caller (analytics.py router) resolves "no
+# month/fiscal_year/custom-range given" to None, matching the Dashboard tile's semantics.
+def products_by_district(db: Session, product_id: str, months: Optional[list[str]]) -> list[dict]:
+    q = db.query(Farmer.district_id, District.district_name, *_yield_aggregates()) \
         .select_from(Yield_) \
         .join(Farmer, Farmer.id == Yield_.farmer_id) \
         .join(District, District.id == Farmer.district_id) \
-        .filter(Yield_.product_id == product_id, Yield_.yield_month.in_(months)) \
-        .group_by(Farmer.district_id, District.district_name) \
-        .order_by(District.district_name).all()
+        .filter(Yield_.product_id == product_id)
+    if months:
+        q = q.filter(Yield_.yield_month.in_(months))
+    rows = q.group_by(Farmer.district_id, District.district_name).order_by(District.district_name).all()
     return [_yield_row(r) for r in rows]
 
 
-def products_by_circle(db: Session, product_id: str, months: list[str], district_id: str) -> list[dict]:
-    rows = db.query(Farmer.seri_circle_id, SericultureCircle.circle_name, *_yield_aggregates()) \
+def products_by_circle(db: Session, product_id: str, months: Optional[list[str]], district_id: str) -> list[dict]:
+    q = db.query(Farmer.seri_circle_id, SericultureCircle.circle_name, *_yield_aggregates()) \
         .select_from(Yield_) \
         .join(Farmer, Farmer.id == Yield_.farmer_id) \
         .join(SericultureCircle, SericultureCircle.id == Farmer.seri_circle_id) \
-        .filter(Yield_.product_id == product_id, Yield_.yield_month.in_(months), Farmer.district_id == district_id) \
-        .group_by(Farmer.seri_circle_id, SericultureCircle.circle_name) \
-        .order_by(SericultureCircle.circle_name).all()
+        .filter(Yield_.product_id == product_id, Farmer.district_id == district_id)
+    if months:
+        q = q.filter(Yield_.yield_month.in_(months))
+    rows = q.group_by(Farmer.seri_circle_id, SericultureCircle.circle_name).order_by(SericultureCircle.circle_name).all()
     return [_yield_row(r) for r in rows]
 
 
-def products_by_fig(db: Session, product_id: str, months: list[str], seri_circle_id: str) -> list[dict]:
-    rows = db.query(Yield_.fig_id, Fig.fig_name, func.count(func.distinct(Yield_.farmer_id)).label("farmer_count"), *_yield_aggregates()) \
+def products_by_fig(db: Session, product_id: str, months: Optional[list[str]], seri_circle_id: str) -> list[dict]:
+    q = db.query(Yield_.fig_id, Fig.fig_name, func.count(func.distinct(Yield_.farmer_id)).label("farmer_count"), *_yield_aggregates()) \
         .join(Fig, Fig.id == Yield_.fig_id) \
         .join(Farmer, Farmer.id == Yield_.farmer_id) \
-        .filter(Yield_.product_id == product_id, Yield_.yield_month.in_(months), Farmer.seri_circle_id == seri_circle_id) \
-        .group_by(Yield_.fig_id, Fig.fig_name) \
-        .order_by(Fig.fig_name).all()
+        .filter(Yield_.product_id == product_id, Farmer.seri_circle_id == seri_circle_id)
+    if months:
+        q = q.filter(Yield_.yield_month.in_(months))
+    rows = q.group_by(Yield_.fig_id, Fig.fig_name).order_by(Fig.fig_name).all()
     return [{**_yield_row(r), "farmer_count": int(r.farmer_count)} for r in rows]
 
 
-def products_by_farmer(db: Session, product_id: str, months: list[str], fig_id: str) -> list[dict]:
-    rows = db.query(Yield_.farmer_id, Farmer.first_name, Farmer.last_name, *_yield_aggregates()) \
+def products_by_farmer(db: Session, product_id: str, months: Optional[list[str]], fig_id: str) -> list[dict]:
+    q = db.query(Yield_.farmer_id, Farmer.first_name, Farmer.last_name, *_yield_aggregates()) \
         .join(Farmer, Farmer.id == Yield_.farmer_id) \
-        .filter(Yield_.product_id == product_id, Yield_.yield_month.in_(months), Yield_.fig_id == fig_id) \
-        .group_by(Yield_.farmer_id, Farmer.first_name, Farmer.last_name) \
-        .order_by(Farmer.first_name).all()
+        .filter(Yield_.product_id == product_id, Yield_.fig_id == fig_id)
+    if months:
+        q = q.filter(Yield_.yield_month.in_(months))
+    rows = q.group_by(Yield_.farmer_id, Farmer.first_name, Farmer.last_name).order_by(Farmer.first_name).all()
     return [{
         "id": r.farmer_id, "name": f"{r.first_name} {r.last_name}",
         "planned": float(r.planned or 0), "actual": float(r.actual or 0),
@@ -328,33 +334,38 @@ def _group_input_rows(rows) -> list[dict]:
     return result
 
 
-def inputs_by_district(db: Session, product_id: str, months: list[str]) -> list[dict]:
-    rows = db.query(Farmer.district_id, District.district_name, InputSourceType.source_name,
-                     func.sum(YieldInputEntry.quantity).label("qty")) \
+def inputs_by_district(db: Session, product_id: str, months: Optional[list[str]]) -> list[dict]:
+    q = db.query(Farmer.district_id, District.district_name, InputSourceType.source_name,
+                 func.sum(YieldInputEntry.quantity).label("qty")) \
         .select_from(YieldInputEntry) \
         .join(Farmer, Farmer.id == YieldInputEntry.farmer_id) \
         .join(District, District.id == Farmer.district_id) \
         .join(InputSourceType, InputSourceType.id == YieldInputEntry.source_type_id) \
-        .filter(YieldInputEntry.product_id == product_id, YieldInputEntry.yield_month.in_(months)) \
-        .group_by(Farmer.district_id, District.district_name, InputSourceType.source_name).all()
+        .filter(YieldInputEntry.product_id == product_id)
+    if months:
+        q = q.filter(YieldInputEntry.yield_month.in_(months))
+    rows = q.group_by(Farmer.district_id, District.district_name, InputSourceType.source_name).all()
     return _group_input_rows(rows)
 
 
-def inputs_by_circle(db: Session, product_id: str, months: list[str], district_id: str) -> list[dict]:
-    rows = db.query(Farmer.seri_circle_id, SericultureCircle.circle_name, InputSourceType.source_name,
-                     func.sum(YieldInputEntry.quantity).label("qty")) \
+def inputs_by_circle(db: Session, product_id: str, months: Optional[list[str]], district_id: str) -> list[dict]:
+    q = db.query(Farmer.seri_circle_id, SericultureCircle.circle_name, InputSourceType.source_name,
+                 func.sum(YieldInputEntry.quantity).label("qty")) \
         .select_from(YieldInputEntry) \
         .join(Farmer, Farmer.id == YieldInputEntry.farmer_id) \
         .join(SericultureCircle, SericultureCircle.id == Farmer.seri_circle_id) \
         .join(InputSourceType, InputSourceType.id == YieldInputEntry.source_type_id) \
-        .filter(YieldInputEntry.product_id == product_id, YieldInputEntry.yield_month.in_(months), Farmer.district_id == district_id) \
-        .group_by(Farmer.seri_circle_id, SericultureCircle.circle_name, InputSourceType.source_name).all()
+        .filter(YieldInputEntry.product_id == product_id, Farmer.district_id == district_id)
+    if months:
+        q = q.filter(YieldInputEntry.yield_month.in_(months))
+    rows = q.group_by(Farmer.seri_circle_id, SericultureCircle.circle_name, InputSourceType.source_name).all()
     return _group_input_rows(rows)
 
 
-def inputs_by_fig(db: Session, product_id: str, months: list[str], seri_circle_id: str) -> list[dict]:
-    base_filter = (YieldInputEntry.product_id == product_id, YieldInputEntry.yield_month.in_(months),
-                   Farmer.seri_circle_id == seri_circle_id)
+def inputs_by_fig(db: Session, product_id: str, months: Optional[list[str]], seri_circle_id: str) -> list[dict]:
+    base_filter = [YieldInputEntry.product_id == product_id, Farmer.seri_circle_id == seri_circle_id]
+    if months:
+        base_filter.append(YieldInputEntry.yield_month.in_(months))
     farmer_counts = dict(db.query(YieldInputEntry.fig_id, func.count(func.distinct(YieldInputEntry.farmer_id)))
         .join(Farmer, Farmer.id == YieldInputEntry.farmer_id)
         .filter(*base_filter).group_by(YieldInputEntry.fig_id).all())
@@ -371,20 +382,22 @@ def inputs_by_fig(db: Session, product_id: str, months: list[str], seri_circle_i
     return out
 
 
-def inputs_by_farmer(db: Session, product_id: str, months: list[str], fig_id: str) -> list[dict]:
-    rows = db.query(YieldInputEntry.farmer_id, Farmer.first_name, Farmer.last_name, InputSourceType.source_name,
-                     func.sum(YieldInputEntry.quantity).label("qty")) \
+def inputs_by_farmer(db: Session, product_id: str, months: Optional[list[str]], fig_id: str) -> list[dict]:
+    q = db.query(YieldInputEntry.farmer_id, Farmer.first_name, Farmer.last_name, InputSourceType.source_name,
+                 func.sum(YieldInputEntry.quantity).label("qty")) \
         .join(Farmer, Farmer.id == YieldInputEntry.farmer_id) \
         .join(InputSourceType, InputSourceType.id == YieldInputEntry.source_type_id) \
-        .filter(YieldInputEntry.product_id == product_id, YieldInputEntry.yield_month.in_(months), YieldInputEntry.fig_id == fig_id) \
-        .group_by(YieldInputEntry.farmer_id, Farmer.first_name, Farmer.last_name, InputSourceType.source_name).all()
+        .filter(YieldInputEntry.product_id == product_id, YieldInputEntry.fig_id == fig_id)
+    if months:
+        q = q.filter(YieldInputEntry.yield_month.in_(months))
+    rows = q.group_by(YieldInputEntry.farmer_id, Farmer.first_name, Farmer.last_name, InputSourceType.source_name).all()
     # _group_input_rows expects (dim_id, dim_name, source_name, qty) — combine first+last here.
     combined = [(farmer_id, f"{first} {last}", source_name, qty) for farmer_id, first, last, source_name, qty in rows]
     return _group_input_rows(combined)
 
 
 # ---- Activity efficiency (generalized input/output ratio for any activity, per district) ----
-def activity_efficiency_rows(db: Session, activity_id: str, months: list[str], district_id: Optional[str] = None) -> list[dict]:
+def activity_efficiency_rows(db: Session, activity_id: str, months: Optional[list[str]], district_id: Optional[str] = None) -> list[dict]:
     """output_qty / input_qty per district for a given Activity — generalizes the
     dfl_efficiency_rows pattern to any activity carrying both INPUT- and OUTPUT-role
     STAP rows, not just the hardcoded Muga Cocoon -> DFL pair."""
@@ -396,12 +409,15 @@ def activity_efficiency_rows(db: Session, activity_id: str, months: list[str], d
         .select_from(Yield_) \
         .join(Farmer, Farmer.id == Yield_.farmer_id) \
         .join(District, District.id == Farmer.district_id) \
-        .filter(Yield_.activity_id == activity_id, Yield_.yield_month.in_(months))
+        .filter(Yield_.activity_id == activity_id)
     input_q = db.query(Farmer.district_id, func.sum(YieldInputEntry.quantity).label("qty")) \
         .select_from(YieldInputEntry) \
         .join(Yield_, Yield_.id == YieldInputEntry.parent_yield_id) \
         .join(Farmer, Farmer.id == YieldInputEntry.farmer_id) \
-        .filter(Yield_.activity_id == activity_id, YieldInputEntry.yield_month.in_(months))
+        .filter(Yield_.activity_id == activity_id)
+    if months:
+        output_q = output_q.filter(Yield_.yield_month.in_(months))
+        input_q = input_q.filter(YieldInputEntry.yield_month.in_(months))
     if district_id:
         output_q = output_q.filter(Farmer.district_id == district_id)
         input_q = input_q.filter(Farmer.district_id == district_id)
