@@ -5,9 +5,11 @@ You have **two separate copies** of this app you can show people:
 |                | Where it runs                | Where the data lives       | Who can see it                 |
 | -------------- | ---------------------------- | -------------------------- | ------------------------------ |
 | **Local Demo** | Your laptop                  | Your laptop's own database | Only you, on your laptop       |
-| **EC2 Demo**   | AWS cloud server (always on) | Supabase (cloud database)  | Anyone with the link, anywhere |
+| **Cloud Demo** | Railway (always on)          | Supabase (cloud database)  | Anyone with the link, anywhere |
 
-**The most important thing to understand first:** these are two _completely separate_ databases, like two separate notebooks. Writing something in one notebook does NOT automatically appear in the other. If you add a farmer in the Local Demo, it will NOT show up in the EC2 Demo, and the other way around too. Later in this document (Part 4) there's a way to make them match again, but it doesn't happen automatically.
+**The most important thing to understand first:** these are two _completely separate_ databases, like two separate notebooks. Writing something in one notebook does NOT automatically appear in the other. If you add a farmer in the Local Demo, it will NOT show up in the Cloud Demo, and the other way around too. Later in this document (Part 4) there's a way to make them match again, but it doesn't happen automatically.
+
+> **⚠️ UAT data reset — 2026-08-10.** A large batch of feature/schema work (redesigned Yield View, Asset Management GPS workflow, threaded notifications, farmer self-service login, sidebar redesign, and more — see the plan file for the full list) was deployed on this date. Because so much had changed since the previous deploy, the old stakeholder-entered UAT test data on Supabase/Railway was intentionally wiped and replaced with a fresh, fully-featured Kamrup Metropolitan demo dataset rather than forward-migrated. If you're looking for test data you entered before this date, it no longer exists on the live Cloud Demo — a courtesy backup was taken first (`supabase_pre_reset_20260810.dump`, kept outside git) in case anything specific needs to be recovered.
 
 ---
 
@@ -155,10 +157,14 @@ Then open `https://frontend-production-6eb5.up.railway.app` and log in with your
 
 ## Login details (work on both versions, as long as you haven't synced away the accounts)
 
+Current as of the 2026-08-10 data reset — the fresh Kamrup Metropolitan demo dataset (15 farmers across 3 FIGs).
+
 | Role | Mobile number | Password |
 |---|---|---|
-| State Admin | `1111111111` | `sa@123` |
-| District Admin (Test DA, Kamrup Metropolitan) | `8123456780` | `District@123` |
+| State Admin (Director) | `1111111111` | `sa@123` |
+| District Admin (Bhaskar Saikia, Kamrup Metropolitan) | `8123456780` | `District@123` |
+| FIG President (Anil Talukdar, Hatigaon Muga Rearers FIG) | `9854100012` | `Fig@123` |
+| Farmer (Manoj Sonowal, self-service login) | `9854100014` | `farmer@123` |
 
 ---
 
