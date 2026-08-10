@@ -1,7 +1,9 @@
 "use client";
 import { stapOptgroups } from "./stapOptgroups";
 import { sdoCdcName } from "@/lib/sdoCdc";
-import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct } from "@/lib/types";
+import { AssetRowsEditor, type AssetRow } from "@/components/AssetRowsEditor";
+import { AssetsList } from "@/components/AssetsList";
+import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, AssetType, AssetInstance } from "@/lib/types";
 
 export interface FigEditFormState {
   fig_name: string; stap_id: string; formation_date: string; meeting_venue: string;
@@ -11,10 +13,13 @@ export interface FigEditFormState {
 
 export function FigEditForm({
   detail, editForm, setEditForm, staps, districts, allCircles, subdivisionCdcs, onCancel, onSave,
+  assetTypes, editAssets, editNewAssets, setEditNewAssets, onDeleteAsset,
 }: {
   detail: FigDetail; editForm: FigEditFormState; setEditForm: (f: FigEditFormState) => void;
   staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[];
   onCancel: () => void; onSave: () => void;
+  assetTypes: AssetType[]; editAssets: AssetInstance[];
+  editNewAssets: AssetRow[]; setEditNewAssets: (rows: AssetRow[]) => void; onDeleteAsset: (assetId: string) => void;
 }) {
   return (
     <div className="mb-5 border-b pb-5" style={{ borderColor: "var(--border)" }}>
@@ -43,6 +48,19 @@ export function FigEditForm({
         <div><label className="label-tag">Police Station</label><input className="input mt-1" value={editForm.police_station} onChange={(e) => setEditForm({ ...editForm, police_station: e.target.value })} /></div>
         <div><label className="label-tag">PIN Code</label><input className="input mt-1" value={editForm.pin_code} onChange={(e) => setEditForm({ ...editForm, pin_code: e.target.value })} /></div>
         <div><label className="label-tag">Meeting venue</label><input className="input mt-1" value={editForm.meeting_venue} onChange={(e) => setEditForm({ ...editForm, meeting_venue: e.target.value })} /></div>
+      </div>
+      <div className="border-t pt-4 mt-4" style={{ borderColor: "var(--border)" }}>
+        <label className="label-tag">Existing Assets (Self-Declared)</label>
+        {editAssets.length > 0 && (
+          <div className="mt-2 mb-3">
+            <AssetsList assets={editAssets} onDelete={onDeleteAsset} />
+          </div>
+        )}
+        <p className="text-xs mt-1 mb-2" style={{ color: "var(--text-muted)" }}>
+          Add another existing asset — for a newly self-procured item, with a real procurement date.
+          Individually-owned assets are recorded against each farmer instead.
+        </p>
+        <AssetRowsEditor value={editNewAssets} onChange={setEditNewAssets} assetTypes={assetTypes} ownerKind="FIG" />
       </div>
       <div className="flex justify-end gap-2 mt-3">
         <button className="btn-secondary" onClick={onCancel}>Cancel</button>

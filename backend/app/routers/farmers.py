@@ -5,12 +5,23 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from app.core.db import get_session
 from app.core.deps import get_current_user, require_roles
-from app.models import Farmer, User, FigMember, SilkTypeActivityProduct, Land, AssetInstance, AssetType
-from app.schemas import FarmerIn, FarmerUpdateIn
-from app.services.farmer_reports import apply_farmer_filters
+from app.core.security import hash_password, DEFAULT_FARMER_PASSWORD
+from app.models import (
+    Farmer, User, FigMember, SilkTypeActivityProduct, Land, AssetInstance, AssetType,
+    Fig, Meeting, FarmerSubmission, FarmerSubmissionCorrection, FarmerDraftEntry, _now,
+)
+from app.schemas import (
+    FarmerIn, FarmerUpdateIn, FarmerPasswordResetIn, FarmerSubmissionIn, FarmerSubmissionCorrectionIn,
+    FarmerDraftIn,
+)
+from app.services.farmer_reports import apply_farmer_filters, fig_by_farmer
+from app.services.meeting_reports import fp_submission_history_rows, _serialize_farmer_submission_detail
+from app.services.notifications import create_notification
 from app.routers.lands import VALID_LAND_TYPES
+from app.routers.meetings import _apply_yield_entries, _validate_entries_readonly
 
 _PAGE_SIZES = {10, 20, 50, 100}
 
@@ -57,6 +68,8 @@ def create_farmer(body: FarmerIn, user: User = Depends(require_roles("DISTRICT_A
         raise HTTPException(403, "District scope mismatch")
     if db.query(Farmer).filter(Farmer.mobile_no == body.mobile_no).first():
         raise HTTPException(400, "Mobile already registered")
+    if db.query(User).filter(User.mobile_no == body.mobile_no).first():
+        raise HTTPException(400, "Mobile already registered")
     if body.aadhaar_no and db.query(Farmer).filter(Farmer.aadhaar_no == body.aadhaar_no).first():
         raise HTTPException(400, "Aadhaar already registered")
     if body.stap_ids and body.primary_stap_id and body.primary_stap_id not in body.stap_ids:
@@ -85,6 +98,11 @@ def create_farmer(body: FarmerIn, user: User = Depends(require_roles("DISTRICT_A
     farmer = Farmer(farmer_code=_fcode(seq), **data)
     db.add(farmer)
     db.flush()
+    db.add(User(
+        mobile_no=farmer.mobile_no, password_hash=hash_password(DEFAULT_FARMER_PASSWORD),
+        role="FARMER", farmer_id=farmer.id, district_id=farmer.district_id,
+        name=f"{farmer.first_name} {farmer.last_name}".strip(),
+    ))
     for land in land_rows:
         db.add(Land(farmer_id=farmer.id, **land))
     for asset in asset_rows:
@@ -116,6 +134,7 @@ def list_farmers(
     experience_max: Optional[int] = None,
     has_bank_details: Optional[bool] = None,
     is_active: Optional[bool] = None,
+    has_fig: Optional[bool] = None,
     page: Optional[int] = Query(None, ge=1),
     page_size: Optional[int] = None,
     user: User = Depends(get_current_user),
@@ -145,7 +164,7 @@ def list_farmers(
     query = apply_farmer_filters(
         query, gender=gender, education_level_id=education_level_id, caste_id=caste_id, religion_id=religion_id,
         experience_min=experience_min, experience_max=experience_max,
-        has_bank_details=has_bank_details, is_active=is_active,
+        has_bank_details=has_bank_details, is_active=is_active, has_fig=has_fig,
     )
     query = query.order_by(Farmer.created_at.desc())
 
@@ -159,7 +178,193 @@ def list_farmers(
         raise HTTPException(400, "page_size must be one of 10, 20, 50, 100")
     total = query.count()
     rows = query.offset((page - 1) * size).limit(size).all()
+    fig_map = fig_by_farmer(db, [r.id for r in rows])
+    items = [
+        {**r.model_dump(), "fig_id": fig_map[r.id].id if r.id in fig_map else None,
+         "fig_name": fig_map[r.id].fig_name if r.id in fig_map else None}
+        for r in rows
+    ]
+    return {"items": items, "total": total}
+
+
+@router.get("/me")
+def get_own_farmer(user: User = Depends(require_roles("FARMER")), db: Session = Depends(get_session)):
+    f = db.query(Farmer).filter(Farmer.id == user.farmer_id).first()
+    if not f:
+        raise HTTPException(404, "Farmer profile not found")
+    member = db.query(FigMember).filter(FigMember.farmer_id == f.id, FigMember.is_active).first()
+    fig = db.query(Fig).filter(Fig.id == member.fig_id).first() if member else None
+    data = f.model_dump()
+    data["fig_id"] = fig.id if fig else None
+    data["fig_name"] = fig.fig_name if fig else None
+    data["fig_code"] = fig.fig_code if fig else None
+    return data
+
+
+@router.get("/me/summary")
+def get_own_summary(user: User = Depends(require_roles("FARMER")), db: Session = Depends(get_session)):
+    f = db.query(Farmer).filter(Farmer.id == user.farmer_id).first()
+    if not f:
+        raise HTTPException(404, "Farmer profile not found")
+    member = db.query(FigMember).filter(FigMember.farmer_id == f.id, FigMember.is_active).first()
+    fig = db.query(Fig).filter(Fig.id == member.fig_id).first() if member else None
+    current_month = datetime.now(timezone.utc).strftime("%Y-%m")
+    has_draft_this_month = False
+    if fig:
+        submitted_this_month = db.query(Meeting).filter(
+            Meeting.fig_id == fig.id, Meeting.meeting_month == current_month).first() is not None
+        has_draft_this_month = db.query(FarmerDraftEntry).filter(
+            FarmerDraftEntry.farmer_id == f.id, FarmerDraftEntry.draft_month == current_month).first() is not None
+    else:
+        submitted_this_month = db.query(FarmerSubmission).filter(
+            FarmerSubmission.farmer_id == f.id, FarmerSubmission.submission_month == current_month).first() is not None
+    land_count = db.query(Land).filter(Land.farmer_id == f.id).count()
+    lands_needing_gps = db.query(Land).filter(
+        Land.farmer_id == f.id, Land.gps_verified == "Not Submitted").count()
+    asset_count = db.query(AssetInstance).filter(
+        AssetInstance.owner_type == "FARMER", AssetInstance.owner_id == f.id).count()
+    return {
+        "fig_id": fig.id if fig else None, "fig_name": fig.fig_name if fig else None,
+        "has_draft_this_month": has_draft_this_month,
+        "fig_code": fig.fig_code if fig else None,
+        "current_month": current_month, "submitted_this_month": submitted_this_month,
+        "land_count": land_count, "lands_needing_gps": lands_needing_gps, "asset_count": asset_count,
+    }
+
+
+@router.get("/me/meetings")
+def get_own_meetings(user: User = Depends(require_roles("FARMER")), db: Session = Depends(get_session)):
+    member = db.query(FigMember).filter(FigMember.farmer_id == user.farmer_id, FigMember.is_active).first()
+    if not member:
+        return []
+    return fp_submission_history_rows(db, member.fig_id)
+
+
+def _next_submission_seq(db: Session) -> int:
+    last = db.query(FarmerSubmission.submission_code).order_by(FarmerSubmission.submission_code.desc()).first()
+    if not last:
+        return 1
+    try:
+        return int(last[0].rsplit("-", 1)[-1]) + 1
+    except (ValueError, AttributeError):
+        return 1
+
+
+@router.post("/me/submissions")
+def create_own_submission(body: FarmerSubmissionIn, user: User = Depends(require_roles("FARMER")),
+                          db: Session = Depends(get_session)):
+    if db.query(FigMember).filter(FigMember.farmer_id == user.farmer_id, FigMember.is_active).first():
+        raise HTTPException(400, "FIG members submit via their FIG President's monthly meeting, not directly")
+    if db.query(FarmerSubmission).filter(
+        FarmerSubmission.farmer_id == user.farmer_id, FarmerSubmission.submission_month == body.submission_month
+    ).first():
+        raise HTTPException(400, "You have already submitted for this month")
+
+    seq = _next_submission_seq(db)
+    submission = FarmerSubmission(
+        farmer_id=user.farmer_id, submission_code=f"SERI-SUB-{seq:06d}",
+        submission_month=body.submission_month,
+    )
+    db.add(submission)
+    db.flush()
+
+    entries = [{**e, "farmer_id": user.farmer_id} for e in body.entries]
+    created = _apply_yield_entries(db, entries, yield_month=body.submission_month,
+                                   fig_id=None, farmer_submission_id=submission.id)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(400, "Duplicate yield for same activity-product/month")
+    return {"id": submission.id, "submission_code": submission.submission_code, "entries_count": len(created)}
+
+
+@router.get("/me/submissions")
+def list_own_submissions(page: int = Query(1, ge=1), page_size: Optional[int] = None,
+                         user: User = Depends(require_roles("FARMER")), db: Session = Depends(get_session)):
+    q = db.query(FarmerSubmission).filter(FarmerSubmission.farmer_id == user.farmer_id) \
+        .order_by(FarmerSubmission.submission_month.desc())
+    size = page_size or 20
+    if size not in _PAGE_SIZES:
+        raise HTTPException(400, "page_size must be one of 10, 20, 50, 100")
+    total = q.count()
+    rows = q.offset((page - 1) * size).limit(size).all()
     return {"items": rows, "total": total}
+
+
+@router.get("/me/submissions/{submission_id}")
+def get_own_submission_detail(submission_id: str, user: User = Depends(require_roles("FARMER")),
+                              db: Session = Depends(get_session)):
+    submission = db.query(FarmerSubmission).filter(
+        FarmerSubmission.id == submission_id, FarmerSubmission.farmer_id == user.farmer_id).first()
+    if not submission:
+        raise HTTPException(404, "Not found")
+    return _serialize_farmer_submission_detail(db, submission)
+
+
+@router.post("/me/submissions/{submission_id}/resubmit")
+def resubmit_own_submission(submission_id: str, body: FarmerSubmissionCorrectionIn,
+                            user: User = Depends(require_roles("FARMER")), db: Session = Depends(get_session)):
+    submission = db.query(FarmerSubmission).filter(
+        FarmerSubmission.id == submission_id, FarmerSubmission.farmer_id == user.farmer_id).first()
+    if not submission:
+        raise HTTPException(404, "Not found")
+    if db.query(FarmerSubmissionCorrection).filter(
+        FarmerSubmissionCorrection.farmer_submission_id == submission_id,
+        FarmerSubmissionCorrection.status == "PENDING",
+    ).first():
+        raise HTTPException(400, "A resubmission is already pending review for this submission")
+
+    entries = [{**e, "farmer_id": user.farmer_id} for e in body.entries]
+    _validate_entries_readonly(db, {user.farmer_id}, entries)
+
+    correction = FarmerSubmissionCorrection(
+        farmer_submission_id=submission_id, farmer_id=user.farmer_id, submitted_by_user_id=user.id,
+        payload={"entries": entries},
+    )
+    db.add(correction)
+
+    farmer = db.query(Farmer).filter(Farmer.id == user.farmer_id).first()
+    da_ids = [u.id for u in db.query(User).filter(
+        User.role == "DISTRICT_ADMIN", User.district_id == farmer.district_id, User.is_active).all()] if farmer else []
+    if da_ids:
+        create_notification(
+            db, user, "Farmer resubmission pending review",
+            f"{farmer.first_name} {farmer.last_name} submitted a correction for {submission.submission_month} — please review.",
+            "SELECTED_DA", recipient_ids=da_ids,
+        )
+    db.commit()
+    return {"correction_id": correction.id, "status": correction.status}
+
+
+@router.post("/me/drafts")
+def upsert_own_draft(body: FarmerDraftIn, user: User = Depends(require_roles("FARMER")),
+                     db: Session = Depends(get_session)):
+    member = db.query(FigMember).filter(FigMember.farmer_id == user.farmer_id, FigMember.is_active).first()
+    if not member:
+        raise HTTPException(400, "Only FIG members save a draft — a solo farmer submits directly")
+    draft = db.query(FarmerDraftEntry).filter(
+        FarmerDraftEntry.farmer_id == user.farmer_id, FarmerDraftEntry.draft_month == body.draft_month).first()
+    if draft:
+        draft.payload = {"entries": body.entries}
+        draft.updated_at = _now()
+    else:
+        draft = FarmerDraftEntry(
+            farmer_id=user.farmer_id, fig_id=member.fig_id, draft_month=body.draft_month,
+            payload={"entries": body.entries},
+        )
+        db.add(draft)
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/me/drafts")
+def get_own_draft(month: str, user: User = Depends(require_roles("FARMER")), db: Session = Depends(get_session)):
+    draft = db.query(FarmerDraftEntry).filter(
+        FarmerDraftEntry.farmer_id == user.farmer_id, FarmerDraftEntry.draft_month == month).first()
+    if not draft:
+        return None
+    return {"draft_month": draft.draft_month, "entries": draft.payload.get("entries") or [], "updated_at": draft.updated_at}
 
 
 @router.get("/{farmer_id}")
@@ -180,9 +385,15 @@ def update_farmer(farmer_id: str, body: FarmerUpdateIn,
     if user.role == "DISTRICT_ADMIN" and f.district_id != user.district_id:
         raise HTTPException(403, "District scope mismatch")
     data = body.model_dump(exclude_unset=True)
+    login = None
     if data.get("mobile_no") and data["mobile_no"] != f.mobile_no:
         if db.query(Farmer).filter(Farmer.mobile_no == data["mobile_no"], Farmer.id != farmer_id).first():
             raise HTTPException(400, "Mobile already registered")
+        if db.query(User).filter(User.mobile_no == data["mobile_no"]).first():
+            raise HTTPException(400, "Mobile already registered")
+        login = db.query(User).filter(User.farmer_id == farmer_id).first()
+        if login:
+            login.mobile_no = data["mobile_no"]
     if data.get("aadhaar_no") and data["aadhaar_no"] != f.aadhaar_no:
         if db.query(Farmer).filter(Farmer.aadhaar_no == data["aadhaar_no"], Farmer.id != farmer_id).first():
             raise HTTPException(400, "Aadhaar already registered")
@@ -212,3 +423,22 @@ def toggle_farmer(farmer_id: str, body: ActiveToggleIn,
     f.is_active = body.is_active
     db.commit()
     return {"ok": True, "is_active": f.is_active}
+
+
+@router.post("/{farmer_id}/reset-password")
+def reset_farmer_password(farmer_id: str, body: FarmerPasswordResetIn,
+                          user: User = Depends(require_roles("STATE_ADMIN", "DISTRICT_ADMIN")),
+                          db: Session = Depends(get_session)):
+    f = db.query(Farmer).filter(Farmer.id == farmer_id).first()
+    if not f:
+        raise HTTPException(404, "Not found")
+    if user.role == "DISTRICT_ADMIN" and f.district_id != user.district_id:
+        raise HTTPException(403, "District scope mismatch")
+    login = db.query(User).filter(User.farmer_id == farmer_id).first()
+    if not login:
+        raise HTTPException(400, "This farmer does not have a login account yet")
+    if len(body.password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters")
+    login.password_hash = hash_password(body.password)
+    db.commit()
+    return {"ok": True}

@@ -10,6 +10,7 @@ from app.core.deps import get_current_user
 from app.models import (
     SilkType, Activity, Product, SilkTypeActivityProduct, InputSourceType, StapSourceType,
     InputSourceCategory, User, Yield_, ByproductEntry, YieldInputEntry, Stock, Training, Fig, Farmer,
+    ConversionStandard,
 )
 from ._common import _SA, _q, _get_or_404, ActiveToggleIn
 
@@ -629,4 +630,112 @@ def delete_stap(stap_id: str, user: User = Depends(_SA), db: Session = Depends(g
                              ". Reassign these to a different mapping first.")
     db.query(StapSourceType).filter(StapSourceType.stap_id == stap_id).delete()
     delete_or_conflict(db, m, "Cannot delete — this mapping is still referenced elsewhere")
+    return {"ok": True}
+
+
+# ---------- Conversion Standards ----------
+# Expected input->output conversion range, independent of any specific Activity/STAP mapping
+# (State Admin can map straight from an early-stage input to a late-stage output, e.g. Eri
+# Eggs (DFL) -> Eri Silk Yarn). Consumed by the Yield View's "Expected" column — see
+# services/yield_matrix.py.
+class ConversionStandardIn(BaseModel):
+    silk_type_id: str
+    input_product_id: str
+    output_product_id: str
+    standard_input_qty: float = Field(gt=0)
+    output_min_qty: float = Field(ge=0)
+    output_max_qty: float = Field(ge=0)
+    is_active: Optional[bool] = None
+
+
+@router.get("/conversion-standards")
+def list_conversion_standards(silk_type_id: Optional[str] = None, all: bool = False, db: Session = Depends(get_session)):
+    q = _q(db, ConversionStandard, all)
+    if silk_type_id:
+        q = q.filter(ConversionStandard.silk_type_id == silk_type_id)
+    rows = q.all()
+    silk_types = {s.id: s.silk_type_name for s in db.query(SilkType).all()}
+    products = {p.id: p for p in db.query(Product).all()}
+    out = []
+    for r in rows:
+        ip, op_ = products.get(r.input_product_id), products.get(r.output_product_id)
+        out.append({
+            "id": r.id, "silk_type_id": r.silk_type_id, "silk_type_name": silk_types.get(r.silk_type_id),
+            "input_product_id": r.input_product_id, "input_product_name": ip.product_name if ip else None,
+            "input_unit_of_measure": ip.unit_of_measure if ip else None,
+            "output_product_id": r.output_product_id, "output_product_name": op_.product_name if op_ else None,
+            "output_unit_of_measure": op_.unit_of_measure if op_ else None,
+            "standard_input_qty": r.standard_input_qty, "output_min_qty": r.output_min_qty,
+            "output_max_qty": r.output_max_qty,
+            "min_pct": r.min_pct, "max_pct": r.max_pct, "is_active": r.is_active,
+        })
+    out.sort(key=lambda r: (r["silk_type_name"] or "", r["input_product_name"] or "", r["output_product_name"] or ""))
+    return out
+
+
+def _validate_conversion_standard(db: Session, body: "ConversionStandardIn"):
+    _get_or_404(db, SilkType, body.silk_type_id, "Silk type")
+    _get_or_404(db, Product, body.input_product_id, "Input product")
+    _get_or_404(db, Product, body.output_product_id, "Output product")
+    if body.input_product_id == body.output_product_id:
+        raise HTTPException(400, "Input and output product must be different")
+    if body.output_max_qty < body.output_min_qty:
+        raise HTTPException(400, "Output Max Quantity must be greater than or equal to Output Min Quantity")
+
+
+def _derived_pcts(body: "ConversionStandardIn") -> tuple[float, float]:
+    """The system computes the Expected % range from the admin's entered quantities — this is
+    the one place that derivation happens; min_pct/max_pct then flow through to the Yield View's
+    existing Expected-range calculation (services/yield_matrix.py) completely unchanged."""
+    return (
+        round(body.output_min_qty / body.standard_input_qty * 100, 4),
+        round(body.output_max_qty / body.standard_input_qty * 100, 4),
+    )
+
+
+@router.post("/conversion-standards")
+def create_conversion_standard(body: ConversionStandardIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
+    _validate_conversion_standard(db, body)
+    min_pct, max_pct = _derived_pcts(body)
+    c = ConversionStandard(silk_type_id=body.silk_type_id, input_product_id=body.input_product_id,
+                            output_product_id=body.output_product_id,
+                            standard_input_qty=body.standard_input_qty, output_min_qty=body.output_min_qty,
+                            output_max_qty=body.output_max_qty, min_pct=min_pct, max_pct=max_pct,
+                            is_active=True if body.is_active is None else body.is_active)
+    db.add(c)
+    commit_or_conflict(db, "This Silk Type / Input Product / Output Product combination already exists — edit or reactivate it instead")
+    db.refresh(c)
+    return c
+
+
+@router.patch("/conversion-standards/{cs_id}")
+def update_conversion_standard(cs_id: str, body: ConversionStandardIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
+    c = _get_or_404(db, ConversionStandard, cs_id, "Conversion standard")
+    _validate_conversion_standard(db, body)
+    min_pct, max_pct = _derived_pcts(body)
+    c.silk_type_id, c.input_product_id, c.output_product_id = body.silk_type_id, body.input_product_id, body.output_product_id
+    c.standard_input_qty, c.output_min_qty, c.output_max_qty = body.standard_input_qty, body.output_min_qty, body.output_max_qty
+    c.min_pct, c.max_pct = min_pct, max_pct
+    if body.is_active is not None:
+        c.is_active = body.is_active
+    commit_or_conflict(db, "This Silk Type / Input Product / Output Product combination already exists")
+    db.refresh(c)
+    return c
+
+
+@router.patch("/conversion-standards/{cs_id}/active")
+def toggle_conversion_standard(cs_id: str, body: ActiveToggleIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
+    c = _get_or_404(db, ConversionStandard, cs_id, "Conversion standard")
+    c.is_active = body.is_active
+    db.commit()
+    return {"ok": True, "is_active": c.is_active}
+
+
+@router.delete("/conversion-standards/{cs_id}")
+def delete_conversion_standard(cs_id: str, user: User = Depends(_SA), db: Session = Depends(get_session)):
+    c = _get_or_404(db, ConversionStandard, cs_id, "Conversion standard")
+    if c.is_active:
+        raise HTTPException(400, "Deactivate this conversion standard before deleting it")
+    delete_or_conflict(db, c, "Cannot delete — this conversion standard is still referenced elsewhere")
+    return {"ok": True}
     return {"ok": True}

@@ -10,7 +10,9 @@ export type FieldType = "text" | "number" | "select" | "checkbox";
 
 export interface FormField {
   name: string;
-  label: string;
+  // Plain string, or a function of the current form values — e.g. to show the currently
+  // selected product's unit of measure in the label ("Standard Input Quantity (kg)").
+  label: string | ((form: Record<string, string>) => string);
   type: FieldType;
   required?: boolean;
   placeholder?: string;
@@ -18,6 +20,9 @@ export interface FormField {
   options?: { value: string; label: string }[] | ((form: Record<string, string>) => { value: string; label: string }[]);
   // For select fields — adds an "Other…" option that reveals a free-text input for a custom value
   allowOther?: boolean;
+  // Optional small muted text rendered under the input, computed from the current form values —
+  // e.g. a live-computed preview. Return null/"" to render nothing.
+  helperText?: (form: Record<string, string>) => string | null;
 }
 
 export interface Column<T> {
@@ -214,7 +219,10 @@ export function MasterCrud<T extends { id: string; is_active: boolean }>(props: 
             </button>
           </div>
           <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2">
-            {fields.map((f) => (
+            {fields.map((f) => {
+              const label = typeof f.label === "function" ? f.label(form) : f.label;
+              const helperText = f.helperText?.(form);
+              return (
               <label key={f.name} className={f.type === "checkbox" ? "flex items-center gap-2" : "block"}>
                 {f.type === "checkbox" ? (
                   <>
@@ -224,21 +232,29 @@ export function MasterCrud<T extends { id: string; is_active: boolean }>(props: 
                       onChange={(e) => setForm((s) => ({ ...s, [f.name]: e.target.checked ? "true" : "false" }))}
                       data-testid={`master-input-${endpoint}-${f.name}`}
                     />
-                    <span className="label-tag">{f.label}{f.required && " *"}</span>
+                    <span className="label-tag">{label}{f.required && " *"}</span>
                   </>
                 ) : (
                   <>
-                    <span className="label-tag block mb-1">{f.label}{f.required && " *"}</span>
+                    <span className="label-tag block mb-1">{label}{f.required && " *"}</span>
                     {f.type === "text" || f.type === "number" ? (
-                      <input
-                        type={f.type}
-                        value={form[f.name] ?? ""}
-                        onChange={(e) => setForm((s) => ({ ...s, [f.name]: e.target.value }))}
-                        placeholder={f.placeholder}
-                        required={f.required}
-                        className="input w-full"
-                        data-testid={`master-input-${endpoint}-${f.name}`}
-                      />
+                      <>
+                        <input
+                          type={f.type}
+                          value={form[f.name] ?? ""}
+                          onChange={(e) => setForm((s) => ({ ...s, [f.name]: e.target.value }))}
+                          placeholder={f.placeholder}
+                          required={f.required}
+                          className="input w-full"
+                          data-testid={`master-input-${endpoint}-${f.name}`}
+                        />
+                        {helperText && (
+                          <span className="text-xs mt-1 block" style={{ color: "var(--text-muted)" }}
+                                data-testid={`master-helper-${endpoint}-${f.name}`}>
+                            {helperText}
+                          </span>
+                        )}
+                      </>
                     ) : f.allowOther ? (
                       <div className="space-y-1.5">
                         <select
@@ -291,7 +307,8 @@ export function MasterCrud<T extends { id: string; is_active: boolean }>(props: 
                   </>
                 )}
               </label>
-            ))}
+              );
+            })}
             <div className="sm:col-span-2 flex gap-2 justify-end mt-1">
               <button type="button" onClick={resetForm} className="btn-secondary" data-testid={`master-form-cancel-${endpoint}`}>Cancel</button>
               <button type="submit" disabled={createMut.isPending || updateMut.isPending}

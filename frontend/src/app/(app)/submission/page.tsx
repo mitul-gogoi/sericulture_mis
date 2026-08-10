@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueries } from "@tanstack/react-query";
 import api, { fmtErr } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { CheckCircle, ArrowRight, ArrowLeft } from "@phosphor-icons/react";
 import { toast } from "sonner";
-import type { FigDetail, Yield, ByproductEntry, Scheme, StapOptions, LossReason, StapOption, Stock, SilkTypeActivityProduct } from "@/lib/types";
+import type { FigDetail, Yield, ByproductEntry, Scheme, StapOptions, LossReason, StapOption, Stock, SilkTypeActivityProduct, MeetingDetail } from "@/lib/types";
 import FileUpload from "@/components/FileUpload";
 import { OutputsTable, OutputRowState, ByproductRowState } from "@/components/OutputsTable";
 import { InputsTable, InputRowState } from "@/components/InputsTable";
@@ -48,6 +48,9 @@ function farmerStatus(farmerId: string, stapIds: string[], entries: Record<strin
 export default function MonthlySubmissionPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const correctMeetingId = searchParams.get("correctMeetingId");
+  const isCorrection = !!correctMeetingId;
   const [step, setStep] = useState(0);
   const [meeting, setMeeting] = useState({
     meeting_title: "", meeting_date: "", meeting_time: "", meeting_venue: "",
@@ -68,11 +71,112 @@ export default function MonthlySubmissionPage() {
   useEffect(() => {
     if (fig) {
       setMeeting((m) => ({ ...m, meeting_venue: m.meeting_venue || fig.meeting_venue || "" }));
-      const att: Record<string, boolean> = {};
-      fig.members.forEach((mm) => { att[mm.farmer_id] = true; });
-      setAttendance(att);
+      if (!isCorrection) {
+        const att: Record<string, boolean> = {};
+        fig.members.forEach((mm) => { att[mm.farmer_id] = true; });
+        setAttendance(att);
+      }
     }
-  }, [fig]);
+  }, [fig, isCorrection]);
+
+  const { data: correctionSource } = useQuery<MeetingDetail>({
+    queryKey: ["meeting-correction-source", correctMeetingId],
+    queryFn: async () => (await api.get(`/meetings/${correctMeetingId}`)).data,
+    enabled: isCorrection,
+  });
+
+  const [prefilledFromCorrection, setPrefilledFromCorrection] = useState(false);
+  useEffect(() => {
+    if (!correctionSource || prefilledFromCorrection) return;
+    const cm = correctionSource.meeting;
+    setMeeting({
+      meeting_title: cm.meeting_title, meeting_date: cm.meeting_date, meeting_time: cm.meeting_time || "",
+      meeting_venue: cm.meeting_venue, meeting_details: cm.meeting_details || "",
+      next_meeting_date: cm.next_meeting_date || "", minutes_path: cm.minutes_path || null,
+    });
+
+    const att: Record<string, boolean> = {};
+    correctionSource.attendance.forEach((a) => { att[a.farmer_id] = a.is_present; });
+    setAttendance(att);
+
+    const newEntries: Record<string, Record<string, ActivityState>> = {};
+    for (const e of correctionSource.entries) {
+      const byproducts: ByproductRowState = {};
+      for (const b of e.byproducts) {
+        byproducts[b.product_id] = {
+          actual: String(b.quantity), planned: String(b.planned_quantity),
+          next_plan: String(b.next_month_plan), stock: String(b.stock_balance),
+          sold_qty: String(b.sold_quantity), sold_rate: String(b.sold_rate),
+          loss_reason_id: b.loss_reason_id || undefined,
+        };
+      }
+      const inputs: InputRowState = {};
+      for (const i of e.inputs) {
+        inputs[i.product_id] = {
+          quantity: String(i.quantity), source_type_id: i.source_type_id || undefined, scheme_id: i.scheme_id || undefined,
+        };
+      }
+      newEntries[e.farmer_id] = {
+        ...(newEntries[e.farmer_id] || {}),
+        [e.stap_id]: {
+          primaryOutput: {
+            planned: String(e.output.planned_yield), actual: String(e.output.actual_yield),
+            next_plan: String(e.output.next_month_plan), stock: String(e.output.stock_balance),
+            sold_qty: String(e.output.sold_quantity), sold_rate: String(e.output.sold_rate),
+            loss_reason_id: e.output.loss_reason_id || undefined,
+          },
+          byproducts, inputs,
+        },
+      };
+    }
+    setEntries(newEntries);
+    setPrefilledFromCorrection(true);
+  }, [correctionSource, prefilledFromCorrection]);
+
+  const meetingMonth = meeting.meeting_date ? meeting.meeting_date.slice(0, 7) : undefined;
+
+  const { data: drafts } = useQuery<Record<string, { stap_id: string; [k: string]: unknown }[]>>({
+    queryKey: ["fig-drafts", user?.fig_id, meetingMonth],
+    queryFn: async () => (await api.get("/meetings/drafts", { params: { fig_id: user!.fig_id, month: meetingMonth } })).data,
+    enabled: !!user?.fig_id && !!meetingMonth && !isCorrection,
+  });
+
+  const [draftsApplied, setDraftsApplied] = useState<string | null>(null);
+  useEffect(() => {
+    if (!drafts || isCorrection || draftsApplied === meetingMonth) return;
+    setEntries((prev) => {
+      const next = { ...prev };
+      for (const [farmerId, draftEntries] of Object.entries(drafts)) {
+        const farmerEntries = { ...(next[farmerId] || {}) };
+        for (const e of draftEntries as any[]) {
+          if (farmerEntries[e.stap_id]) continue; // never clobber a value the FIG President already typed
+          const byproducts: ByproductRowState = {};
+          for (const b of e.byproducts || []) {
+            byproducts[b.product_id] = {
+              actual: String(b.quantity), planned: String(b.planned_quantity),
+              next_plan: String(b.next_month_plan), stock: String(b.stock_balance),
+              sold_qty: String(b.sold_quantity), sold_rate: String(b.sold_rate),
+              loss_reason_id: b.loss_reason_id || undefined,
+            };
+          }
+          const inputs: InputRowState = {};
+          for (const i of e.inputs || []) {
+            inputs[i.product_id] = { quantity: String(i.quantity), source_type_id: i.source_type_id || undefined, scheme_id: i.scheme_id || undefined };
+          }
+          farmerEntries[e.stap_id] = {
+            primaryOutput: {
+              planned: e.planned, actual: e.actual, next_plan: e.next_plan, stock: e.stock,
+              sold_qty: e.sold_qty, sold_rate: e.sold_rate, loss_reason_id: e.loss_reason_id || undefined,
+            },
+            byproducts, inputs,
+          };
+        }
+        next[farmerId] = farmerEntries;
+      }
+      return next;
+    });
+    setDraftsApplied(meetingMonth || null);
+  }, [drafts, isCorrection, meetingMonth, draftsApplied]);
 
   const next = () => setStep((s) => Math.min(STEPS.length - 1, s + 1));
   const prev = () => setStep((s) => Math.max(0, s - 1));
@@ -284,12 +388,18 @@ export default function MonthlySubmissionPage() {
           });
         }
       }
-      await api.post("/meetings", {
-        fig_id: user!.fig_id, ...meeting, next_meeting_date: meeting.next_meeting_date || null,
+      const body = {
+        ...meeting, next_meeting_date: meeting.next_meeting_date || null,
         attendance: Object.entries(attendance).map(([fid, p]) => ({ farmer_id: fid, is_present: p })),
         entries: entriesArr,
-      });
-      toast.success("Submitted successfully");
+      };
+      if (isCorrection) {
+        await api.post(`/meetings/${correctMeetingId}/corrections`, body);
+        toast.success("Correction submitted for review");
+      } else {
+        await api.post("/meetings", { fig_id: user!.fig_id, ...body });
+        toast.success("Submitted successfully");
+      }
       setSubmitted(true);
     } catch (e: any) { toast.error(fmtErr(e.response?.data?.detail)); }
   };
@@ -298,19 +408,28 @@ export default function MonthlySubmissionPage() {
     return (
       <div className="card p-10 text-center">
         <CheckCircle size={56} weight="duotone" color="#2D5134" className="mx-auto" />
-        <h2 className="font-heading text-2xl font-bold mt-4">Submission recorded</h2>
-        <p className="mt-2" style={{ color: "var(--text-muted)" }}>Your meeting and yield data is locked for this month.</p>
+        <h2 className="font-heading text-2xl font-bold mt-4">{isCorrection ? "Correction submitted" : "Submission recorded"}</h2>
+        <p className="mt-2" style={{ color: "var(--text-muted)" }}>
+          {isCorrection
+            ? "Awaiting State Admin review — your original submission stays live and unchanged until the correction is accepted."
+            : "Your meeting and yield data is locked for this month."}
+        </p>
       </div>
     );
   }
 
-  if (!fig) return <div>Loading…</div>;
+  if (!fig || (isCorrection && !prefilledFromCorrection)) return <div>Loading…</div>;
 
   return (
     <div>
       <div className="mb-5">
-        <h1 className="font-heading text-3xl font-extrabold">Monthly meeting & yield</h1>
+        <h1 className="font-heading text-3xl font-extrabold">{isCorrection ? "Correct monthly meeting & yield" : "Monthly meeting & yield"}</h1>
         <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>{fig.fig_name} · {fig.fig_code}</p>
+        {isCorrection && (
+          <p className="text-xs mt-1" style={{ color: "var(--warning)" }}>
+            Editing an already-submitted month for {correctionSource?.meeting.meeting_month} — this won&apos;t take effect until your State Admin accepts it.
+          </p>
+        )}
       </div>
 
       <div className="flex gap-1 mb-6">
@@ -459,7 +578,11 @@ export default function MonthlySubmissionPage() {
             <div className="card p-4" style={{ background: "var(--bg)" }}><div className="label-tag">Yield entries</div><div className="font-semibold text-lg mt-1">{flatEntries.length}</div></div>
             <div className="card p-4" style={{ background: "var(--bg)" }}><div className="label-tag">Input entries</div><div className="font-semibold text-lg mt-1">{inputEntryCount}</div></div>
             <div className="card p-4" style={{ background: "var(--bg)" }}><div className="label-tag">Byproduct entries</div><div className="font-semibold text-lg mt-1">{byproductEntryCount}</div></div>
-            <div className="text-xs" style={{ color: "var(--text-muted)" }}>Once submitted, this monthly report becomes immutable.</div>
+            <div className="text-xs" style={{ color: "var(--text-muted)" }}>
+              {isCorrection
+                ? "This correction will be sent to your State Admin for review — nothing changes until it's accepted."
+                : "Once submitted, this monthly report becomes immutable."}
+            </div>
           </div>
         )}
 
@@ -468,7 +591,9 @@ export default function MonthlySubmissionPage() {
           {step < STEPS.length - 1 ? (
             <button data-testid="wizard-next" className="btn-primary inline-flex items-center gap-2" onClick={next}>Next<ArrowRight size={14} weight="bold" /></button>
           ) : (
-            <button data-testid="wizard-submit" className="btn-primary inline-flex items-center gap-2" onClick={submit}>Submit final<CheckCircle size={14} weight="bold" /></button>
+            <button data-testid="wizard-submit" className="btn-primary inline-flex items-center gap-2" onClick={submit}>
+              {isCorrection ? "Submit correction for review" : "Submit final"}<CheckCircle size={14} weight="bold" />
+            </button>
           )}
         </div>
       </div>

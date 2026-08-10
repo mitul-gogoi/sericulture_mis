@@ -18,7 +18,7 @@ from app.models import (  # noqa — ensure metadata loaded
 from app.seed import seed_all
 from app.routers import (
     auth, master, farmers, figs, meetings, lands, schemes, trainings,
-    notifications, reports, users, upload, analytics, stock, assets,
+    notifications, reports, users, upload, analytics, stock, assets, farmer_submissions,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -34,7 +34,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 for r in [auth.router, master.router, farmers.router, figs.router, meetings.router,
           lands.router, schemes.router, trainings.router, notifications.router,
           reports.router, users.router, upload.router, analytics.router, stock.router,
-          assets.router]:
+          assets.router, farmer_submissions.router]:
     app.include_router(r, prefix="/api")
 
 

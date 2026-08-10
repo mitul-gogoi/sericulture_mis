@@ -3,7 +3,8 @@ from typing import Optional
 from datetime import date
 from pydantic import BaseModel, Field
 
-__all__ = ["AssetDetailIn", "AssetInstanceIn", "AssetInstanceUpdateIn", "AssetVerifyIn"]
+__all__ = ["AssetDetailIn", "AssetInstanceIn", "AssetInstanceUpdateIn", "AssetVerifyIn",
+           "AssetGpsSubmitIn", "AssetGpsVerifyIn"]
 
 
 class AssetDetailIn(BaseModel):
@@ -33,6 +34,10 @@ class AssetInstanceUpdateIn(BaseModel):
     acquisition_date: Optional[date] = None
     status: Optional[str] = Field(default=None,
                                   pattern="^(FUNCTIONAL|NON_FUNCTIONAL|UNDER_REPAIR|DECOMMISSIONED)$")
+    confidence: Optional[str] = Field(default=None,
+                                      pattern="^(FARMER_SELF_DECLARED|CIRCLE_OFFICER_RECOLLECTION|DOCUMENTARY_EVIDENCE_SEEN)$")
+    acquisition_mode: Optional[str] = Field(default=None,
+                                            pattern="^(SELF_PROCURED|SELF_DECLARED_AT_REGISTRATION|LEGACY_SELF_DECLARED)$")
     photo_path: Optional[str] = None
     remarks: Optional[str] = None
 
@@ -41,3 +46,13 @@ class AssetVerifyIn(BaseModel):
     result: str = Field(pattern="^(CONFIRMED_PRESENT|NOT_FOUND|PARTIALLY_FUNCTIONAL)$")
     photo_url: Optional[str] = None
     remarks: Optional[str] = ""
+
+
+class AssetGpsSubmitIn(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
+class AssetGpsVerifyIn(BaseModel):
+    decision: str = Field(pattern="^(verified|failed)$")
+    reason: Optional[str] = ""

@@ -18,6 +18,7 @@ export function FarmerRow({ f, canView, canEdit, canToggle, onView, onEdit, onTo
       <td>{f.mobile_no}</td>
       <td>{f.village_name}</td>
       <td>{f.gender}</td>
+      <td>{f.fig_name ? f.fig_name : <span className="badge badge-muted">Solo</span>}</td>
       <td>{f.is_active ? <span className="badge badge-success">Active</span> : <span className="badge badge-muted">Inactive</span>}</td>
       {(canView || canEdit || canToggle) && (
         <td>

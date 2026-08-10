@@ -2,7 +2,7 @@
 from typing import List, Optional, Dict
 from pydantic import BaseModel
 
-__all__ = ["LandDetailIn", "LandIn", "GpsSubmitIn", "GpsVerifyIn"]
+__all__ = ["LandDetailIn", "LandIn", "GpsSubmitIn", "GpsVerifyIn", "LandGpsDraftIn"]
 
 
 class LandDetailIn(BaseModel):
@@ -25,3 +25,7 @@ class GpsVerifyIn(BaseModel):
     decision: str
     reason: Optional[str] = ""
     override_overlap: bool = False
+
+
+class LandGpsDraftIn(BaseModel):
+    points: List[Dict[str, float]]

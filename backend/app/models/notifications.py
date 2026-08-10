@@ -11,12 +11,16 @@ __all__ = ["Notification", "NotificationRecipient", "FileRecord"]
 class Notification(SQLModel, table=True):
     __tablename__ = "notifications"
     id: str = Field(default_factory=_uuid, primary_key=True)
+    notification_code: str = Field(max_length=30, index=True)
     title: str = Field(max_length=200)
     details: str = Field(sa_column=Column(Text))
     attachment_path: Optional[str] = Field(default=None, max_length=500)
     sent_by_user_id: str = Field(foreign_key="users.id")
     sent_by_role: str = Field(max_length=20)
     recipient_type: str = Field(max_length=30)
+    in_reply_to_id: Optional[str] = Field(default=None, foreign_key="notifications.id")
+    thread_id: str = Field(foreign_key="notifications.id", index=True)
+    reply_seq: int = 0
     is_active: bool = True
     sent_at: datetime = Field(default_factory=_now)
     created_at: datetime = Field(default_factory=_now)

@@ -3,117 +3,146 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api, { fmtErr } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { Bell, PaperPlaneTilt, X, Paperclip } from "@phosphor-icons/react";
+import { Bell, PaperPlaneTilt, X } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import FileUpload from "@/components/FileUpload";
-import type { Notification, User, District } from "@/lib/types";
+import { RecipientPicker } from "@/components/notifications/RecipientPicker";
+import { ThreadModal } from "@/components/notifications/ThreadModal";
+import type { PaginatedThreads, NotificationCandidate } from "@/lib/types";
+
+const PAGE_SIZES = [10, 20, 50, 100];
 
 export default function NotificationsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [tab, setTab] = useState<"inbox" | "sent">("inbox");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [open, setOpen] = useState(false);
+  const [openThreadId, setOpenThreadId] = useState<string | null>(null);
   const [form, setForm] = useState<{ title: string; details: string; recipient_type: string; attachment_path: string | null; recipient_ids: string[] }>(
     { title: "", details: "", recipient_type: "ALL_FP", attachment_path: null, recipient_ids: [] },
   );
 
-  const { data: inbox = [] } = useQuery<Notification[]>({ queryKey: ["inbox"], queryFn: async () => (await api.get("/notifications/inbox")).data });
-  const { data: sent = [] } = useQuery<Notification[]>({
-    queryKey: ["sent"], queryFn: async () => (await api.get("/notifications/sent")).data,
-    enabled: user?.role !== "FIG_PRESIDENT",
-  });
+  const canSeeSent = user?.role !== "FIG_PRESIDENT";
+  const effectiveTab = canSeeSent ? tab : "inbox";
 
-  // Lists for "Selected" recipient pickers
+  const { data } = useQuery<PaginatedThreads>({
+    queryKey: ["notif-threads", effectiveTab, page, pageSize],
+    queryFn: async () => (await api.get("/notifications/threads", { params: { box: effectiveTab, page, page_size: pageSize } })).data,
+  });
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const showingFrom = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const showingTo = Math.min(page * pageSize, total);
+
+  const invalidateThreads = () => qc.invalidateQueries({ queryKey: ["notif-threads"] });
+
+  // Candidate list for "Selected" recipient pickers — one server-joined, role-scoped call
   const needsDAList = form.recipient_type === "SELECTED_DA";
   const needsFPList = form.recipient_type === "SELECTED_FP";
-  const { data: das = [] } = useQuery<User[]>({
-    queryKey: ["users-da-picker"], queryFn: async () => (await api.get("/users", { params: { role: "DISTRICT_ADMIN" } })).data,
-    enabled: needsDAList,
+  const needsSAList = form.recipient_type === "SELECTED_SA";
+  const { data: candidates = [] } = useQuery<NotificationCandidate[]>({
+    queryKey: ["notif-candidates", form.recipient_type],
+    queryFn: async () => (await api.get("/notifications/candidates", { params: { recipient_type: form.recipient_type } })).data,
+    enabled: needsDAList || needsFPList || needsSAList,
   });
-  const { data: fps = [] } = useQuery<User[]>({
-    queryKey: ["users-fp-picker"], queryFn: async () => (await api.get("/users", { params: { role: "FIG_PRESIDENT" } })).data,
-    enabled: needsFPList,
-  });
-  const { data: districts = [] } = useQuery<District[]>({ queryKey: ["districts"], queryFn: async () => (await api.get("/master/districts")).data, enabled: needsDAList || needsFPList });
-  const distName = (id?: string | null) => districts.find((d) => d.id === id)?.district_name || "—";
 
   const send = async (e: React.FormEvent) => { e.preventDefault();
-    if ((needsDAList || needsFPList) && form.recipient_ids.length === 0) {
+    if ((needsDAList || needsFPList || needsSAList) && form.recipient_ids.length === 0) {
       return toast.error("Pick at least one recipient");
     }
     try {
-      await api.post("/notifications", form);
-      toast.success("Sent"); setOpen(false);
+      const res = await api.post("/notifications", form);
+      toast.success(`Sent — Message ID ${res.data.notification_code}`); setOpen(false);
       setForm({ title: "", details: "", recipient_type: "ALL_FP", attachment_path: null, recipient_ids: [] });
-      qc.invalidateQueries({ queryKey: ["inbox"] }); qc.invalidateQueries({ queryKey: ["sent"] });
+      invalidateThreads();
     } catch (e: any) { toast.error(fmtErr(e.response?.data?.detail)); }
   };
-  const markRead = async (id: string) => { await api.post(`/notifications/read/${id}`); qc.invalidateQueries({ queryKey: ["inbox"] }); };
   const retract = async (id: string) => {
     if (!confirm("This will remove the notification from all recipients' inboxes. Continue?")) return;
-    try { await api.post(`/notifications/${id}/retract`); toast.success("Retracted");
-      qc.invalidateQueries({ queryKey: ["inbox"] }); qc.invalidateQueries({ queryKey: ["sent"] });
+    try { await api.post(`/notifications/${id}/retract`); toast.success("Retracted"); invalidateThreads();
     } catch (e: any) { toast.error(fmtErr(e.response?.data?.detail)); }
   };
 
   const opts: [string, string][] = user?.role === "STATE_ADMIN"
     ? [["ALL_DA", "All District Admins"], ["ALL_FP", "All FIG Presidents"], ["ALL_DA_AND_FP", "All DAs + FPs"],
        ["SELECTED_DA", "Selected District Admins"], ["SELECTED_FP", "Selected FIG Presidents"]]
-    : [["ALL_FP", "All FIG Presidents in my district"], ["SELECTED_FP", "Selected FIG Presidents"]];
-
-  const togglePick = (id: string) => {
-    setForm((f) => ({ ...f, recipient_ids: f.recipient_ids.includes(id)
-      ? f.recipient_ids.filter((x) => x !== id) : [...f.recipient_ids, id] }));
-  };
-
-  const fileViewerUrl = (path: string) => {
-    const t = typeof window !== "undefined" ? localStorage.getItem("seri_token") : "";
-    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/files/${path}?auth=${t}`;
-  };
+    : [["ALL_FP", "All FIG Presidents in my district"], ["SELECTED_FP", "Selected FIG Presidents"],
+       ["ALL_SA", "All State Admins"], ["SELECTED_SA", "Selected State Admins"]];
 
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
         <div><h1 className="font-heading text-3xl font-extrabold">Notifications</h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Broadcasts & announcements</p></div>
-        {user?.role !== "FIG_PRESIDENT" && <button onClick={() => setOpen(true)} className="btn-primary inline-flex items-center gap-2" data-testid="broadcast-btn"><PaperPlaneTilt size={16} weight="bold" />Broadcast</button>}
+        {canSeeSent && <button onClick={() => setOpen(true)} className="btn-primary inline-flex items-center gap-2" data-testid="broadcast-btn"><PaperPlaneTilt size={16} weight="bold" />Send Message</button>}
       </div>
 
       <div className="flex gap-2 mb-4">
-        <button onClick={() => setTab("inbox")} className={`px-4 py-2 rounded font-semibold ${tab === "inbox" ? "bg-[#2D5134] text-white" : "bg-white border border-[#E6E4DF]"}`} data-testid="tab-inbox">Inbox ({inbox.length})</button>
-        {user?.role !== "FIG_PRESIDENT" && <button onClick={() => setTab("sent")} className={`px-4 py-2 rounded font-semibold ${tab === "sent" ? "bg-[#2D5134] text-white" : "bg-white border border-[#E6E4DF]"}`}>Sent ({sent.length})</button>}
+        <button onClick={() => { setTab("inbox"); setPage(1); }} className={`px-4 py-2 rounded font-semibold ${effectiveTab === "inbox" ? "bg-[#2D5134] text-white" : "bg-white border border-[#E6E4DF]"}`} data-testid="tab-inbox">Inbox</button>
+        {canSeeSent && <button onClick={() => { setTab("sent"); setPage(1); }} className={`px-4 py-2 rounded font-semibold ${effectiveTab === "sent" ? "bg-[#2D5134] text-white" : "bg-white border border-[#E6E4DF]"}`}>Sent</button>}
       </div>
 
       <div className="space-y-3">
-        {(tab === "inbox" ? inbox : sent).map((n: any) => (
-          <div key={n.id} className={`card p-4 ${tab === "inbox" && !n.is_read ? "border-l-4" : ""}`} style={tab === "inbox" && !n.is_read ? { borderLeftColor: "var(--secondary)" } : {}}>
+        {items.map((n) => (
+          <div key={n.thread_id} className={`card p-4 cursor-pointer hover:shadow-sm transition ${effectiveTab === "inbox" && !n.is_read ? "border-l-4" : ""}`}
+               style={effectiveTab === "inbox" && !n.is_read ? { borderLeftColor: "var(--secondary)" } : {}}
+               onClick={() => setOpenThreadId(n.thread_id)} data-testid={`notif-card-${n.thread_id}`}>
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-3">
                 <Bell size={20} weight="duotone" color="#2D5134" />
                 <div>
-                  <div className="font-heading font-bold">{n.title} {tab === "inbox" && !n.is_read && <span className="badge badge-warning ml-2">New</span>}</div>
-                  <div className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>{n.details}</div>
-                  {n.attachment_path && (
-                    <a href={fileViewerUrl(n.attachment_path)} target="_blank" rel="noopener noreferrer"
-                       className="text-xs mt-2 inline-flex items-center gap-1" style={{ color: "var(--primary)" }}>
-                      <Paperclip size={12} weight="bold" /> Open attachment
-                    </a>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-heading font-bold">{n.title}</span>
+                    <span className="text-xs font-mono px-1 rounded" style={{ background: "var(--bg)", color: "var(--text-muted)" }}>{n.notification_code}</span>
+                    <span className="text-xs font-mono px-1 rounded" style={{ background: "var(--bg)", color: "var(--text-muted)" }}>#{n.latest_reply_seq}</span>
+                    {effectiveTab === "inbox" && !n.is_read && <span className="badge badge-warning">New</span>}
+                  </div>
+                  {n.other_party_name && (
+                    <div className="text-xs mt-1 font-semibold" style={{ color: "var(--primary)" }}>with {n.other_party_name}</div>
                   )}
-                  <div className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>{new Date(n.sent_at).toLocaleString()} · {n.sent_by_role}</div>
+                  <div className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>{n.latest_details_snippet}</div>
+                  <div className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>{new Date(n.latest_sent_at).toLocaleString()} · {n.latest_sent_by_role}</div>
                 </div>
               </div>
-              {tab === "inbox" && !n.is_read && n.recipient_id && <button className="text-xs text-[#2D5134] font-semibold" onClick={() => markRead(n.recipient_id!)}>Mark read</button>}
-              {tab === "sent" && <button className="text-xs font-semibold" style={{ color: "var(--error)" }} onClick={() => retract(n.id)} data-testid={`retract-${n.id}`}>Retract</button>}
+              {effectiveTab === "sent" && (
+                <button className="text-xs font-semibold" style={{ color: "var(--error)" }}
+                        onClick={(e) => { e.stopPropagation(); retract(n.thread_id); }} data-testid={`retract-${n.thread_id}`}>Retract</button>
+              )}
             </div>
           </div>
         ))}
-        {(tab === "inbox" ? inbox : sent).length === 0 && <div className="card p-8 text-center" style={{ color: "var(--text-muted)" }}>No notifications</div>}
+        {items.length === 0 && <div className="card p-8 text-center" style={{ color: "var(--text-muted)" }}>No notifications</div>}
       </div>
+
+      {total > 0 && (
+        <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
+          <div className="text-sm" style={{ color: "var(--text-muted)" }}>
+            Showing {showingFrom}–{showingTo} of {total}
+          </div>
+          <div className="flex items-center gap-3">
+            <select className="input" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
+              {PAGE_SIZES.map((n) => <option key={n} value={n}>{n} / page</option>)}
+            </select>
+            <button className="btn-secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</button>
+            <button className="btn-secondary" disabled={page * pageSize >= total} onClick={() => setPage((p) => p + 1)}>Next</button>
+          </div>
+        </div>
+      )}
+
+      {openThreadId && (
+        <ThreadModal
+          threadId={openThreadId}
+          onClose={() => setOpenThreadId(null)}
+          onChanged={invalidateThreads}
+        />
+      )}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(26,29,26,0.45)" }}>
           <div className="card w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: "var(--border)" }}><h3 className="font-heading text-xl font-bold">New broadcast</h3><button onClick={() => setOpen(false)}><X size={20} /></button></div>
+            <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: "var(--border)" }}><h3 className="font-heading text-xl font-bold">New Message</h3><button onClick={() => setOpen(false)}><X size={20} /></button></div>
             <form onSubmit={send} className="p-5 space-y-3">
               <div><label className="label-tag">Title</label><input required className="input mt-1" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
               <div><label className="label-tag">Details</label><textarea required className="input mt-1" rows={4} value={form.details} onChange={(e) => setForm({ ...form, details: e.target.value })} /></div>
@@ -125,18 +154,14 @@ export default function NotificationsPage() {
                         onChange={(e) => setForm({ ...form, recipient_type: e.target.value, recipient_ids: [] })}>
                   {opts.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select></div>
-              {(needsDAList || needsFPList) && (
-                <div className="border rounded p-3 max-h-48 overflow-y-auto" style={{ borderColor: "var(--border)" }}>
-                  <div className="label-tag mb-2">Pick recipients ({form.recipient_ids.length} selected)</div>
-                  {(needsDAList ? das : fps).map((u) => (
-                    <label key={u.id} className="flex items-center gap-2 py-1 text-sm">
-                      <input type="checkbox" checked={form.recipient_ids.includes(u.id)} onChange={() => togglePick(u.id)}
-                             data-testid={`pick-${u.id}`} />
-                      <span>{u.name || u.mobile_no}</span>
-                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>· {distName(u.district_id)}</span>
-                    </label>
-                  ))}
-                  {(needsDAList ? das : fps).length === 0 && <div className="text-xs" style={{ color: "var(--text-muted)" }}>No users available</div>}
+              {(needsDAList || needsFPList || needsSAList) && (
+                <div>
+                  <label className="label-tag">Pick recipients</label>
+                  <div className="mt-1">
+                    <RecipientPicker candidates={candidates} selected={form.recipient_ids}
+                                     onChange={(ids) => setForm({ ...form, recipient_ids: ids })}
+                                     groupByDistrict={needsFPList} />
+                  </div>
                 </div>
               )}
               <div className="flex justify-end gap-2"><button type="button" className="btn-secondary" onClick={() => setOpen(false)}>Cancel</button><button className="btn-primary" data-testid="notif-send">Send</button></div>

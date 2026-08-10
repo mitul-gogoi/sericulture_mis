@@ -2,12 +2,17 @@
 from typing import Any, Dict
 from pydantic import BaseModel
 
-__all__ = ["LoginIn", "TokenOut", "RefreshIn"]
+__all__ = ["LoginIn", "TokenOut", "RefreshIn", "ChangePasswordIn"]
 
 
 class LoginIn(BaseModel):
     mobile_no: str
     password: str
+
+
+class ChangePasswordIn(BaseModel):
+    old_password: str
+    new_password: str
 
 
 class TokenOut(BaseModel):

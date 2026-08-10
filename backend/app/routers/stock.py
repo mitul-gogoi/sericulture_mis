@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.core.db import get_session
 from app.core.deps import get_current_user
-from app.models import Stock, Fig, User
+from app.models import Stock, User
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 
@@ -19,11 +19,12 @@ def list_stock(fig_id: Optional[str] = None, farmer_id: Optional[str] = None,
     # regardless of the server's session timezone — a Python-side tzinfo guess would not.
     age_expr = func.extract("epoch", func.now() - Stock.last_entry_at) / 86400.0
     q = db.query(Stock, age_expr.label("age_days"))
-    if user.role == "FIG_PRESIDENT":
+    if user.role == "FARMER":
+        q = q.filter(Stock.farmer_id == user.farmer_id)
+    elif user.role == "FIG_PRESIDENT":
         q = q.filter(Stock.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        fig_ids = [f.id for f in db.query(Fig).filter(Fig.district_id == user.district_id).all()]
-        q = q.filter(Stock.fig_id.in_(fig_ids or [""]))
+        q = q.filter(Stock.district_id == user.district_id)
         if fig_id:
             q = q.filter(Stock.fig_id == fig_id)
     elif fig_id:

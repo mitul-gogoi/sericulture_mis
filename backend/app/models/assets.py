@@ -4,7 +4,7 @@ from typing import Optional, List
 from sqlmodel import SQLModel, Field, Column, JSON
 from ._common import _uuid, _now
 
-__all__ = ["AssetType", "AssetInstance", "AssetVerificationLog"]
+__all__ = ["AssetType", "AssetInstance", "AssetVerificationLog", "AssetGpsDraft"]
 
 
 class AssetType(SQLModel, table=True):
@@ -47,6 +47,30 @@ class AssetInstance(SQLModel, table=True):
     created_at: datetime = Field(default_factory=_now)
     last_verified_by: Optional[str] = Field(default=None)
     last_verified_at: Optional[datetime] = None
+    asset_code: str = Field(max_length=30, unique=True, index=True)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    # Not Submitted | Pending | Verified | Failed — mirrors Land.gps_verified exactly, captured by
+    # FIG President (never at Register Farmer/FIG time) and approved/rejected by District Admin.
+    gps_status: str = Field(default="Not Submitted", max_length=20)
+    gps_failure_reason: Optional[str] = None
+    gps_verified_by: Optional[str] = Field(default=None)
+    gps_verified_at: Optional[datetime] = None
+
+
+class AssetGpsDraft(SQLModel, table=True):
+    """A FIG-member farmer's own, private, self-captured GPS point for an asset they own —
+    invisible until the FIG President's Capture GPS dialog pulls it up as a pre-fill and
+    actually submits via the real POST /assets/{id}/gps. One draft per asset; consumed
+    (deleted) the moment that real submission succeeds."""
+    __tablename__ = "asset_gps_drafts"
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    farmer_id: str = Field(foreign_key="farmers.id", index=True)
+    asset_id: str = Field(foreign_key="asset_instances.id", index=True, unique=True)
+    fig_id: str = Field(foreign_key="figs.id", index=True)
+    latitude: float
+    longitude: float
+    updated_at: datetime = Field(default_factory=_now)
 
 
 class AssetVerificationLog(SQLModel, table=True):

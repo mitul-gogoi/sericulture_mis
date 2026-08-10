@@ -16,12 +16,15 @@ interface AssetRowsEditorProps {
   value: AssetRow[];
   onChange: (next: AssetRow[]) => void;
   assetTypes: AssetType[];
+  ownerKind: "FARMER" | "FIG";
 }
 
-// Farmer self-declaration only supports asset types a lone individual can own —
-// FIG-level shared assets (Chawki Rearing Centres, CFCs) are recorded against the FIG instead.
-export function AssetRowsEditor({ value, onChange, assetTypes }: AssetRowsEditorProps) {
-  const eligible = assetTypes.filter((t) => t.is_active && t.ownership_level !== "FIG");
+// Farmer self-declaration only supports asset types a lone individual can own — FIG-level
+// shared assets (Chawki Rearing Centres, CFCs) are recorded against the FIG instead, and
+// vice versa for FIG registration (individually-owned types can't be declared for a FIG).
+export function AssetRowsEditor({ value, onChange, assetTypes, ownerKind }: AssetRowsEditorProps) {
+  const excluded = ownerKind === "FARMER" ? "FIG" : "INDIVIDUAL";
+  const eligible = assetTypes.filter((t) => t.is_active && t.ownership_level !== excluded);
 
   const updateRow = (idx: number, field: keyof AssetRow, val: string) => {
     onChange(value.map((row, i) => (i === idx ? { ...row, [field]: val } : row)));

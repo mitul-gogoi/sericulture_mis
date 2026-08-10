@@ -127,7 +127,7 @@ function FlyToLocation({ location }: { location: CurrentLocation | null }) {
 const MAP_CENTER: [number, number] = [26.1445, 91.7362];
 const POLYGON_STYLE = { color: "#2D5134", fillColor: "#D9A036", fillOpacity: 0.35 };
 
-export default function GpsMap({ points, onAdd }: { points: { latitude: number; longitude: number }[]; onAdd: (p: { latitude: number; longitude: number }) => void }) {
+export default function GpsMap({ points, onAdd, readOnly = false }: { points: { latitude: number; longitude: number }[]; onAdd: (p: { latitude: number; longitude: number }) => void; readOnly?: boolean }) {
   const [current, setCurrent] = useState<CurrentLocation | null>(null);
   const [locating, setLocating] = useState(false);
 
@@ -151,13 +151,15 @@ export default function GpsMap({ points, onAdd }: { points: { latitude: number; 
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-2">
-        <button type="button" className="btn-secondary inline-flex items-center gap-1 text-sm"
-                onClick={locate} disabled={locating || !navigator.geolocation} data-testid="gps-locate-me">
-          <GpsFix size={16} weight="bold" />{locating ? "Locating…" : "Locate me"}
-        </button>
-        {current && <span className="text-xs" style={{ color: "var(--text-muted)" }}>Accuracy: ~{Math.round(current.accuracy)}m</span>}
-      </div>
+      {!readOnly && (
+        <div className="flex items-center gap-2 mb-2">
+          <button type="button" className="btn-secondary inline-flex items-center gap-1 text-sm"
+                  onClick={locate} disabled={locating || !navigator.geolocation} data-testid="gps-locate-me">
+            <GpsFix size={16} weight="bold" />{locating ? "Locating…" : "Locate me"}
+          </button>
+          {current && <span className="text-xs" style={{ color: "var(--text-muted)" }}>Accuracy: ~{Math.round(current.accuracy)}m</span>}
+        </div>
+      )}
       <div className="gps-map-wrap" style={{ height: 420 }}>
         <style>{`
           .gps-map-wrap .leaflet-container, .gps-map-wrap .leaflet-tile {
@@ -166,8 +168,8 @@ export default function GpsMap({ points, onAdd }: { points: { latitude: number; 
         `}</style>
         <MapContainer center={MAP_CENTER} zoom={13} tapHold={false} style={{ width: "100%", height: "100%" }} className="border rounded overflow-hidden">
           <TileLayer attribution="© OpenStreetMap" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-          <LongPress onAdd={onAdd} />
-          <FlyToLocation location={current} />
+          {!readOnly && <LongPress onAdd={onAdd} />}
+          {!readOnly && <FlyToLocation location={current} />}
           {points.map((p) => {
             const pos: [number, number] = [p.latitude, p.longitude];
             return (

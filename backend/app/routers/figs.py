@@ -6,11 +6,13 @@ from pydantic import BaseModel
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 from app.core.db import get_session
-from app.core.security import hash_password
+from app.core.security import hash_password, DEFAULT_FARMER_PASSWORD
 from app.core.deps import get_current_user, require_roles
-from app.models import Fig, FigMember, Farmer, User, SilkTypeActivityProduct, FigSettings
-from app.schemas import FigIn, FigMemberIn, PresidentSetIn, FigUpdateIn, PresidentPasswordResetIn
+from datetime import date
+from app.models import Fig, FigMember, Farmer, User, SilkTypeActivityProduct, FigSettings, AssetType, AssetInstance
+from app.schemas import FigIn, FigMemberIn, PresidentSetIn, FigUpdateIn
 from app.services.fig_reports import apply_fig_filters, member_names_by_fig
+from app.services.assets import next_asset_seq, asset_code
 
 _PAGE_SIZES = {10, 20, 50, 100}
 
@@ -59,12 +61,38 @@ def create_fig(body: FigIn, user: User = Depends(require_roles("DISTRICT_ADMIN")
     dupes = db.query(FigMember).filter(FigMember.farmer_id.in_(body.member_ids), FigMember.is_active).all()
     if dupes:
         raise HTTPException(400, "One or more selected farmers are already in an active FIG")
+    # Self-declared assets are an eligibility-screening snapshot, so they must reference a real
+    # catalog entry — but an individually-owned asset type can never be declared for a FIG.
+    asset_types = {}
+    if body.assets:
+        asset_types = {t.id: t for t in db.query(AssetType).filter(
+            AssetType.id.in_([a.asset_type_id for a in body.assets])).all()}
+        for asset in body.assets:
+            at = asset_types.get(asset.asset_type_id)
+            if not at:
+                raise HTTPException(400, f"Unknown asset type: {asset.asset_type_id}")
+            if at.ownership_level == "INDIVIDUAL":
+                raise HTTPException(400, f"'{at.name}' is an individually-owned asset — it cannot be declared for a FIG")
+
     seq = _next_fig_seq(db)
-    fig = Fig(fig_code=_gcode(seq), **body.model_dump(exclude={"member_ids"}))
+    data = body.model_dump()
+    data.pop("member_ids")
+    asset_rows = data.pop("assets")
+    fig = Fig(fig_code=_gcode(seq), **data)
     db.add(fig)
-    db.flush()  # assign fig.id before creating members, same transaction
+    db.flush()  # assign fig.id before creating members/assets, same transaction
     for farmer_id in body.member_ids:
         db.add(FigMember(fig_id=fig.id, farmer_id=farmer_id))
+    for asset in asset_rows:
+        year = asset.get("acquisition_year")
+        db.add(AssetInstance(
+            asset_code=asset_code(next_asset_seq(db)),
+            asset_type_id=asset["asset_type_id"], owner_type="FIG", owner_id=fig.id,
+            quantity=asset.get("quantity") or 1,
+            acquisition_date=date(year, 1, 1) if year else None,
+            acquisition_mode="SELF_DECLARED_AT_REGISTRATION",
+            confidence="FARMER_SELF_DECLARED", created_by_user_id=user.id,
+        ))
     db.commit()
     db.refresh(fig)
     return {"id": fig.id, "fig_code": fig.fig_code}
@@ -223,51 +251,37 @@ def set_president(body: PresidentSetIn, user: User = Depends(require_roles("STAT
         raise HTTPException(404, "FIG not found")
     if user.role == "DISTRICT_ADMIN" and fig.district_id != user.district_id:
         raise HTTPException(403, "District scope mismatch")
-    # Demote existing presidents
+    # Demote existing presidents — both the FigMember role flag and, since a FIG President's
+    # login is just their own farmer account promoted in place (not a separate account), the
+    # linked User row too, so an outgoing president loses elevated access but keeps their own
+    # login (mobile/password untouched).
     for m in db.query(FigMember).filter(FigMember.fig_id == body.fig_id, FigMember.role == "President", FigMember.is_active).all():
         m.role = "Member"
+        outgoing_login = db.query(User).filter(
+            User.role == "FIG_PRESIDENT", User.fig_id == body.fig_id, User.farmer_id == m.farmer_id).first()
+        if outgoing_login:
+            outgoing_login.role = "FARMER"
+            outgoing_login.fig_id = None
     # Promote selected member
     member = db.query(FigMember).filter(FigMember.fig_id == body.fig_id, FigMember.farmer_id == body.farmer_id, FigMember.is_active).first()
     if not member:
         raise HTTPException(400, "Farmer is not an active member of this FIG")
     member.role = "President"
-    # User account
+    # Promote the farmer's own existing login in place — never a separate account/password.
     farmer = db.query(Farmer).filter(Farmer.id == body.farmer_id).first()
     president_name = f"{farmer.first_name} {farmer.last_name}".strip() if farmer else None
-    existing = db.query(User).filter(User.mobile_no == body.mobile_no).first()
-    if existing and existing.role != "FIG_PRESIDENT":
-        raise HTTPException(400, "Mobile already used by another role")
-    if existing:
-        existing.password_hash = hash_password(body.password)
-        existing.fig_id = body.fig_id
-        existing.farmer_id = body.farmer_id
-        existing.district_id = fig.district_id
-        existing.name = president_name
+    login = db.query(User).filter(User.farmer_id == body.farmer_id).first()
+    if login:
+        login.role = "FIG_PRESIDENT"
+        login.fig_id = body.fig_id
+        login.district_id = fig.district_id
+        login.name = president_name
     else:
-        db.add(User(mobile_no=body.mobile_no, password_hash=hash_password(body.password),
-                    role="FIG_PRESIDENT", fig_id=body.fig_id, farmer_id=body.farmer_id,
+        # Defensive fallback only — every farmer should already have a login (auto-provisioned
+        # at registration, or via the one-off backfill script), but don't hard-fail if one
+        # somehow doesn't exist yet.
+        db.add(User(mobile_no=farmer.mobile_no, password_hash=hash_password(DEFAULT_FARMER_PASSWORD),
+                    role="FIG_PRESIDENT", farmer_id=body.farmer_id, fig_id=body.fig_id,
                     district_id=fig.district_id, name=president_name))
-    db.commit()
-    return {"ok": True}
-
-
-@router.post("/president/reset-password")
-def reset_president_password(body: PresidentPasswordResetIn,
-                             user: User = Depends(require_roles("STATE_ADMIN", "DISTRICT_ADMIN")),
-                             db: Session = Depends(get_session)):
-    fig = db.query(Fig).filter(Fig.id == body.fig_id).first()
-    if not fig:
-        raise HTTPException(404, "FIG not found")
-    if user.role == "DISTRICT_ADMIN" and fig.district_id != user.district_id:
-        raise HTTPException(403, "District scope mismatch")
-    pres_member = db.query(FigMember).filter(FigMember.fig_id == body.fig_id, FigMember.role == "President",
-                                             FigMember.is_active).first()
-    if not pres_member:
-        raise HTTPException(400, "No active president set for this FIG")
-    pres_user = db.query(User).filter(User.fig_id == body.fig_id, User.role == "FIG_PRESIDENT",
-                                       User.farmer_id == pres_member.farmer_id).first()
-    if not pres_user:
-        raise HTTPException(400, "President login account not found")
-    pres_user.password_hash = hash_password(body.password)
     db.commit()
     return {"ok": True}

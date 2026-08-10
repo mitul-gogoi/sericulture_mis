@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,14 +15,15 @@ import { FigRegisterModal, type FigCreateForm } from "@/components/figs/FigRegis
 import { FigDetailModal } from "@/components/figs/FigDetailModal";
 import { type FigEditFormState } from "@/components/figs/FigEditForm";
 import { type PresForm } from "@/components/figs/FigPresidentPanel";
-import type { Fig, FigDetail, Farmer, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, FigSettings } from "@/lib/types";
+import { type AssetRow } from "@/components/AssetRowsEditor";
+import type { Fig, FigDetail, Farmer, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, FigSettings, AssetType, AssetInstance } from "@/lib/types";
 
 const MultiSeriesTrendChart = dynamic(() => import("../dashboard/charts").then((m) => m.MultiSeriesTrendChart), { ssr: false });
 
 const emptyCreateForm = (): FigCreateForm => ({
   fig_name: "", stap_id: "", seri_circle_id: "", district_id: "", formation_date: "", meeting_venue: "",
   village_name: "", panchayat_name: "", post_office: "", police_station: "", pin_code: "", address: "",
-  member_ids: [], president_farmer_id: "", president_mobile: "", president_password: "",
+  member_ids: [], president_farmer_id: "", assets: [],
 });
 
 const emptyReportFilters = (): FigReportFilters => ({
@@ -53,10 +54,10 @@ export default function FIGsPage() {
   const [open, setOpen] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [memberFarmer, setMemberFarmer] = useState("");
-  const [presForm, setPresForm] = useState<PresForm>({ farmer_id: "", mobile_no: "", password: "" });
-  const [resetPassword, setResetPassword] = useState("");
+  const [presForm, setPresForm] = useState<PresForm>({ farmer_id: "" });
   const [editingFig, setEditingFig] = useState(false);
   const [editForm, setEditForm] = useState<FigEditFormState | null>(null);
+  const [editNewAssets, setEditNewAssets] = useState<AssetRow[]>([]);
   const [form, setForm] = useState<FigCreateForm>(emptyCreateForm());
 
   // Filter panel — live-edited state, only takes effect on Search.
@@ -66,15 +67,24 @@ export default function FIGsPage() {
   const [appliedFilters, setAppliedFilters] = useState(emptyReportFilters());
   const [reportPage, setReportPage] = useState(1);
   const [reportPageSize, setReportPageSize] = useState(20);
-  const [hasSearched, setHasSearched] = useState(() => searchParams.get("autoSearch") === "1");
   const [trendFy, setTrendFy] = useState("");
+  const [justFocused, setJustFocused] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("focus") !== "onboarding-trend") return;
+    const el = document.getElementById("onboarding-trend");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setJustFocused(true);
+    const t = setTimeout(() => setJustFocused(false), 2000);
+    return () => clearTimeout(t);
+  }, [searchParams]);
 
   const { data: reportData } = useQuery<{ items: Fig[]; total: number }>({
     queryKey: ["figs-report", appliedQ, appliedFilters, reportPage, reportPageSize],
     queryFn: async () => (await api.get("/figs", {
       params: { ...filterParamsFrom(appliedFilters, appliedQ), page: reportPage, page_size: reportPageSize },
     })).data,
-    enabled: hasSearched || user?.role === "FIG_PRESIDENT",
   });
   const { data: trend } = useQuery<{ months: string[]; figs_monthly: number[] }>({
     queryKey: ["figs-onboarding-trend", trendFy],
@@ -93,6 +103,7 @@ export default function FIGsPage() {
   const { data: districts = [] } = useQuery<District[]>({ queryKey: ["districts"], queryFn: async () => (await api.get("/master/districts")).data });
   const { data: allCircles = [] } = useQuery<SericultureCircle[]>({ queryKey: ["circles-all-figs"], queryFn: async () => (await api.get("/master/sericulture-circles")).data });
   const { data: subdivisionCdcs = [] } = useQuery<SubdivisionCdc[]>({ queryKey: ["subdivision-cdc-all"], queryFn: async () => (await api.get("/master/subdivision-cdc")).data });
+  const { data: assetTypes = [] } = useQuery<AssetType[]>({ queryKey: ["master-asset-types-all"], queryFn: async () => (await api.get("/master/asset-types?all=true")).data });
   const { data: circles = [] } = useQuery<SericultureCircle[]>({
     queryKey: ["circles-fig", form.district_id || user?.district_id],
     queryFn: async () => {
@@ -125,6 +136,11 @@ export default function FIGsPage() {
     queryFn: async () => (await api.get("/farmers", { params: { unassigned: true, district_id: detail!.district_id } })).data,
     enabled: !!detail,
   });
+  const { data: editAssets = [] } = useQuery<AssetInstance[]>({
+    queryKey: ["assets-for-fig", detail?.id],
+    queryFn: async () => (await api.get(`/assets?owner_type=FIG&owner_id=${detail!.id}`)).data,
+    enabled: !!detail,
+  });
 
   const resetCreateForm = () => setForm(emptyCreateForm());
 
@@ -133,17 +149,12 @@ export default function FIGsPage() {
     setAppliedQ(qInput);
     setAppliedFilters(reportFilters);
     setReportPage(1);
-    setHasSearched(true);
   };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (form.member_ids.length < minMembers) {
       toast.error(`Select at least ${minMembers} member(s) to register a FIG`);
-      return;
-    }
-    if (form.president_farmer_id && (!form.president_mobile || !form.president_password)) {
-      toast.error("Provide a login mobile and password for the president");
       return;
     }
     let created: { id: string; fig_code: string } | null = null;
@@ -155,14 +166,15 @@ export default function FIGsPage() {
         village_name: form.village_name, panchayat_name: form.panchayat_name,
         post_office: form.post_office, police_station: form.police_station, pin_code: form.pin_code,
         address: form.address, member_ids: form.member_ids,
+        assets: form.assets.filter((row) => row.asset_type_id).map((row) => ({
+          asset_type_id: row.asset_type_id, quantity: Number(row.quantity) || 1,
+          acquisition_year: row.acquisition_year ? Number(row.acquisition_year) : null,
+        })),
       };
       const res = await api.post("/figs", body);
       created = res.data;
       if (form.president_farmer_id) {
-        await api.post("/figs/president", {
-          fig_id: created!.id, farmer_id: form.president_farmer_id,
-          mobile_no: form.president_mobile, password: form.president_password,
-        });
+        await api.post("/figs/president", { fig_id: created!.id, farmer_id: form.president_farmer_id });
       }
       toast.success("FIG registered");
       setOpen(false);
@@ -184,7 +196,7 @@ export default function FIGsPage() {
   };
   const setPresident = async () => {
     try { await api.post("/figs/president", { fig_id: detailId, ...presForm });
-      toast.success("President set"); setPresForm({ farmer_id: "", mobile_no: "", password: "" });
+      toast.success("President set"); setPresForm({ farmer_id: "" });
       qc.invalidateQueries({ queryKey: ["fig", detailId] });
     } catch (e: any) { toast.error(fmtErr(e.response?.data?.detail)); }
   };
@@ -207,26 +219,37 @@ export default function FIGsPage() {
       post_office: detail.post_office || "", police_station: detail.police_station || "",
       pin_code: detail.pin_code || "", address: detail.address || "",
     });
+    setEditNewAssets([]);
     setEditingFig(true);
   };
   const saveFigEdit = async () => {
     if (!detail || !editForm) return;
     try {
       await api.patch(`/figs/${detail.id}`, editForm);
+      const newAssets = editNewAssets.filter((row) => row.asset_type_id);
+      for (const row of newAssets) {
+        await api.post("/assets", {
+          asset_type_id: row.asset_type_id, owner_type: "FIG", owner_id: detail.id,
+          quantity: Number(row.quantity) || 1,
+          acquisition_date: row.acquisition_year ? `${row.acquisition_year}-01-01` : null,
+          acquisition_mode: "SELF_PROCURED", confidence: "FARMER_SELF_DECLARED",
+        });
+      }
       toast.success("FIG updated");
-      setEditingFig(false); setEditForm(null);
+      setEditingFig(false); setEditForm(null); setEditNewAssets([]);
       qc.invalidateQueries({ queryKey: ["fig", detailId] });
       qc.invalidateQueries({ queryKey: ["figs-report"] });
+      qc.invalidateQueries({ queryKey: ["assets-for-fig", detail.id] });
     } catch (e: any) { toast.error(fmtErr(e.response?.data?.detail)); }
   };
-  const resetPresidentPassword = async () => {
+  const deleteFigAsset = async (assetId: string) => {
     if (!detail) return;
     try {
-      await api.post("/figs/president/reset-password", { fig_id: detail.id, password: resetPassword });
-      toast.success("President password reset"); setResetPassword("");
+      await api.delete(`/assets/${assetId}`);
+      toast.success("Asset deleted");
+      qc.invalidateQueries({ queryKey: ["assets-for-fig", detail.id] });
     } catch (e: any) { toast.error(fmtErr(e.response?.data?.detail)); }
   };
-
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
@@ -250,29 +273,27 @@ export default function FIGsPage() {
             {figsRows.map((f) => (
               <FigRow key={f.id} f={f} staps={staps} districts={districts} allCircles={allCircles} onView={() => setDetailId(f.id)} />
             ))}
-            {figsRows.length === 0 && <tr><td colSpan={9} className="text-center py-8" style={{ color: "var(--text-muted)" }}>{!hasSearched && user?.role !== "FIG_PRESIDENT" ? "Use Search to view FIGs" : "No FIGs found"}</td></tr>}
+            {figsRows.length === 0 && <tr><td colSpan={9} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No FIGs found</td></tr>}
           </tbody>
         </table>
         </div>
       </div>
 
-      {hasSearched && (
-        <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
-          <div className="text-sm" style={{ color: "var(--text-muted)" }}>
-            Showing {showingFrom}–{showingTo} of {total}
-          </div>
-          <div className="flex items-center gap-3">
-            <select className="input" value={reportPageSize} onChange={(e) => { setReportPageSize(Number(e.target.value)); setReportPage(1); }}>
-              {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n} / page</option>)}
-            </select>
-            <button className="btn-secondary" disabled={reportPage <= 1} onClick={() => setReportPage((p) => p - 1)}>Prev</button>
-            <button className="btn-secondary" disabled={reportPage * reportPageSize >= total} onClick={() => setReportPage((p) => p + 1)}>Next</button>
-            <ExportButtons report="figs" params={filterParamsFrom(appliedFilters, appliedQ)} />
-          </div>
+      <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
+        <div className="text-sm" style={{ color: "var(--text-muted)" }}>
+          Showing {showingFrom}–{showingTo} of {total}
         </div>
-      )}
+        <div className="flex items-center gap-3">
+          <select className="input" value={reportPageSize} onChange={(e) => { setReportPageSize(Number(e.target.value)); setReportPage(1); }}>
+            {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n} / page</option>)}
+          </select>
+          <button className="btn-secondary" disabled={reportPage <= 1} onClick={() => setReportPage((p) => p - 1)}>Prev</button>
+          <button className="btn-secondary" disabled={reportPage * reportPageSize >= total} onClick={() => setReportPage((p) => p + 1)}>Next</button>
+          <ExportButtons report="figs" params={filterParamsFrom(appliedFilters, appliedQ)} />
+        </div>
+      </div>
 
-      <div className="card p-6 mt-6">
+      <div id="onboarding-trend" className="card p-6 mt-6" style={justFocused ? { boxShadow: "0 0 0 3px var(--primary)" } : undefined}>
         <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <ChartLineUp size={20} weight="duotone" color="#2D5134" />
@@ -296,6 +317,7 @@ export default function FIGsPage() {
           form={form} setForm={setForm} onClose={() => { setOpen(false); resetCreateForm(); }} onSubmit={submit}
           isStateAdmin={user?.role === "STATE_ADMIN"} userDistrictId={user?.district_id} minMembers={minMembers}
           districts={districts} circles={circles} subdivisionCdcs={subdivisionCdcs} staps={staps} unassignedFarmers={unassignedFarmers}
+          assetTypes={assetTypes}
         />
       )}
 
@@ -303,13 +325,14 @@ export default function FIGsPage() {
         <FigDetailModal
           detail={detail} staps={staps} districts={districts} allCircles={allCircles} subdivisionCdcs={subdivisionCdcs}
           editingFig={editingFig} editForm={editForm} setEditForm={setEditForm}
-          onEditClick={openFigEdit} onSaveEdit={saveFigEdit} onCancelEdit={() => { setEditingFig(false); setEditForm(null); }}
+          onEditClick={openFigEdit} onSaveEdit={saveFigEdit} onCancelEdit={() => { setEditingFig(false); setEditForm(null); setEditNewAssets([]); }}
           canEditDetails={canEditDetails} canToggleActive={canToggleActive} canManageMembership={canManageMembership}
-          onToggleActive={toggleFigActive} onClose={() => { setDetailId(null); setEditingFig(false); setEditForm(null); }}
+          onToggleActive={toggleFigActive} onClose={() => { setDetailId(null); setEditingFig(false); setEditForm(null); setEditNewAssets([]); }}
           memberFarmer={memberFarmer} setMemberFarmer={setMemberFarmer}
           detailUnassignedFarmers={detailUnassignedFarmers} onAddMember={addMember}
           presForm={presForm} setPresForm={setPresForm} onSetPresident={setPresident}
-          resetPassword={resetPassword} setResetPassword={setResetPassword} onResetPassword={resetPresidentPassword}
+          assetTypes={assetTypes} editAssets={editAssets} editNewAssets={editNewAssets}
+          setEditNewAssets={setEditNewAssets} onDeleteAsset={deleteFigAsset}
         />
       )}
     </div>

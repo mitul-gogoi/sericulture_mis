@@ -103,7 +103,7 @@ export function FarmerRegisterModal({
               Optional — durable assets (rearing house, mountage, reeling machine, etc.) this farmer already owns.
               FIG-level shared assets (CFC, CRC) are recorded against the FIG instead.
             </p>
-            <AssetRowsEditor value={form.assets} onChange={(next) => setForm({ ...form, assets: next })} assetTypes={assetTypes} />
+            <AssetRowsEditor value={form.assets} onChange={(next) => setForm({ ...form, assets: next })} assetTypes={assetTypes} ownerKind="FARMER" />
           </div>
           <div className="col-span-full">
             <label className="label-tag">Silk type / activity / product</label>

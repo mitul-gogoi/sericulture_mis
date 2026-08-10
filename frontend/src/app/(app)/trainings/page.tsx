@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api, { fmtErr } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -21,8 +22,10 @@ const EMPTY_ROSTER: TrainingRosterEntry[] = [];
 export default function TrainingsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const searchParams = useSearchParams();
   const isDA = user?.role === "DISTRICT_ADMIN";
   const isSA = user?.role === "STATE_ADMIN";
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "");
 
   const [open, setOpen] = useState(false);
   const [completeReq, setCompleteReq] = useState<Training | null>(null);
@@ -37,7 +40,10 @@ export default function TrainingsPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [attendanceEdits, setAttendanceEdits] = useState<Record<string, boolean>>({});
 
-  const { data: reqs = [] } = useQuery<Training[]>({ queryKey: ["trainings"], queryFn: async () => (await api.get("/trainings/requests")).data });
+  const { data: reqs = [] } = useQuery<Training[]>({
+    queryKey: ["trainings", statusFilter],
+    queryFn: async () => (await api.get("/trainings/requests", { params: statusFilter ? { status: statusFilter } : {} })).data,
+  });
   const { data: trainingSchemes = [] } = useQuery<Scheme[]>({
     queryKey: ["schemes-training-support"],
     queryFn: async () => (await api.get("/schemes", { params: { support_type: "Training" } })).data,
@@ -133,6 +139,13 @@ export default function TrainingsPage() {
           <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>Requests, approvals, attendance & certificate tracking</p></div>
         {isDA && <button onClick={() => setOpen(true)} className="btn-primary inline-flex items-center gap-2"><Plus size={16} weight="bold" />Request</button>}
       </div>
+
+      {statusFilter && (
+        <div className="flex items-center gap-2 mb-3 text-sm" style={{ color: "var(--text-muted)" }}>
+          Showing: {statusFilter} only
+          <button className="font-semibold" style={{ color: "var(--primary)" }} onClick={() => setStatusFilter("")}>Clear filter</button>
+        </div>
+      )}
 
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">

@@ -12,7 +12,7 @@ class User(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     mobile_no: str = Field(unique=True, index=True, max_length=15)
     password_hash: str = Field(max_length=200)
-    role: str = Field(max_length=20)  # STATE_ADMIN | DISTRICT_ADMIN | FIG_PRESIDENT
+    role: str = Field(max_length=20)  # STATE_ADMIN | DISTRICT_ADMIN | FIG_PRESIDENT | FARMER
     name: Optional[str] = Field(default=None, max_length=120)
     district_id: Optional[str] = Field(default=None, foreign_key="districts.id")
     fig_id: Optional[str] = Field(default=None, foreign_key="figs.id")

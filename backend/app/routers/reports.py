@@ -1,20 +1,24 @@
 """Reports & dashboards (PostgreSQL aggregations)."""
 from datetime import datetime, timezone
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
-from sqlalchemy import func, case, or_
+from sqlalchemy import func, or_, and_
 from app.core.db import get_session
 from app.core.deps import get_current_user, require_roles
-from app.services.fiscal import period_months, fy_to_months
+from app.services.fiscal import period_months, fy_to_months, month_range
 from app.services.export import rows_to_xlsx, rows_to_pdf
-from app.services.analytics import dfl_efficiency_rows, byproduct_ratio_by_district, scope_district, inputs_by_district, activity_efficiency_rows
+from app.services.analytics import scope_district
 from app.services.farmer_reports import apply_farmer_filters, farmer_report_rows
 from app.services.fig_reports import apply_fig_filters, fig_report_rows
+from app.services.land_reports import land_report_rows
+from app.services.meeting_reports import submission_status_rows, fp_submission_history_rows
+from app.services.assets import asset_report_rows
+from app.services import yield_matrix
 from app.models import (
     Farmer, Fig, District, Land, Training, FigMember, Meeting, Yield_,
-    User, Scheme, Allocation, Product, ByproductEntry, Stock, YieldInputEntry,
-    SilkType, Activity, SilkTypeActivityProduct,
+    User, Product, ByproductEntry, Stock, MeetingCorrection,
+    SilkType, Activity, SilkTypeActivityProduct, AssetInstance,
 )
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -47,6 +51,7 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
             "activities": db.query(func.count(Activity.id)).filter(Activity.is_active).scalar() or 0,
             "lands_pending": db.query(func.count(Land.id)).filter(Land.gps_verified == "Pending").scalar() or 0,
             "pending_trainings": db.query(func.count(Training.id)).filter(Training.status == "Pending").scalar() or 0,
+            "pending_corrections": db.query(func.count(MeetingCorrection.id)).filter(MeetingCorrection.status == "PENDING").scalar() or 0,
             "current_month": cur_month,
             "monthly_submitted_count": db.query(func.count(Meeting.id)).filter(Meeting.meeting_month == cur_month).scalar() or 0,
         }
@@ -67,6 +72,9 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
             "lands_pending": db.query(func.count(Land.id)).filter(
                 Land.farmer_id.in_(farmer_ids or [""]),
                 Land.gps_verified == "Pending").scalar() or 0,
+            "assets_gps_pending": db.query(func.count(AssetInstance.id)).filter(
+                AssetInstance.owner_id.in_((farmer_ids + fig_ids) or [""]),
+                AssetInstance.gps_status == "Pending").scalar() or 0,
             "pending_trainings": db.query(func.count(Training.id)).filter(
                 Training.district_id == user.district_id, Training.status == "Pending").scalar() or 0,
             "current_month": cur_month,
@@ -82,22 +90,22 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
         cur_month = datetime.now(timezone.utc).strftime("%Y-%m")
         submitted = db.query(Meeting).filter(Meeting.fig_id == user.fig_id,
                                               Meeting.meeting_month == cur_month).first() is not None
+        member_ids = [m.farmer_id for m in db.query(FigMember).filter(
+            FigMember.fig_id == user.fig_id, FigMember.is_active).all()]
+        # "Needs GPS" = never submitted or a prior submission was rejected — Pending/Verified
+        # already have a live or in-review submission and don't belong in a Quick Actions backlog.
+        lands_needing_gps = db.query(func.count(Land.id)).filter(
+            Land.farmer_id.in_(member_ids or [""]),
+            Land.gps_verified.in_(("Not Submitted", "Failed"))).scalar() or 0
+        assets_needing_gps = db.query(func.count(AssetInstance.id)).filter(
+            AssetInstance.owner_id.in_((member_ids + [user.fig_id or ""]) or [""]),
+            AssetInstance.gps_status.in_(("Not Submitted", "Failed"))).scalar() or 0
         return {"members": members, "meetings": meetings,
                 "submitted_this_month": submitted, "current_month": cur_month,
                 "fig_name": fig.fig_name if fig else None, "fig_code": fig.fig_code if fig else None,
-                "district_name": district.district_name if district else None}
+                "district_name": district.district_name if district else None,
+                "lands_needing_gps": lands_needing_gps, "assets_needing_gps": assets_needing_gps}
     return {}
-
-
-@router.get("/silk-type-distribution")
-def silk_type_distribution(user: User = Depends(require_roles("STATE_ADMIN")), db: Session = Depends(get_session)):
-    rows = db.query(
-        SilkTypeActivityProduct.silk_type_id, SilkType.silk_type_name,
-        func.count(Fig.id).label("figs"),
-    ).join(Fig, Fig.stap_id == SilkTypeActivityProduct.id).join(
-        SilkType, SilkType.id == SilkTypeActivityProduct.silk_type_id
-    ).filter(Fig.is_active).group_by(SilkTypeActivityProduct.silk_type_id, SilkType.silk_type_name).all()
-    return [{"silk_type_id": r.silk_type_id, "silk_type_name": r.silk_type_name, "figs": int(r.figs)} for r in rows]
 
 
 @router.get("/district-heatmap")
@@ -116,152 +124,19 @@ def district_heatmap(user: User = Depends(require_roles("STATE_ADMIN")),
     return out
 
 
-def _scheme_utilization_rows(user: User, db: Session) -> list[dict]:
-    schemes = db.query(Scheme).filter(Scheme.is_active).all()
-    scheme_ids = [s.id for s in schemes]
-
-    alloc_q = db.query(Allocation).filter(Allocation.scheme_id.in_(scheme_ids or [""]))
-    totals_q = db.query(
-        Allocation.scheme_id,
-        func.sum(Allocation.allocated_amount_rs).label("allocated"),
-        func.sum(Allocation.utilised).label("utilised"),
-        func.sum(Allocation.remaining).label("remaining"),
-    ).filter(Allocation.scheme_id.in_(scheme_ids or [""]))
-    if user.role == "DISTRICT_ADMIN":
-        alloc_q = alloc_q.filter(Allocation.district_id == user.district_id)
-        totals_q = totals_q.filter(Allocation.district_id == user.district_id)
-    by_scheme: dict[str, list] = {}
-    for a in alloc_q.all():
-        by_scheme.setdefault(a.scheme_id, []).append(a)
-    totals = {r.scheme_id: r for r in totals_q.group_by(Allocation.scheme_id).all()}
-
-    districts = {d.id: d.district_name for d in db.query(District).all()}
-    out = []
-    for s in schemes:
-        allocs = by_scheme.get(s.id, [])
-        if user.role == "DISTRICT_ADMIN" and not allocs:
-            continue
-        t = totals.get(s.id)
-        out.append({
-            "scheme_id": s.id, "scheme_name": s.scheme_name, "total_budget_rs": s.total_budget_rs,
-            "allocated_rs": float(t.allocated or 0) if t else 0,
-            "utilised_rs": float(t.utilised or 0) if t else 0,
-            "remaining_rs": float(t.remaining or 0) if t else 0,
-            "districts": [{
-                "district_id": a.district_id, "district_name": districts.get(a.district_id, "?"),
-                "allocated_rs": a.allocated_amount_rs, "utilised_rs": a.utilised or 0, "remaining_rs": a.remaining or 0,
-            } for a in allocs],
-        })
-    return out
-
-
-@router.get("/scheme-utilization")
-def scheme_utilization(user: User = Depends(get_current_user), db: Session = Depends(get_session)):
-    return _scheme_utilization_rows(user, db)
-
-
-def _district_comparison_rows(month: Optional[str], fiscal_year: Optional[str], user: User, db: Session) -> dict:
-    """Per-district rollup. Submission rate and yield achievement are scoped to the given
-    period; GPS-verified % and scheme-utilization % are all-time snapshots (the underlying
-    Land/Allocation records carry no month dimension)."""
-    months = period_months(month, fiscal_year) or [datetime.now(timezone.utc).strftime("%Y-%m")]
-    sub_stats = _submission_stats(db, months)
-    districts = {d.id: d.district_name for d in db.query(District).all()}
-
-    yield_by_district = {
-        r.district_id: {"planned": float(r.planned or 0), "actual": float(r.actual or 0)}
-        for r in db.query(
-            Farmer.district_id,
-            func.sum(Yield_.planned_yield).label("planned"),
-            func.sum(Yield_.actual_yield).label("actual"),
-        ).join(Farmer, Farmer.id == Yield_.farmer_id)
-         .filter(Yield_.yield_month.in_(months))
-         .group_by(Farmer.district_id).all()
-    }
-
-    gps_by_district = {
-        r.district_id: {"total": int(r.total or 0), "verified": int(r.verified or 0)}
-        for r in db.query(
-            Farmer.district_id,
-            func.count(Land.id).label("total"),
-            func.sum(case((Land.gps_verified == "Verified", 1), else_=0)).label("verified"),
-        ).join(Farmer, Farmer.id == Land.farmer_id)
-         .group_by(Farmer.district_id).all()
-    }
-
-    alloc_by_district = {
-        r.district_id: {"allocated": float(r.allocated or 0), "utilised": float(r.utilised or 0)}
-        for r in db.query(
-            Allocation.district_id,
-            func.sum(Allocation.allocated_amount_rs).label("allocated"),
-            func.sum(Allocation.utilised).label("utilised"),
-        ).group_by(Allocation.district_id).all()
-    }
-
-    out = []
-    for district_id, name in districts.items():
-        sub = sub_stats.get(district_id, {"total_figs": 0, "submitted": 0, "pct": 0})
-        yd = yield_by_district.get(district_id, {"planned": 0.0, "actual": 0.0})
-        gd = gps_by_district.get(district_id, {"total": 0, "verified": 0})
-        ad = alloc_by_district.get(district_id, {"allocated": 0.0, "utilised": 0.0})
-        out.append({
-            "district_id": district_id, "district_name": name,
-            "total_figs": sub["total_figs"], "submission_pct": sub["pct"],
-            "yield_achievement_pct": round((yd["actual"] / yd["planned"]) * 100, 1) if yd["planned"] else 0,
-            "gps_verified_pct": round((gd["verified"] / gd["total"]) * 100, 1) if gd["total"] else 0,
-            "scheme_utilization_pct": round((ad["utilised"] / ad["allocated"]) * 100, 1) if ad["allocated"] else 0,
-        })
-    out.sort(key=lambda x: -x["submission_pct"])
-    return {"months": months, "districts": out}
-
-
-@router.get("/district-comparison")
-def district_comparison(month: Optional[str] = None, fiscal_year: Optional[str] = None,
-                        user: User = Depends(require_roles("STATE_ADMIN")), db: Session = Depends(get_session)):
-    return _district_comparison_rows(month, fiscal_year, user, db)
 
 
 def _scope_yield_query(q, user: User, district_id: Optional[str], db: Session):
     """Shared FIG-scoping ladder used by every Yield_-based report endpoint."""
-    if user.role == "FIG_PRESIDENT":
+    if user.role == "FARMER":
+        return q.filter(Yield_.farmer_id == user.farmer_id)
+    elif user.role == "FIG_PRESIDENT":
         return q.filter(Yield_.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == user.district_id).all()]
-        return q.filter(Yield_.fig_id.in_(fig_ids or [""]))
+        return q.filter(Yield_.district_id == user.district_id)
     elif district_id:
-        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == district_id).all()]
-        return q.filter(Yield_.fig_id.in_(fig_ids or [""]))
+        return q.filter(Yield_.district_id == district_id)
     return q
-
-
-def _yield_summary_rows(month: Optional[str], fiscal_year: Optional[str], district_id: Optional[str],
-                        user: User, db: Session) -> list[dict]:
-    """Pure production rollup — planned/actual/earning only. Stock is a point-in-time
-    balance, never summed across months, and is reported separately via
-    GET /reports/analytics/stock (which has no period concept at all)."""
-    months = period_months(month, fiscal_year)
-    q = db.query(
-        Yield_.product_id, Product.product_name,
-        func.sum(Yield_.planned_yield).label("planned"),
-        func.sum(Yield_.actual_yield).label("actual"),
-        func.sum(Yield_.earning).label("earning"),
-        func.count(Yield_.id).label("count"),
-    ).join(Product, Product.id == Yield_.product_id)
-    if months:
-        q = q.filter(Yield_.yield_month.in_(months))
-    q = _scope_yield_query(q, user, district_id, db)
-    rows = q.group_by(Yield_.product_id, Product.product_name).all()
-    return [{
-        "product_id": r.product_id, "product": {"product_name": r.product_name},
-        "planned": float(r.planned or 0), "actual": float(r.actual or 0),
-        "earning": float(r.earning or 0), "count": r.count,
-    } for r in rows]
-
-
-@router.get("/yield-summary")
-def yield_summary(month: Optional[str] = None, fiscal_year: Optional[str] = None, district_id: Optional[str] = None,
-                  user: User = Depends(get_current_user), db: Session = Depends(get_session)):
-    return _yield_summary_rows(month, fiscal_year, district_id, user, db)
 
 
 def _product_summary_rows(month: Optional[str], fiscal_year: Optional[str], district_id: Optional[str],
@@ -289,14 +164,14 @@ def _product_summary_rows(month: Optional[str], fiscal_year: Optional[str], dist
     )
     if months:
         bp_q = bp_q.filter(ByproductEntry.yield_month.in_(months))
-    if user.role == "FIG_PRESIDENT":
+    if user.role == "FARMER":
+        bp_q = bp_q.filter(ByproductEntry.farmer_id == user.farmer_id)
+    elif user.role == "FIG_PRESIDENT":
         bp_q = bp_q.filter(ByproductEntry.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == user.district_id).all()]
-        bp_q = bp_q.filter(ByproductEntry.fig_id.in_(fig_ids or [""]))
+        bp_q = bp_q.filter(ByproductEntry.district_id == user.district_id)
     elif district_id:
-        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == district_id).all()]
-        bp_q = bp_q.filter(ByproductEntry.fig_id.in_(fig_ids or [""]))
+        bp_q = bp_q.filter(ByproductEntry.district_id == district_id)
     bp_rows = {r.product_id: r for r in bp_q.group_by(ByproductEntry.product_id).all()}
 
     product_ids = set(y_rows) | set(bp_rows)
@@ -338,14 +213,14 @@ def _stock_summary_rows(district_id: Optional[str], user: User, db: Session) -> 
     """Current stock totals per product — point-in-time, no month/fiscal_year param exists here."""
     q = db.query(Stock.product_id, func.sum(Stock.closing_balance).label("stock"),
                  func.bool_or(Stock.is_perishable).label("is_perishable"))
-    if user.role == "FIG_PRESIDENT":
+    if user.role == "FARMER":
+        q = q.filter(Stock.farmer_id == user.farmer_id)
+    elif user.role == "FIG_PRESIDENT":
         q = q.filter(Stock.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == user.district_id).all()]
-        q = q.filter(Stock.fig_id.in_(fig_ids or [""]))
+        q = q.filter(Stock.district_id == user.district_id)
     elif district_id:
-        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == district_id).all()]
-        q = q.filter(Stock.fig_id.in_(fig_ids or [""]))
+        q = q.filter(Stock.district_id == district_id)
     rows = q.group_by(Stock.product_id).all()
     product_ids = [r.product_id for r in rows]
     products = {p.id: p for p in db.query(Product).filter(
@@ -366,62 +241,6 @@ def stock_summary(district_id: Optional[str] = None,
     return {"rows": _stock_summary_rows(district_id, user, db)}
 
 
-def _input_summary_rows(month: Optional[str], fiscal_year: Optional[str], district_id: Optional[str],
-                        user: User, db: Session) -> list[dict]:
-    """Input-wise consumption totals for dashboard tiles — additive/time-bound like production."""
-    months = period_months(month, fiscal_year)
-    q = db.query(YieldInputEntry.product_id, func.sum(YieldInputEntry.quantity).label("qty"))
-    if months:
-        q = q.filter(YieldInputEntry.yield_month.in_(months))
-    if user.role == "FIG_PRESIDENT":
-        q = q.filter(YieldInputEntry.fig_id == user.fig_id)
-    elif user.role == "DISTRICT_ADMIN":
-        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == user.district_id).all()]
-        q = q.filter(YieldInputEntry.fig_id.in_(fig_ids or [""]))
-    elif district_id:
-        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == district_id).all()]
-        q = q.filter(YieldInputEntry.fig_id.in_(fig_ids or [""]))
-    rows = q.group_by(YieldInputEntry.product_id).all()
-    product_ids = [r.product_id for r in rows]
-    products = {p.id: p for p in db.query(Product).filter(
-        Product.id.in_(product_ids or [""]), Product.show_in_dashboard.is_(True)).all()}
-    rows = [r for r in rows if r.product_id in products]  # hidden via Product.show_in_dashboard
-    out = [{
-        "product_id": r.product_id, "product_name": products[r.product_id].product_name if r.product_id in products else None,
-        "unit_of_measure": products[r.product_id].unit_of_measure if r.product_id in products else None,
-        "total_qty": float(r.qty or 0),
-    } for r in rows]
-    out.sort(key=lambda r: (r["product_name"] or ""))
-    return out
-
-
-@router.get("/input-summary")
-def input_summary(month: Optional[str] = None, fiscal_year: Optional[str] = None, district_id: Optional[str] = None,
-                  user: User = Depends(get_current_user), db: Session = Depends(get_session)):
-    months = period_months(month, fiscal_year)
-    return {"months": months, "rows": _input_summary_rows(month, fiscal_year, district_id, user, db)}
-
-
-@router.get("/monthly-trend")
-def monthly_trend(month: Optional[str] = None, fiscal_year: Optional[str] = None,
-                  user: User = Depends(get_current_user), db: Session = Depends(get_session)):
-    months = period_months(month, fiscal_year)
-    q = db.query(
-        Yield_.yield_month,
-        func.sum(Yield_.planned_yield).label("planned"),
-        func.sum(Yield_.actual_yield).label("actual"),
-    )
-    if months:
-        q = q.filter(Yield_.yield_month.in_(months))
-    if user.role == "FIG_PRESIDENT":
-        q = q.filter(Yield_.fig_id == user.fig_id)
-    elif user.role == "DISTRICT_ADMIN":
-        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == user.district_id).all()]
-        q = q.filter(Yield_.fig_id.in_(fig_ids or [""]))
-    rows = q.group_by(Yield_.yield_month).order_by(Yield_.yield_month).all()
-    return [{"month": r.yield_month, "planned": float(r.planned or 0), "actual": float(r.actual or 0)} for r in rows]
-
-
 def _trailing_12_months() -> list[str]:
     now = datetime.now(timezone.utc)
     months = []
@@ -433,44 +252,6 @@ def _trailing_12_months() -> list[str]:
             m = 12
             y -= 1
     return list(reversed(months))
-
-
-def _product_monthly_trend_rows(metric: str, product_id: Optional[str], district_id: Optional[str],
-                                user: User, db: Session) -> dict:
-    """Last 12 calendar months (NOT fiscal-year-aligned — unlike yoy-trend) for one metric,
-    optionally scoped to one product. Backs the Input & Output Overview page's
-    Month-on-Month view."""
-    if metric not in ("output", "input"):
-        raise HTTPException(400, "metric must be 'output' or 'input'")
-    months = _trailing_12_months()
-    if metric == "output":
-        q = db.query(Yield_.yield_month, func.sum(Yield_.actual_yield).label("value")).filter(
-            Yield_.yield_month.in_(months))
-        if product_id:
-            q = q.filter(Yield_.product_id == product_id)
-        q = _scope_yield_query(q, user, district_id, db)
-        by_month = {r.yield_month: float(r.value or 0) for r in q.group_by(Yield_.yield_month).all()}
-    else:  # input
-        q = db.query(YieldInputEntry.yield_month, func.sum(YieldInputEntry.quantity).label("value")).filter(
-            YieldInputEntry.yield_month.in_(months))
-        if product_id:
-            q = q.filter(YieldInputEntry.product_id == product_id)
-        if user.role == "FIG_PRESIDENT":
-            q = q.filter(YieldInputEntry.fig_id == user.fig_id)
-        elif user.role == "DISTRICT_ADMIN":
-            fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == user.district_id).all()]
-            q = q.filter(YieldInputEntry.fig_id.in_(fig_ids or [""]))
-        elif district_id:
-            fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == district_id).all()]
-            q = q.filter(YieldInputEntry.fig_id.in_(fig_ids or [""]))
-        by_month = {r.yield_month: float(r.value or 0) for r in q.group_by(YieldInputEntry.yield_month).all()}
-    return {"months": months, "metric": metric, "data": [{"month": m, "value": by_month.get(m, 0.0)} for m in months]}
-
-
-@router.get("/product-monthly-trend")
-def product_monthly_trend(metric: str = "output", product_id: Optional[str] = None, district_id: Optional[str] = None,
-                          user: User = Depends(get_current_user), db: Session = Depends(get_session)):
-    return _product_monthly_trend_rows(metric, product_id, district_id, user, db)
 
 
 def _onboarding_trend_rows(fiscal_year: Optional[str], district_id: Optional[str], user: User, db: Session) -> dict:
@@ -524,59 +305,6 @@ def onboarding_trend(fiscal_year: Optional[str] = None, district_id: Optional[st
     return _onboarding_trend_rows(fiscal_year, district_id, user, db)
 
 
-def _yoy_trend_rows(fiscal_years: list[str], product_id: Optional[str], metric: str,
-                    district_id: Optional[str], user: User, db: Session) -> dict:
-    if metric not in ("output", "input"):
-        raise HTTPException(400, "metric must be 'output' or 'input'")
-    if not fiscal_years or len(fiscal_years) > 6:
-        raise HTTPException(400, "Provide 1-6 fiscal_years")
-    try:
-        fy_month_lists = {fy: fy_to_months(fy) for fy in fiscal_years}
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    all_months = [m for months in fy_month_lists.values() for m in months]
-
-    if metric == "output":
-        q = db.query(Yield_.yield_month, func.sum(Yield_.planned_yield).label("planned"),
-                     func.sum(Yield_.actual_yield).label("actual")).filter(Yield_.yield_month.in_(all_months))
-        if product_id:
-            q = q.filter(Yield_.product_id == product_id)
-        q = _scope_yield_query(q, user, district_id, db)
-        by_month = {r.yield_month: r for r in q.group_by(Yield_.yield_month).all()}
-    else:  # input — same shape query against consumption, no "planned" concept
-        q = db.query(YieldInputEntry.yield_month, func.sum(YieldInputEntry.quantity).label("actual")).filter(
-            YieldInputEntry.yield_month.in_(all_months))
-        if product_id:
-            q = q.filter(YieldInputEntry.product_id == product_id)
-        if user.role == "FIG_PRESIDENT":
-            q = q.filter(YieldInputEntry.fig_id == user.fig_id)
-        elif user.role == "DISTRICT_ADMIN":
-            fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == user.district_id).all()]
-            q = q.filter(YieldInputEntry.fig_id.in_(fig_ids or [""]))
-        elif district_id:
-            fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == district_id).all()]
-            q = q.filter(YieldInputEntry.fig_id.in_(fig_ids or [""]))
-        by_month = {r.yield_month: r for r in q.group_by(YieldInputEntry.yield_month).all()}
-
-    labels = ["Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"]
-    series = []
-    for fy, months in fy_month_lists.items():
-        data = []
-        for label, m in zip(labels, months):
-            r = by_month.get(m)
-            data.append({"label": label, "planned": float(getattr(r, "planned", 0) or 0) if r else 0.0,
-                        "actual": float(r.actual or 0) if r else 0.0})
-        series.append({"fiscal_year": fy, "data": data})
-    return {"fiscal_years": fiscal_years, "metric": metric, "labels": labels, "series": series}
-
-
-@router.get("/yoy-trend")
-def yoy_trend(fiscal_years: list[str] = Query(...), product_id: Optional[str] = None, metric: str = "output",
-             district_id: Optional[str] = None,
-             user: User = Depends(get_current_user), db: Session = Depends(get_session)):
-    return _yoy_trend_rows(fiscal_years, product_id, metric, district_id, user, db)
-
-
 _EXPORT_MEDIA_TYPES = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "pdf": "application/pdf",
@@ -591,9 +319,15 @@ def export_report(report: str, format: str,
                   caste_id: Optional[str] = None, religion_id: Optional[str] = None,
                   experience_min: Optional[int] = None, experience_max: Optional[int] = None,
                   has_bank_details: Optional[bool] = None, is_active: Optional[bool] = None,
+                  has_fig: Optional[bool] = None,
                   stap_id: Optional[str] = None, formation_date_from: Optional[str] = None,
                   formation_date_to: Optional[str] = None,
                   product_id: Optional[str] = None, activity_id: Optional[str] = None,
+                  level: Optional[str] = None, from_month: Optional[str] = None, to_month: Optional[str] = None,
+                  product_ids: Optional[str] = None,
+                  owner_type: Optional[str] = None, asset_type_id: Optional[str] = None,
+                  status: Optional[str] = None, verification_status: Optional[str] = None,
+                  confidence: Optional[str] = None, gps_status: Optional[str] = None,
                   user: User = Depends(get_current_user), db: Session = Depends(get_session)):
     """Shared Excel/PDF export dispatcher — every exportable report's row-fetching logic
     lives in a plain `_xxx_rows` function reused by both its JSON endpoint and this
@@ -601,11 +335,7 @@ def export_report(report: str, format: str,
     if format not in _EXPORT_MEDIA_TYPES:
         raise HTTPException(400, "format must be 'xlsx' or 'pdf'")
 
-    if report == "yield-summary":
-        rows = _yield_summary_rows(month, fiscal_year, district_id, user, db)
-        headers = ["Product", "Planned", "Actual", "Earning", "Records"]
-        data = [[r["product"]["product_name"], r["planned"], r["actual"], r["earning"], r["count"]] for r in rows]
-    elif report == "product-summary":
+    if report == "product-summary":
         rows = _product_summary_rows(month, fiscal_year, district_id, user, db)
         headers = ["Product", "Unit", "Silk Types", "Planned", "Actual", "Byproduct Qty"]
         data = [[r["product_name"], r["unit_of_measure"], ", ".join(s["name"] for s in r["silk_types"]),
@@ -614,70 +344,6 @@ def export_report(report: str, format: str,
         rows = _stock_summary_rows(district_id, user, db)
         headers = ["Product", "Unit", "Current Stock", "Perishable"]
         data = [[r["product_name"], r["unit_of_measure"], r["stock"], "Yes" if r["is_perishable"] else "No"] for r in rows]
-    elif report == "input-summary":
-        rows = _input_summary_rows(month, fiscal_year, district_id, user, db)
-        headers = ["Product", "Unit", "Total Qty"]
-        data = [[r["product_name"], r["unit_of_measure"], r["total_qty"]] for r in rows]
-    elif report == "district-comparison":
-        if user.role != "STATE_ADMIN":
-            raise HTTPException(403, "State Admin only")
-        result = _district_comparison_rows(month, fiscal_year, user, db)
-        headers = ["District", "Total FIGs", "Submission %", "Yield Achievement %", "GPS Verified %", "Scheme Utilization %"]
-        data = [[r["district_name"], r["total_figs"], r["submission_pct"], r["yield_achievement_pct"],
-                r["gps_verified_pct"], r["scheme_utilization_pct"]] for r in result["districts"]]
-    elif report == "scheme-utilization":
-        rows = _scheme_utilization_rows(user, db)
-        headers = ["Scheme", "Total Budget (Rs)", "Allocated (Rs)", "Utilised (Rs)", "Remaining (Rs)"]
-        data = [[r["scheme_name"], r["total_budget_rs"], r["allocated_rs"], r["utilised_rs"], r["remaining_rs"]] for r in rows]
-    elif report == "dfl-efficiency":
-        if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN"):
-            raise HTTPException(403, "State/District Admin only")
-        months = period_months(month, fiscal_year)
-        resolved_district = scope_district(user, district_id)
-        rows = dfl_efficiency_rows(db, months, resolved_district)
-        headers = ["Silk Type", "Cocoon Actual", "DFL Actual", "kg per DFL"]
-        data = [[r["silk_type_name"], r["cocoon_actual"], r["dfl_actual"], r["kg_per_dfl"]] for r in rows]
-    elif report == "byproduct-ratio":
-        if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN"):
-            raise HTTPException(403, "State/District Admin only")
-        months = period_months(month, fiscal_year)
-        resolved_district = scope_district(user, district_id)
-        rows = byproduct_ratio_by_district(db, months, resolved_district)
-        headers = ["District", "Byproduct", "Unit", "Byproduct Qty", "Parent Actual Yield", "Ratio %"]
-        data = [[r["district_name"], r["product_name"], r["unit_of_measure"], r["byproduct_qty"],
-                r["parent_actual_yield"], r["ratio_pct"]] for r in rows]
-    elif report == "inputs":
-        if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN"):
-            raise HTTPException(403, "State/District Admin only")
-        if not product_id:
-            raise HTTPException(400, "product_id is required")
-        if not db.query(Product).filter(Product.id == product_id).first():
-            raise HTTPException(404, "Product not found")
-        months = period_months(month, fiscal_year) or [datetime.now(timezone.utc).strftime("%Y-%m")]
-        rows = inputs_by_district(db, product_id, months)
-        if user.role == "DISTRICT_ADMIN":
-            rows = [r for r in rows if r["id"] == user.district_id]
-        headers = ["District", "Total Qty", "Purchased", "Government Scheme", "Own Source", "Government Land/Forest"]
-        data = [[r["name"], r["total_qty"], r["by_source"]["Purchased"], r["by_source"]["Government Scheme"],
-                r["by_source"]["Own Source"], r["by_source"]["Government Land/Forest"]] for r in rows]
-    elif report == "activity-efficiency":
-        if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN"):
-            raise HTTPException(403, "State/District Admin only")
-        if not activity_id:
-            raise HTTPException(400, "activity_id is required")
-        if not db.query(Activity).filter(Activity.id == activity_id).first():
-            raise HTTPException(404, "Activity not found")
-        months = period_months(month, fiscal_year) or [datetime.now(timezone.utc).strftime("%Y-%m")]
-        resolved_district = scope_district(user, district_id)
-        rows = activity_efficiency_rows(db, activity_id, months, resolved_district)
-        headers = ["District", "Output Qty", "Input Qty", "Efficiency Ratio"]
-        data = [[r["district_name"], r["output_qty"], r["input_qty"], r["efficiency_ratio"]] for r in rows]
-    elif report == "onboarding-trend":
-        if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN", "FIG_PRESIDENT"):
-            raise HTTPException(403, "State/District Admin/FIG President only")
-        result = _onboarding_trend_rows(fiscal_year, district_id, user, db)
-        headers = ["Month", "Farmers Registered", "FIGs Formed"]
-        data = [[m, result["farmers_monthly"][i], result["figs_monthly"][i]] for i, m in enumerate(result["months"])]
     elif report == "farmers":
         # Unlike every other report here, on-screen data IS paginated but the export never is —
         # exports are meant to be complete reports, not a dump of whatever page happens to be open.
@@ -701,21 +367,21 @@ def export_report(report: str, format: str,
         query = apply_farmer_filters(query, gender=gender, education_level_id=education_level_id,
                                       caste_id=caste_id, religion_id=religion_id,
                                       experience_min=experience_min, experience_max=experience_max,
-                                      has_bank_details=has_bank_details, is_active=is_active)
+                                      has_bank_details=has_bank_details, is_active=is_active, has_fig=has_fig)
         rows = farmer_report_rows(query, db)
         headers = ["Farmer Code", "Full Name", "Gender", "Date of Birth", "Mobile Number", "Aadhaar Number",
                    "PAN Number", "Education Level", "Farmer Experience (in Years)", "Primary Activities",
                    "All Activities", "Caste", "Religion", "Family Member Counts (male)",
                    "Family Member Counts (female)", "Village Name", "Panchayat", "Development Block",
                    "District", "Sericulture Circle", "Post Office", "Police Station", "PIN Code",
-                   "Account Number", "Bank Name", "Branch Name", "IFSC Code", "Status"]
+                   "Account Number", "Bank Name", "Branch Name", "IFSC Code", "Status", "FIG Membership"]
         data = [[r["farmer_code"], r["full_name"], r["gender"], r["date_of_birth"], r["mobile_no"], r["aadhaar_no"],
                  r["pan_no"], r["education_level_name"], r["experience_years"], r["primary_activity"],
                  r["all_activities"], r["caste_name"], r["religion_name"], r["family_member_male"],
                  r["family_member_female"], r["village_name"], r["gaon_panchayat"], r["development_block"],
                  r["district_name"], r["circle_name"], r["post_office"], r["police_station"], r["pin_code"],
                  r["account_number"], r["bank_name"], r["branch_name"], r["ifsc_code"],
-                 "Active" if r["is_active"] else "Inactive"] for r in rows]
+                 "Active" if r["is_active"] else "Inactive", r["fig_name"]] for r in rows]
     elif report == "figs":
         if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN", "FIG_PRESIDENT"):
             raise HTTPException(403, "State/District Admin/FIG President only")
@@ -746,13 +412,210 @@ def export_report(report: str, format: str,
                  r["formation_date"], r["contact_no"], r["meeting_venue"], r["total_members"],
                  r["member_names"], r["president_label"], r["president_mobile"],
                  "Active" if r["is_active"] else "Inactive"] for r in rows]
+    elif report == "lands":
+        # View access mirrors GET /lands' own role scoping exactly — State Admin is
+        # view-only for verify/reject (see POST /lands/verify) but exporting is a view
+        # action, so SA keeps unscoped export access same as the on-screen table.
+        if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN", "FIG_PRESIDENT"):
+            raise HTTPException(403, "State/District Admin/FIG President only")
+        query = db.query(Land)
+        if user.role == "DISTRICT_ADMIN":
+            farmer_ids = [f.id for f in db.query(Farmer).filter(Farmer.district_id == user.district_id).all()]
+            query = query.filter(Land.farmer_id.in_(farmer_ids or [""]))
+        elif user.role == "FIG_PRESIDENT":
+            member_ids = [m.farmer_id for m in db.query(FigMember).filter(
+                FigMember.fig_id == user.fig_id, FigMember.is_active).all()]
+            query = query.filter(Land.farmer_id.in_(member_ids or [""]))
+        rows = land_report_rows(query.order_by(Land.created_at.desc()).all(), db)
+        headers = ["Dag No", "Patta No", "Farmer Code", "Farmer Name", "Area (Bigha)", "Area (Hectare)",
+                   "Village Name", "Panchayat", "Development Block", "Sericulture Circle", "District"]
+        data = [[r["dag_no"], r["patta_no"], r["farmer_code"], r["farmer_name"],
+                 r["land_area_bigha"], r["land_area_hectare"], r["village_name"],
+                 r["gaon_panchayat"], r["development_block"], r["circle_name"], r["district_name"]]
+                for r in rows]
+    elif report == "assets":
+        # Exporting is a view action — State Admin keeps unscoped access same as the
+        # on-screen table, even though SA has no write actions on Assets (see POST/PATCH
+        # /assets role gates, DISTRICT_ADMIN-only).
+        if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN", "FIG_PRESIDENT"):
+            raise HTTPException(403, "State/District Admin/FIG President only")
+        query = db.query(AssetInstance)
+        if owner_type:
+            query = query.filter(AssetInstance.owner_type == owner_type)
+        if asset_type_id:
+            query = query.filter(AssetInstance.asset_type_id == asset_type_id)
+        if status:
+            query = query.filter(AssetInstance.status == status)
+        if verification_status:
+            query = query.filter(AssetInstance.verification_status == verification_status)
+        if confidence:
+            query = query.filter(AssetInstance.confidence == confidence)
+        if gps_status:
+            query = query.filter(AssetInstance.gps_status == gps_status)
+        if q or district_id or seri_circle_id:
+            farmer_q = db.query(Farmer.id)
+            fig_q = db.query(Fig.id)
+            if district_id:
+                farmer_q = farmer_q.filter(Farmer.district_id == district_id)
+                fig_q = fig_q.filter(Fig.district_id == district_id)
+            if seri_circle_id:
+                farmer_q = farmer_q.filter(Farmer.seri_circle_id == seri_circle_id)
+                fig_q = fig_q.filter(Fig.seri_circle_id == seri_circle_id)
+            if q:
+                like = f"%{q}%"
+                farmer_q = farmer_q.filter(or_(
+                    Farmer.farmer_code.ilike(like), Farmer.mobile_no.ilike(like),
+                    Farmer.first_name.ilike(like), Farmer.last_name.ilike(like)))
+                fig_q = fig_q.filter(or_(Fig.fig_code.ilike(like), Fig.fig_name.ilike(like)))
+            farmer_ids = [r[0] for r in farmer_q.all()]
+            fig_ids = [r[0] for r in fig_q.all()]
+            query = query.filter(or_(
+                and_(AssetInstance.owner_type == "FARMER", AssetInstance.owner_id.in_(farmer_ids or [""])),
+                and_(AssetInstance.owner_type == "FIG", AssetInstance.owner_id.in_(fig_ids or [""])),
+            ))
+        if user.role == "DISTRICT_ADMIN":
+            farmer_ids2 = [f.id for f in db.query(Farmer).filter(Farmer.district_id == user.district_id).all()]
+            fig_ids2 = [g.id for g in db.query(Fig).filter(Fig.district_id == user.district_id).all()]
+            query = query.filter(AssetInstance.owner_id.in_((farmer_ids2 + fig_ids2) or [""]))
+        elif user.role == "FIG_PRESIDENT":
+            member_ids = [m.farmer_id for m in db.query(FigMember).filter(
+                FigMember.fig_id == user.fig_id, FigMember.is_active).all()]
+            query = query.filter(AssetInstance.owner_id.in_((member_ids + [user.fig_id or ""]) or [""]))
+        rows = asset_report_rows(query.order_by(AssetInstance.created_at.desc()).all(), db)
+        headers = ["Asset Code", "Asset Type", "Qty", "Owner Type", "Owner Code", "Owner Name",
+                   "Acquired Date", "Age Left (days)", "Acquired Mode", "Name of the Scheme",
+                   "Confidence Mode", "District", "Sericulture Circle", "GPS Status", "Latitude",
+                   "Longitude", "Verification Status", "Verified By", "Status", "Remarks"]
+        data = [[r["asset_code"], r["asset_type_name"], r["quantity"], r["owner_type"], r["owner_code"],
+                 r["owner_name"], r["acquisition_date"], r["age_left_days"], r["acquisition_mode"],
+                 r["scheme_name"], r["confidence"], r["district_name"], r["circle_name"],
+                 r["gps_status"], r["latitude"], r["longitude"], r["verification_status"],
+                 r["last_verified_by_name"], r["status"], r["remarks"]]
+                for r in rows]
+    elif report == "submission-status":
+        if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN"):
+            raise HTTPException(403, "State/District Admin only")
+        if not month:
+            raise HTTPException(400, "month is required")
+        district_scope = user.district_id if user.role == "DISTRICT_ADMIN" else None
+        rows = submission_status_rows(db, user.role, district_scope, month)
+        headers = ["FIG", "District", "Status", "Submitted On"]
+        data = [[r["fig_name"], r["district_name"], r["status"], r["submitted_on"]] for r in rows]
+    elif report == "submission-history":
+        if user.role != "FIG_PRESIDENT":
+            raise HTTPException(403, "FIG President only")
+        rows = fp_submission_history_rows(db, user.fig_id)
+        headers = ["Month", "Meeting Title", "Submission Date", "Venue", "Re-submitted"]
+        data = [[r["month"], r["meeting_title"], r["submitted_on"], r["venue"], r["re_submitted"]] for r in rows]
+    elif report == "yield-matrix":
+        if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN"):
+            raise HTTPException(403, "State/District Admin only")
+        if not level or level not in yield_matrix.LEVELS:
+            raise HTTPException(400, f"level must be one of: {', '.join(yield_matrix.LEVELS)}")
+        if level == "state" and user.role != "STATE_ADMIN":
+            raise HTTPException(403, "State Admin only")
+        months = period_months(month, fiscal_year)
+        if months is None and from_month and to_month:
+            months = month_range(from_month, to_month)
+        if months is None:
+            months = [datetime.now(timezone.utc).strftime("%Y-%m")]
+        district_scope = scope_district(user, None)
+        requested = [p for p in product_ids.split(",") if p] if product_ids else None
+
+        # Export is never paginated — reuses the full unpaginated entity universe so the
+        # download always matches the on-screen filters exactly, just not the on-screen page.
+        entities, _ = yield_matrix.entities_page(db, level, district_scope, page=1, page_size=1_000_000)
+        avail = yield_matrix.available_products(db, level, district_scope, months)
+        input_ids, output_ids, stock_ids = yield_matrix.resolve_column_ids(avail, requested)
+        input_sources = yield_matrix.available_input_sources(db, level, district_scope, months, input_ids)
+        matrix = yield_matrix.build_matrix(db, level, entities, months, input_ids, output_ids, stock_ids, input_sources)
+
+        # "meeting" doesn't fit the generic "Entity + breadcrumbs" shape every other level
+        # uses (row["name"] is a farmer, but Meeting ID/Month need to come *before* it, and it
+        # carries its own raw-record-only Excel columns) — handled as its own branch throughout.
+        is_meeting = level == "meeting"
+        if is_meeting:
+            headers = ["Meeting ID", "Meeting Month", "Farmer", "Farmer Code",
+                       "District", "Sericulture Circle", "FIG", "FIG Code",
+                       "Meeting Title", "Meeting Date", "Meeting Venue", "Farmer Mobile Number"]
+        else:
+            context_labels = {
+                "state": [],
+                "farmer": ["Farmer Code", "District", "Sericulture Circle", "FIG", "FIG Code"],
+                "fig": ["FIG Code", "District", "Sericulture Circle"],
+                "sericulture_circle": ["District"],
+                "district": [],
+            }[level]
+            context_keys = {
+                "state": [],
+                "farmer": ["farmer_code", "district_name", "seri_circle_name", "fig_name", "fig_code"],
+                "fig": ["fig_code", "district_name", "seri_circle_name"],
+                "sericulture_circle": ["district_name"],
+                "district": [],
+            }[level]
+            headers = ["Entity"] + context_labels
+
+        # Excel always carries every possible column (full INPUT per-source breakdown, every
+        # OUTPUT sub-field) regardless of what the on-screen YieldMatrixTable trims — this
+        # dispatcher is deliberately NOT kept in lockstep with the on-screen column set.
+        for p in matrix["input_products"]:
+            headers.append(f"{p['product_name']} (Input Total, {p['unit_of_measure']})")
+            for source in p["sources"]:
+                headers.append(f"{p['product_name']} — {source} (Input, {p['unit_of_measure']})")
+        for p in matrix["output_products"]:
+            headers.append(f"{p['product_name']} (Planned)")
+            headers.append(f"{p['product_name']} (Actual)")
+            for er in p["expected_ranges"]:
+                headers.append(f"{p['product_name']} (Expected, via {er['input_product_name']})")
+            headers.append(f"{p['product_name']} (Loss Reason)")
+            headers.append(f"{p['product_name']} (Next Plan)")
+            headers.append(f"{p['product_name']} (Sold Qty)")
+            headers.append(f"{p['product_name']} (Sold Rate)")
+            headers.append(f"{p['product_name']} (Total Earned)")
+        # "meeting" rows carry the historical stock_balance from that one record, not a live
+        # snapshot — labelled distinctly so it's never confused with every other level's Stock.
+        stock_suffix = "at submission" if is_meeting else None
+        headers += [f"{p['product_name']} (Stock, {stock_suffix or p['unit_of_measure']})" for p in matrix["stock_products"]]
+
+        data = []
+        for row in matrix["items"]:
+            if is_meeting:
+                line = [row.get("meeting_id") or "—", row.get("meeting_month") or "—",
+                        row["name"], row.get("farmer_code") or "—",
+                        row.get("district_name") or "—", row.get("seri_circle_name") or "—",
+                        row.get("fig_name") or "—", row.get("fig_code") or "—",
+                        row.get("meeting_title") or "—", row.get("meeting_date") or "—",
+                        row.get("meeting_venue") or "—", row.get("farmer_mobile") or "—"]
+            else:
+                line = [row["name"]] + [row.get(k) or "—" for k in context_keys]
+            for p in matrix["input_products"]:
+                cell = row["input"].get(p["id"], {"total": 0, "by_source": {}})
+                line.append(cell["total"])
+                for source in p["sources"]:
+                    line.append(cell["by_source"].get(source, 0))
+            for p in matrix["output_products"]:
+                cell = row["output"].get(p["id"], {"planned": 0, "actual": 0, "expected_ranges": {},
+                                                     "next_month_plan": 0, "sold_quantity": 0,
+                                                     "earning": 0, "sold_rate": None, "loss_reason_name": None})
+                line.append(cell["planned"])
+                line.append(cell["actual"])
+                for er in p["expected_ranges"]:
+                    rng = cell["expected_ranges"].get(er["standard_id"])
+                    line.append(f"{rng['min']}–{rng['max']}" if rng else "—")
+                line.append(cell["loss_reason_name"] or "—")
+                line.append(cell["next_month_plan"])
+                line.append(cell["sold_quantity"])
+                line.append(cell["sold_rate"] if cell["sold_rate"] is not None else "—")
+                line.append(cell["earning"])
+            line += [row["stock"].get(p["id"], 0) for p in matrix["stock_products"]]
+            data.append(line)
     else:
         raise HTTPException(404, f"Unknown report: {report}")
 
     title = report.replace("-", " ").title()
     generated_at = None
     filename = f"{report}.{format}"
-    if report in ("farmers", "figs"):
+    if report in ("farmers", "figs", "lands", "assets", "submission-status", "submission-history"):
         now = datetime.now(timezone.utc)
         generated_at = now.strftime("%Y-%m-%d %H:%M:%S UTC")
         filename = f"{report}_{now.strftime('%Y%m%d_%H%M%S')}.{format}"

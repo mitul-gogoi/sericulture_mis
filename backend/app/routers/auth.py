@@ -5,13 +5,13 @@ from sqlalchemy.orm import Session
 import jwt
 from app.core.db import get_session
 from app.core.security import (
-    verify_password, create_access_token, create_refresh_token, decode_refresh,
+    verify_password, hash_password, create_access_token, create_refresh_token, decode_refresh,
 )
 from app.core.limiter import limiter
 from app.core.config import settings
 from app.core.deps import get_current_user
 from app.models import User
-from app.schemas import LoginIn, RefreshIn, TokenOut
+from app.schemas import LoginIn, RefreshIn, TokenOut, ChangePasswordIn
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -71,3 +71,17 @@ def refresh(body: RefreshIn, db: Session = Depends(get_session)):
 @router.get("/me")
 def me(user: User = Depends(get_current_user)):
     return _user_dict(user)
+
+
+@router.post("/change-password")
+def change_password(body: ChangePasswordIn, user: User = Depends(get_current_user),
+                    db: Session = Depends(get_session)):
+    if not verify_password(body.old_password, user.password_hash):
+        raise HTTPException(400, "Current password is incorrect")
+    if len(body.new_password) < 6:
+        raise HTTPException(400, "New password must be at least 6 characters")
+    if body.new_password == body.old_password:
+        raise HTTPException(400, "New password must be different from the current password")
+    user.password_hash = hash_password(body.new_password)
+    db.commit()
+    return {"ok": True}

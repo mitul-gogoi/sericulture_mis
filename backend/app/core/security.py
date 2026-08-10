@@ -5,6 +5,8 @@ import jwt
 import bcrypt
 from .config import settings
 
+DEFAULT_FARMER_PASSWORD = "farmer@123"
+
 
 def hash_password(pw: str) -> str:
     return bcrypt.hashpw(pw.encode(), bcrypt.gensalt()).decode()

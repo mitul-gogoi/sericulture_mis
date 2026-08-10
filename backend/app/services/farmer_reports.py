@@ -2,8 +2,9 @@
 paginated table, and Excel/PDF export — shared by routers/farmers.py (list_farmers)
 and routers/reports.py (export dispatcher's "farmers" branch)."""
 from typing import Optional
+from sqlalchemy import exists
 from sqlalchemy.orm import Query, Session
-from app.models import Farmer, Caste, Religion, EducationLevel, District, SericultureCircle, SilkTypeActivityProduct, Activity
+from app.models import Farmer, Caste, Religion, EducationLevel, District, SericultureCircle, SilkTypeActivityProduct, Activity, FigMember, Fig
 
 
 def apply_farmer_filters(
@@ -16,6 +17,7 @@ def apply_farmer_filters(
     experience_max: Optional[int] = None,
     has_bank_details: Optional[bool] = None,
     is_active: Optional[bool] = None,
+    has_fig: Optional[bool] = None,
 ) -> Query:
     """Pure additive filter application — every param is optional and a no-op when None,
     so callers that never pass these (the legacy GET /farmers consumers) are unaffected."""
@@ -36,7 +38,25 @@ def apply_farmer_filters(
         query = query.filter(has_expr if has_bank_details else ~has_expr)
     if is_active is not None:
         query = query.filter(Farmer.is_active == is_active)
+    if has_fig is not None:
+        member_exists = exists().where(FigMember.farmer_id == Farmer.id, FigMember.is_active)
+        query = query.filter(member_exists if has_fig else ~member_exists)
     return query
+
+
+def fig_by_farmer(db: Session, farmer_ids: list[str]) -> dict[str, Fig]:
+    """A farmer's *current* FIG, resolved via FigMember.is_active alone — the same
+    "current membership" convention used everywhere else in this codebase. A farmer
+    with no active membership (a solo farmer) is simply absent from the returned dict."""
+    if not farmer_ids:
+        return {}
+    rows = (
+        db.query(FigMember.farmer_id, Fig)
+        .join(Fig, Fig.id == FigMember.fig_id)
+        .filter(FigMember.farmer_id.in_(farmer_ids), FigMember.is_active)
+        .all()
+    )
+    return {farmer_id: fig for farmer_id, fig in rows}
 
 
 def farmer_report_rows(query: Query, db: Session) -> list[dict]:
@@ -57,6 +77,7 @@ def farmer_report_rows(query: Query, db: Session) -> list[dict]:
         for stap, activity in db.query(SilkTypeActivityProduct, Activity)
         .join(Activity, Activity.id == SilkTypeActivityProduct.activity_id).all()
     }
+    fig_map = fig_by_farmer(db, [f.id for f in rows])
     out = []
     for f in rows:
         all_activities = []
@@ -93,5 +114,6 @@ def farmer_report_rows(query: Query, db: Session) -> list[dict]:
             "branch_name": f.branch_name,
             "ifsc_code": f.ifsc_code,
             "is_active": f.is_active,
+            "fig_name": fig_map[f.id].fig_name if f.id in fig_map else "Solo",
         })
     return out

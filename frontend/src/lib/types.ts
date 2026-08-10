@@ -1,4 +1,4 @@
-export type Role = "STATE_ADMIN" | "DISTRICT_ADMIN" | "FIG_PRESIDENT";
+export type Role = "STATE_ADMIN" | "DISTRICT_ADMIN" | "FIG_PRESIDENT" | "FARMER";
 
 export interface User {
   id: string;
@@ -52,6 +52,14 @@ export interface SilkTypeActivityProduct {
   product_name: string; unit_of_measure: string; is_perishable: boolean; is_byproduct: boolean;
 }
 
+export interface ConversionStandard {
+  id: string; silk_type_id: string; silk_type_name: string | null;
+  input_product_id: string; input_product_name: string | null; input_unit_of_measure: string | null;
+  output_product_id: string; output_product_name: string | null; output_unit_of_measure: string | null;
+  standard_input_qty: number; output_min_qty: number; output_max_qty: number;
+  min_pct: number; max_pct: number; is_active: boolean;
+}
+
 export interface Farmer {
   id: string; farmer_code: string;
   first_name: string; middle_name?: string | null; last_name: string;
@@ -70,6 +78,7 @@ export interface Farmer {
   account_number?: string | null; bank_name?: string | null;
   branch_name?: string | null; ifsc_code?: string | null; passbook_path?: string | null;
   is_active: boolean;
+  fig_id?: string | null; fig_name?: string | null;
 }
 
 export interface AssetDetail { asset_type_id: string; quantity: number; acquisition_year?: number | null }
@@ -92,6 +101,86 @@ export interface Meeting {
   id: string; fig_id: string; meeting_title: string; meeting_date: string;
   meeting_venue: string; meeting_month: string; submitted_at: string;
   minutes_path?: string | null;
+}
+
+export interface MeetingDetailOutput {
+  product_name: string; planned_yield: number; actual_yield: number; next_month_plan: number;
+  stock_balance: number; sold_quantity: number; sold_rate: number; earning: number;
+  loss_reason_id?: string | null; loss_reason_name?: string | null;
+}
+export interface MeetingDetailByproduct {
+  product_id: string; product_name: string; quantity: number; planned_quantity: number; next_month_plan: number;
+  stock_balance: number; sold_quantity: number; sold_rate: number; earning: number;
+  loss_reason_id?: string | null; loss_reason_name?: string | null;
+}
+export interface MeetingDetailInput {
+  product_id: string; product_name: string; quantity: number; unit_of_measure: string;
+  source_type_id?: string | null; source_type_name?: string | null;
+  scheme_id?: string | null; scheme_name?: string | null;
+}
+export interface MeetingDetailEntry {
+  farmer_id: string; farmer_name: string; stap_id: string; activity_name: string;
+  is_primary_stage: boolean; output: MeetingDetailOutput;
+  byproducts: MeetingDetailByproduct[]; inputs: MeetingDetailInput[];
+}
+export interface MeetingDetailAttendance { farmer_id: string; farmer_name: string; mobile: string; is_present: boolean }
+export interface MeetingDetail {
+  meeting: {
+    id: string; fig_id: string; fig_name: string; meeting_title: string; meeting_date: string;
+    meeting_time?: string | null; meeting_venue: string; meeting_details?: string | null;
+    minutes_path?: string | null; next_meeting_date?: string | null; meeting_month: string;
+    submitted_at: string;
+  };
+  attendance: MeetingDetailAttendance[];
+  entries: MeetingDetailEntry[];
+}
+
+export interface MeetingCorrection {
+  id: string; meeting_id: string; fig_id: string; submitted_by_user_id: string; submitted_at: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
+  reviewed_by_user_id?: string | null; reviewed_at?: string | null; rejection_reason?: string | null;
+}
+
+export interface FarmerSubmission {
+  id: string; farmer_id: string; submission_code: string; submission_month: string;
+  submitted_at: string; created_at: string;
+}
+export interface FarmerSubmissionDetailEntry {
+  stap_id: string; activity_name: string; is_primary_stage: boolean;
+  output: MeetingDetailOutput; byproducts: MeetingDetailByproduct[]; inputs: MeetingDetailInput[];
+}
+export interface FarmerSubmissionDetail {
+  submission: {
+    id: string; submission_code: string; submission_month: string; submitted_at: string;
+    farmer_id: string; farmer_name: string; farmer_code?: string | null;
+  };
+  entries: FarmerSubmissionDetailEntry[];
+}
+export interface FarmerSubmissionCorrection {
+  id: string; farmer_submission_id: string; farmer_id: string; submitted_by_user_id: string; submitted_at: string;
+  status: "PENDING" | "ACCEPTED" | "REJECTED";
+  reviewed_by_user_id?: string | null; reviewed_at?: string | null; rejection_reason?: string | null;
+}
+export interface FarmerSubmissionListRow {
+  submission_id: string; submission_code: string; farmer_id: string; farmer_name: string;
+  farmer_code?: string | null; district_name: string | null; month: string; submitted_on: string;
+}
+export interface PendingFarmerCorrectionRow {
+  correction_id: string; farmer_submission_id: string; farmer_name: string;
+  farmer_code?: string | null; district_name: string | null; month: string | null; submitted_on: string;
+}
+
+export interface SubmissionStatusRow {
+  fig_id: string; fig_name: string; district_name: string | null;
+  status: "Submitted" | "Pending"; submitted_on: string | null; meeting_id: string | null;
+}
+export interface FpSubmissionHistoryRow {
+  meeting_id: string; month: string; meeting_title: string; submitted_on: string;
+  venue: string; re_submitted: "Yes" | "No"; minutes_path: string | null;
+}
+export interface PendingCorrectionRow {
+  correction_id: string; meeting_id: string; fig_name: string | null;
+  district_name: string | null; month: string | null; submitted_on: string;
 }
 
 export interface InputSourceCategory { id: string; category_name: string; is_active: boolean }
@@ -139,6 +228,47 @@ export interface Stock {
   last_produced_month?: string | null; last_entry_at: string; age_days?: number | null;
 }
 
+export type YieldMatrixLevel = "state" | "district" | "sericulture_circle" | "fig" | "farmer" | "meeting";
+
+export interface YieldMatrixProduct { id: string; product_name: string; unit_of_measure: string }
+export interface YieldMatrixInputProduct extends YieldMatrixProduct { sources: string[] }
+export interface YieldMatrixInputCell { total: number; by_source: Record<string, number> }
+export interface YieldMatrixExpectedRange {
+  standard_id: string; input_product_id: string; input_product_name: string;
+  min_pct: number; max_pct: number;
+}
+export interface YieldMatrixOutputProduct extends YieldMatrixProduct {
+  expected_ranges: YieldMatrixExpectedRange[];
+}
+export interface YieldMatrixExpectedValue { min: number; max: number; input_qty: number }
+export interface YieldMatrixOutputCell {
+  planned: number; actual: number;
+  expected_ranges: Record<string, YieldMatrixExpectedValue | null>;
+  next_month_plan: number; sold_quantity: number; earning: number;
+  sold_rate: number | null; loss_reason_name: string | null;
+}
+export interface YieldMatrixItem {
+  id: string; name: string;
+  district_name?: string | null; seri_circle_name?: string | null; fig_name?: string | null;
+  fig_code?: string | null; farmer_code?: string | null;
+  // "meeting" level only — the raw-record identity/context fields.
+  meeting_id?: string | null; meeting_month?: string | null;
+  meeting_title?: string | null; meeting_date?: string | null;
+  meeting_venue?: string | null; farmer_mobile?: string | null;
+  input: Record<string, YieldMatrixInputCell>;
+  output: Record<string, YieldMatrixOutputCell>;
+  stock: Record<string, number>;
+}
+export interface YieldMatrixResponse {
+  level: YieldMatrixLevel; months: string[];
+  input_products: YieldMatrixInputProduct[];
+  output_products: YieldMatrixOutputProduct[];
+  stock_products: YieldMatrixProduct[];
+  available_products: { input: string[]; output: string[]; stock: string[] };
+  items: YieldMatrixItem[];
+  page: number; page_size: number; total: number;
+}
+
 export interface Land {
   id: string; farmer_id: string; dag_no?: string | null; patta_no?: string | null;
   land_type: string; land_area_sqm?: number | null; land_area_bigha?: number | null;
@@ -146,6 +276,23 @@ export interface Land {
   gps_points?: { latitude: number; longitude: number }[] | null;
   overlap_detected: boolean; overlapping_parcel_ids: string[];
   failure_reason?: string | null; farmer?: Partial<Farmer>;
+  // Flat fields populated by the paginated GET /lands (page param) and the lands export —
+  // the legacy nested `farmer` above is only populated by the unpaginated fallback shape.
+  farmer_code?: string | null; farmer_name?: string | null;
+  village_name?: string | null; gaon_panchayat?: string | null; development_block?: string | null;
+  district_name?: string | null; circle_name?: string | null;
+  // Present for FIG_PRESIDENT/DISTRICT_ADMIN/STATE_ADMIN callers only — true when a FIG-member
+  // farmer has self-captured GPS for this parcel, staged as a private draft awaiting the FIG
+  // President to review/submit (see GET /lands/{id}/gps/draft).
+  has_gps_draft?: boolean;
+}
+
+export interface LandGpsDraft {
+  points: { latitude: number; longitude: number }[]; updated_at: string; farmer_id: string;
+}
+
+export interface LandsPage {
+  items: Land[]; total: number; pending_count: number; overlap_count: number;
 }
 
 export const LAND_TYPES = ["Owned", "Leased", "Community", "Government", "Forest"] as const;
@@ -169,6 +316,8 @@ export type AssetVerificationStatus = "UNVERIFIED" | "CIRCLE_VERIFIED" | "DISPUT
 export type AssetConfidence =
   "FARMER_SELF_DECLARED" | "CIRCLE_OFFICER_RECOLLECTION" | "DOCUMENTARY_EVIDENCE_SEEN";
 
+export type AssetGpsStatus = "Not Submitted" | "Pending" | "Verified" | "Failed";
+
 export interface AssetInstance {
   id: string; asset_type_id: string; asset_type_name?: string | null;
   category?: AssetCategory | null; ownership_level?: AssetOwnershipLevel | null;
@@ -180,6 +329,25 @@ export interface AssetInstance {
   confidence?: AssetConfidence | null; photo_path?: string | null; remarks?: string | null;
   last_verified_by?: string | null; last_verified_by_name?: string | null;
   last_verified_at?: string | null; created_at: string;
+  // Flat fields populated by the paginated GET /assets (page param) and the assets export —
+  // asset_code/gps_status/latitude/longitude are also present on the legacy unpaginated shape.
+  asset_code: string; owner_code?: string | null;
+  district_name?: string | null; circle_name?: string | null; scheme_name?: string | null;
+  age_left_days?: number | null;
+  latitude?: number | null; longitude?: number | null;
+  gps_status: AssetGpsStatus; gps_failure_reason?: string | null;
+  // Present for FIG_PRESIDENT/DISTRICT_ADMIN/STATE_ADMIN callers only — true when a FIG-member
+  // farmer has self-captured GPS for this asset, staged as a private draft awaiting the FIG
+  // President to review/submit (see GET /assets/{id}/gps/draft).
+  has_gps_draft?: boolean;
+}
+
+export interface AssetsPage {
+  items: AssetInstance[]; total: number;
+}
+
+export interface AssetGpsDraft {
+  latitude: number; longitude: number; updated_at: string; farmer_id: string;
 }
 
 export type AssetVerifyResult = "CONFIRMED_PRESENT" | "NOT_FOUND" | "PARTIALLY_FUNCTIONAL";
@@ -243,10 +411,29 @@ export interface TrainingCertificate {
   issued_at: string; pdf_path?: string | null;
   revoked: boolean; revoked_at?: string | null; revoked_reason?: string | null;
 }
-export interface Notification {
-  id: string; title: string; details: string; sent_at: string;
-  sent_by_role: string; recipient_type: string;
-  is_read?: boolean; recipient_id?: string;
+export interface ThreadListItem {
+  thread_id: string; notification_code: string; title: string; other_party_name: string | null;
+  latest_details_snippet: string; latest_sent_at: string; latest_sent_by_role: string;
+  latest_reply_seq: number; is_read: boolean;
+}
+export interface ThreadMessage {
+  id: string; notification_code: string; reply_seq: number; title: string; details: string;
+  sent_at: string; sent_by_user_id: string; sent_by_name: string | null; sent_by_role: string;
+  attachment_path?: string | null; in_reply_to_id?: string | null; recipient_names: string[];
+}
+export interface ThreadDetail {
+  ancestor: ThreadMessage | null;
+  messages: ThreadMessage[];
+}
+export interface PaginatedThreads { items: ThreadListItem[]; total: number }
+export interface NotificationRecipientRow {
+  id: string; recipient_user_id: string; is_read: boolean; read_at: string | null;
+  user_name: string | null; user_mobile: string | null;
+}
+export interface NotificationCandidate {
+  id: string; name: string | null; mobile_no: string;
+  district_id: string | null; district_name: string | null;
+  fig_id: string | null; fig_name: string | null;
 }
 
 export type AnalyticsLevel = "district" | "sericulture_circle" | "fig" | "farmer";
@@ -281,8 +468,9 @@ export interface ProductMonthlyTrendResponse {
 
 export interface DashboardStats {
   farmers?: number; figs?: number; districts?: number;
-  lands_pending?: number; pending_trainings?: number;
+  lands_pending?: number; assets_gps_pending?: number; pending_trainings?: number;
   members?: number; meetings?: number;
+  lands_needing_gps?: number; assets_needing_gps?: number;
   submitted_this_month?: boolean; current_month?: string;
   fig_name?: string | null; fig_code?: string | null; district_name?: string | null;
 }

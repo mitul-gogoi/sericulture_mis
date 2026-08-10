@@ -5,7 +5,7 @@ import type { District, SericultureCircle, Caste, Religion, EducationLevel } fro
 export interface FarmerReportFilters {
   gender: string; education_level_id: string; caste_id: string; religion_id: string;
   district_id: string; seri_circle_id: string; experience_min: string; experience_max: string;
-  has_bank_details: string; is_active: string;
+  has_bank_details: string; is_active: string; has_fig: string;
 }
 
 export function FarmerFilterPanel({
@@ -70,6 +70,12 @@ export function FarmerFilterPanel({
           <select className="input mt-1" value={filters.is_active} onChange={(e) => setFilters({ ...filters, is_active: e.target.value })}>
             <option value="">Any</option><option value="true">Active</option><option value="false">Inactive</option>
           </select></div>
+        {role !== "FIG_PRESIDENT" && (
+          <div><label className="label-tag">FIG Membership</label>
+            <select className="input mt-1" value={filters.has_fig} onChange={(e) => setFilters({ ...filters, has_fig: e.target.value })}>
+              <option value="">Any</option><option value="true">FIG Member</option><option value="false">Solo</option>
+            </select></div>
+        )}
       </div>
       <div className="flex justify-end mt-3">
         <button type="submit" data-testid="farmers-search-btn" className="btn-primary">Search</button>

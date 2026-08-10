@@ -1,9 +1,10 @@
 """FIG request DTOs."""
-from typing import Optional
+from typing import Optional, List
 from datetime import date
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from .assets import AssetDetailIn
 
-__all__ = ["FigIn", "FigMemberIn", "PresidentSetIn", "FigUpdateIn", "PresidentPasswordResetIn"]
+__all__ = ["FigIn", "FigMemberIn", "PresidentSetIn", "FigUpdateIn"]
 
 
 class FigIn(BaseModel):
@@ -22,6 +23,7 @@ class FigIn(BaseModel):
     meeting_venue: Optional[str] = ""
     remarks: Optional[str] = ""
     member_ids: list[str] = []
+    assets: List[AssetDetailIn] = Field(default_factory=list)
 
 
 class FigMemberIn(BaseModel):
@@ -33,8 +35,6 @@ class FigMemberIn(BaseModel):
 class PresidentSetIn(BaseModel):
     fig_id: str
     farmer_id: str
-    mobile_no: str
-    password: str
 
 
 class FigUpdateIn(BaseModel):
@@ -51,8 +51,3 @@ class FigUpdateIn(BaseModel):
     contact_no: Optional[str] = None
     meeting_venue: Optional[str] = None
     remarks: Optional[str] = None
-
-
-class PresidentPasswordResetIn(BaseModel):
-    fig_id: str
-    password: str

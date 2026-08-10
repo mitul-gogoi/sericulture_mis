@@ -1,14 +1,15 @@
-"""Notifications + inbox."""
-from datetime import datetime, timezone
+"""Notifications: broadcast/compose + threaded conversation view."""
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.db import get_session
 from app.core.deps import get_current_user, require_roles
-from app.models import Notification, NotificationRecipient, User
-from app.schemas import NotificationIn
-from app.services.notifications import create_notification
+from app.models import Notification, NotificationRecipient, User, District, Fig
+from app.schemas import NotificationIn, NotificationReplyIn
+from app.services.notifications import create_notification, create_reply, list_threads, get_thread_messages, mark_thread_read
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
+
+_PAGE_SIZES = {10, 20, 50, 100}
 
 
 @router.post("")
@@ -20,37 +21,66 @@ def send(body: NotificationIn, user: User = Depends(require_roles("STATE_ADMIN",
     return result
 
 
-@router.get("/inbox")
-def inbox(user: User = Depends(get_current_user), db: Session = Depends(get_session)):
-    rows = db.query(NotificationRecipient).filter(
-        NotificationRecipient.recipient_user_id == user.id, NotificationRecipient.is_active).all()
-    nids = [r.notification_id for r in rows]
-    notifs = {n.id: n for n in db.query(Notification).filter(
-        Notification.id.in_(nids or [""]), Notification.is_active).all()}
-    out = []
-    for r in rows:
-        n = notifs.get(r.notification_id)
-        if not n:
-            continue
-        d = n.model_dump()
-        d["is_read"] = r.is_read
-        d["recipient_id"] = r.id
-        out.append(d)
-    out.sort(key=lambda x: x.get("sent_at"), reverse=True)
-    return out
-
-
-@router.post("/read/{recipient_id}")
-def mark_read(recipient_id: str, user: User = Depends(get_current_user),
+@router.get("/candidates")
+def candidates(recipient_type: str, user: User = Depends(get_current_user),
               db: Session = Depends(get_session)):
-    r = db.query(NotificationRecipient).filter(
-        NotificationRecipient.id == recipient_id,
-        NotificationRecipient.recipient_user_id == user.id,
-    ).first()
-    if not r:
-        raise HTTPException(404, "Not found")
-    r.is_read = True
-    r.read_at = datetime.now(timezone.utc)
+    if recipient_type == "SELECTED_DA":
+        if user.role != "STATE_ADMIN":
+            raise HTTPException(403, "Only State Admin can browse District Admins")
+        rows = db.query(User).filter(User.role == "DISTRICT_ADMIN", User.is_active).all()
+    elif recipient_type == "SELECTED_FP":
+        q = db.query(User).filter(User.role == "FIG_PRESIDENT", User.is_active)
+        if user.role == "DISTRICT_ADMIN":
+            q = q.filter(User.district_id == user.district_id)
+        rows = q.all()
+    elif recipient_type == "SELECTED_SA":
+        rows = db.query(User).filter(User.role == "STATE_ADMIN", User.is_active).all()
+    else:
+        raise HTTPException(400, "Unsupported recipient_type for candidates")
+
+    district_ids = {u.district_id for u in rows if u.district_id}
+    districts = {d.id: d.district_name for d in db.query(District).filter(District.id.in_(district_ids or [""])).all()}
+    fig_ids = {u.fig_id for u in rows if u.fig_id}
+    figs = {f.id: f.fig_name for f in db.query(Fig).filter(Fig.id.in_(fig_ids or [""])).all()}
+
+    return [{
+        "id": u.id, "name": u.name, "mobile_no": u.mobile_no,
+        "district_id": u.district_id, "district_name": districts.get(u.district_id),
+        "fig_id": u.fig_id, "fig_name": figs.get(u.fig_id),
+    } for u in rows]
+
+
+@router.get("/threads")
+def list_threads_route(box: str, page: int = 1, page_size: int = 20,
+                       user: User = Depends(get_current_user), db: Session = Depends(get_session)):
+    if page_size not in _PAGE_SIZES:
+        raise HTTPException(400, "page_size must be one of 10, 20, 50, 100")
+    if box not in ("inbox", "sent"):
+        raise HTTPException(400, "box must be 'inbox' or 'sent'")
+    return list_threads(db, user, box, page, page_size)
+
+
+@router.get("/threads/{thread_id}")
+def thread_detail(thread_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_session)):
+    return get_thread_messages(db, user, thread_id)
+
+
+@router.post("/threads/{thread_id}/reply")
+def reply_to_thread(thread_id: str, body: NotificationReplyIn, user: User = Depends(get_current_user),
+                    db: Session = Depends(get_session)):
+    root = db.query(Notification).filter(
+        Notification.id == thread_id, Notification.thread_id == thread_id, Notification.is_active).first()
+    if not root:
+        raise HTTPException(404, "Thread not found")
+    result = create_reply(db, user, root, body.details, attachment_path=body.attachment_path)
+    db.commit()
+    return result
+
+
+@router.post("/threads/{thread_id}/read")
+def mark_thread_read_route(thread_id: str, user: User = Depends(get_current_user),
+                           db: Session = Depends(get_session)):
+    mark_thread_read(db, user, thread_id)
     db.commit()
     return {"ok": True}
 
@@ -89,10 +119,3 @@ def notification_recipients(notification_id: str,
         "read_at": r.read_at, "user_name": users.get(r.recipient_user_id).name if users.get(r.recipient_user_id) else None,
         "user_mobile": users.get(r.recipient_user_id).mobile_no if users.get(r.recipient_user_id) else None,
     } for r in rows]
-
-
-@router.get("/sent")
-def sent(user: User = Depends(require_roles("STATE_ADMIN", "DISTRICT_ADMIN")),
-         db: Session = Depends(get_session)):
-    return db.query(Notification).filter(Notification.sent_by_user_id == user.id).order_by(
-        Notification.sent_at.desc()).limit(200).all()

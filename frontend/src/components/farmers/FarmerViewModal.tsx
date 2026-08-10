@@ -11,11 +11,13 @@ const stapLabel = (s: SilkTypeActivityProduct) => `${s.silk_type_name} · ${s.ac
 export function FarmerViewModal({
   viewing, onClose, viewCircles, subdivisionCdcs, viewLands, viewAssets,
   districts, castes, religions, educationLevels, activities, staps,
+  canResetPassword, resetPassword, setResetPassword, onResetPassword,
 }: {
   viewing: Farmer; onClose: () => void;
   viewCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[]; viewLands: Land[]; viewAssets: AssetInstance[];
   districts: District[]; castes: Caste[]; religions: Religion[]; educationLevels: EducationLevel[];
   activities: Activity[]; staps: SilkTypeActivityProduct[];
+  canResetPassword?: boolean; resetPassword?: string; setResetPassword?: (v: string) => void; onResetPassword?: () => void;
 }) {
   const casteName = (id?: string | null) => castes.find((c) => c.id === id)?.caste_name || "—";
   const religionName = (id?: string | null) => religions.find((r) => r.id === id)?.religion_name || "—";
@@ -87,6 +89,19 @@ export function FarmerViewModal({
           <ViewField label="Branch Name" value={viewing.branch_name} />
           <ViewField label="IFSC Code" value={viewing.ifsc_code} />
           <ViewField label="Status" value={viewing.is_active ? <span className="badge badge-success">Active</span> : <span className="badge badge-muted">Inactive</span>} />
+          {canResetPassword && (
+            <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
+              <div className="label-tag mb-2">Reset Password</div>
+              <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
+                Resets this farmer's login password (mobile: {viewing.mobile_no}) if they forgot it.
+              </p>
+              <div className="flex gap-2">
+                <input placeholder="New password" type="password" className="input flex-1"
+                       value={resetPassword} onChange={(e) => setResetPassword?.(e.target.value)} />
+                <button onClick={onResetPassword} disabled={!resetPassword} className="btn-primary">Reset</button>
+              </div>
+            </div>
+          )}
           <div className="col-span-full flex justify-end gap-2 mt-2">
             <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
           </div>

@@ -112,7 +112,7 @@ export function FarmerEditModal({
             <p className="text-xs mt-1 mb-2" style={{ color: "var(--text-muted)" }}>
               Add another existing asset. FIG-level shared assets (CFC, CRC) are recorded against the FIG instead.
             </p>
-            <AssetRowsEditor value={editNewAssets} onChange={setEditNewAssets} assetTypes={assetTypes} />
+            <AssetRowsEditor value={editNewAssets} onChange={setEditNewAssets} assetTypes={assetTypes} ownerKind="FARMER" />
           </div>
           <div className="col-span-full">
             <label className="label-tag">Silk type / activity / product</label>

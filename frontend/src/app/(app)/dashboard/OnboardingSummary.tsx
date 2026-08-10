@@ -35,7 +35,7 @@ export function OnboardingSummary() {
       <div className="card p-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-heading text-lg font-bold">Farmer onboarding</h3>
-          <Link href="/reports/onboarding-trend" className="text-xs font-semibold" style={{ color: "var(--primary)" }}>View trend →</Link>
+          <Link href="/farmers?focus=onboarding-trend" className="text-xs font-semibold" style={{ color: "var(--primary)" }}>View trend →</Link>
         </div>
         <div className="flex items-baseline gap-3 mb-3">
           <div className="font-heading text-3xl font-extrabold">{(onboarding?.farmers_total_to_date ?? 0).toLocaleString()}</div>
@@ -57,7 +57,7 @@ export function OnboardingSummary() {
       <div className="card p-6">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-heading text-lg font-bold">FIG onboarding</h3>
-          <Link href="/reports/onboarding-trend" className="text-xs font-semibold" style={{ color: "var(--primary)" }}>View trend →</Link>
+          <Link href="/figs?focus=onboarding-trend" className="text-xs font-semibold" style={{ color: "var(--primary)" }}>View trend →</Link>
         </div>
         <div className="flex items-baseline gap-3 mb-3">
           <div className="font-heading text-3xl font-extrabold">{(onboarding?.figs_total_to_date ?? 0).toLocaleString()}</div>

@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from .lands import LandDetailIn
 from .assets import AssetDetailIn
 
-__all__ = ["FarmerIn", "FarmerUpdateIn"]
+__all__ = ["FarmerIn", "FarmerUpdateIn", "FarmerPasswordResetIn"]
 
 
 class FarmerIn(BaseModel):
@@ -79,3 +79,7 @@ class FarmerUpdateIn(BaseModel):
     branch_name: Optional[str] = None
     ifsc_code: Optional[str] = None
     passbook_path: Optional[str] = None
+
+
+class FarmerPasswordResetIn(BaseModel):
+    password: str

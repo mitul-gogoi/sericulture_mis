@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change Password */
+        post: operations["change_password_api_auth_change_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/master/districts": {
         parameters: {
             query?: never;
@@ -864,6 +881,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/master/conversion-standards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Conversion Standards */
+        get: operations["list_conversion_standards_api_master_conversion_standards_get"];
+        put?: never;
+        /** Create Conversion Standard */
+        post: operations["create_conversion_standard_api_master_conversion_standards_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/master/conversion-standards/{cs_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Conversion Standard */
+        delete: operations["delete_conversion_standard_api_master_conversion_standards__cs_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Conversion Standard */
+        patch: operations["update_conversion_standard_api_master_conversion_standards__cs_id__patch"];
+        trace?: never;
+    };
+    "/api/master/conversion-standards/{cs_id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Toggle Conversion Standard */
+        patch: operations["toggle_conversion_standard_api_master_conversion_standards__cs_id__active_patch"];
+        trace?: never;
+    };
     "/api/master/asset-types": {
         parameters: {
             query?: never;
@@ -935,6 +1005,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/farmers/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Own Farmer */
+        get: operations["get_own_farmer_api_farmers_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmers/me/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Own Summary */
+        get: operations["get_own_summary_api_farmers_me_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmers/me/meetings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Own Meetings */
+        get: operations["get_own_meetings_api_farmers_me_meetings_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/farmers/{farmer_id}": {
         parameters: {
             query?: never;
@@ -968,6 +1089,23 @@ export interface paths {
         head?: never;
         /** Toggle Farmer */
         patch: operations["toggle_farmer_api_farmers__farmer_id__active_patch"];
+        trace?: never;
+    };
+    "/api/farmers/{farmer_id}/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset Farmer Password */
+        post: operations["reset_farmer_password_api_farmers__farmer_id__reset_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/figs": {
@@ -1074,23 +1212,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/figs/president/reset-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reset President Password */
-        post: operations["reset_president_password_api_figs_president_reset_password_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/meetings": {
         parameters: {
             query?: never;
@@ -1103,6 +1224,143 @@ export interface paths {
         put?: never;
         /** Submit Meeting */
         post: operations["submit_meeting_api_meetings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/submission-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Submission Status */
+        get: operations["get_submission_status_api_meetings_submission_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/submission-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Submission History */
+        get: operations["get_submission_history_api_meetings_submission_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/corrections/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Pending Corrections */
+        get: operations["get_pending_corrections_api_meetings_corrections_pending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/{meeting_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Meeting Detail */
+        get: operations["get_meeting_detail_api_meetings__meeting_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/{meeting_id}/corrections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Meeting Corrections */
+        get: operations["list_meeting_corrections_api_meetings__meeting_id__corrections_get"];
+        put?: never;
+        /** Submit Correction */
+        post: operations["submit_correction_api_meetings__meeting_id__corrections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/corrections/{correction_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Correction */
+        get: operations["preview_correction_api_meetings_corrections__correction_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/corrections/{correction_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Correction */
+        post: operations["accept_correction_api_meetings_corrections__correction_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/meetings/corrections/{correction_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Correction */
+        post: operations["reject_correction_api_meetings_corrections__correction_id__reject_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1625,15 +1883,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notifications/inbox": {
+    "/api/notifications/candidates": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Inbox */
-        get: operations["inbox_api_notifications_inbox_get"];
+        /** Candidates */
+        get: operations["candidates_api_notifications_candidates_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1642,7 +1900,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notifications/read/{recipient_id}": {
+    "/api/notifications/threads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Threads Route */
+        get: operations["list_threads_route_api_notifications_threads_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/threads/{thread_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Thread Detail */
+        get: operations["thread_detail_api_notifications_threads__thread_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/threads/{thread_id}/reply": {
         parameters: {
             query?: never;
             header?: never;
@@ -1651,8 +1943,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Mark Read */
-        post: operations["mark_read_api_notifications_read__recipient_id__post"];
+        /** Reply To Thread */
+        post: operations["reply_to_thread_api_notifications_threads__thread_id__reply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/notifications/threads/{thread_id}/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark Thread Read Route */
+        post: operations["mark_thread_read_route_api_notifications_threads__thread_id__read_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1693,23 +2002,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/notifications/sent": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Sent */
-        get: operations["sent_api_notifications_sent_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/reports/dashboard": {
         parameters: {
             query?: never;
@@ -1727,23 +2019,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/reports/silk-type-distribution": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Silk Type Distribution */
-        get: operations["silk_type_distribution_api_reports_silk_type_distribution_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/reports/district-heatmap": {
         parameters: {
             query?: never;
@@ -1753,57 +2028,6 @@ export interface paths {
         };
         /** District Heatmap */
         get: operations["district_heatmap_api_reports_district_heatmap_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/scheme-utilization": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Scheme Utilization */
-        get: operations["scheme_utilization_api_reports_scheme_utilization_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/district-comparison": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** District Comparison */
-        get: operations["district_comparison_api_reports_district_comparison_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/yield-summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Yield Summary */
-        get: operations["yield_summary_api_reports_yield_summary_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1846,57 +2070,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/reports/input-summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Input Summary */
-        get: operations["input_summary_api_reports_input_summary_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/monthly-trend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Monthly Trend */
-        get: operations["monthly_trend_api_reports_monthly_trend_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/product-monthly-trend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Product Monthly Trend */
-        get: operations["product_monthly_trend_api_reports_product_monthly_trend_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/reports/onboarding-trend": {
         parameters: {
             query?: never;
@@ -1906,23 +2079,6 @@ export interface paths {
         };
         /** Onboarding Trend */
         get: operations["onboarding_trend_api_reports_onboarding_trend_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/yoy-trend": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Yoy Trend */
-        get: operations["yoy_trend_api_reports_yoy_trend_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2106,41 +2262,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/reports/analytics/lands": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Analytics Lands */
-        get: operations["analytics_lands_api_reports_analytics_lands_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/analytics/products": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Analytics Products */
-        get: operations["analytics_products_api_reports_analytics_products_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/analytics/stock": {
+    "/api/reports/analytics/yield-matrix": {
         parameters: {
             query?: never;
             header?: never;
@@ -2148,79 +2270,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Analytics Stock
-         * @description Current stock — a point-in-time balance, never a period. No month/fiscal_year param
-         *     exists on this endpoint at all, unlike every other analytics endpoint.
+         * Yield Matrix Endpoint
+         * @description Multi-granularity, multi-product Yield View matrix — the read-only District/State Admin
+         *     page. Unlike /products, /stock, /inputs above, levels here are flat and self-contained
+         *     (no parent scope id required for circle/fig/farmer) — State Admin sees every entity
+         *     statewide at the chosen granularity, District Admin sees every entity in their own
+         *     district, both paginated. See services/yield_matrix.py for the aggregation logic.
          */
-        get: operations["analytics_stock_api_reports_analytics_stock_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/analytics/inputs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Analytics Inputs */
-        get: operations["analytics_inputs_api_reports_analytics_inputs_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/analytics/dfl-efficiency": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Dfl Efficiency */
-        get: operations["dfl_efficiency_api_reports_analytics_dfl_efficiency_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/analytics/byproduct-ratio": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Byproduct Ratio */
-        get: operations["byproduct_ratio_api_reports_analytics_byproduct_ratio_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/reports/analytics/activity-efficiency": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Activity Efficiency */
-        get: operations["activity_efficiency_api_reports_analytics_activity_efficiency_get"];
+        get: operations["yield_matrix_endpoint_api_reports_analytics_yield_matrix_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2316,6 +2373,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assets/{asset_id}/gps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit Asset Gps */
+        post: operations["submit_asset_gps_api_assets__asset_id__gps_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assets/{asset_id}/gps/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify Asset Gps */
+        post: operations["verify_asset_gps_api_assets__asset_id__gps_verify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/assets/{asset_id}/verification-log": {
         parameters: {
             query?: never;
@@ -2396,6 +2487,23 @@ export interface components {
             /** Acquisition Year */
             acquisition_year?: number | null;
         };
+        /** AssetGpsSubmitIn */
+        AssetGpsSubmitIn: {
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
+        };
+        /** AssetGpsVerifyIn */
+        AssetGpsVerifyIn: {
+            /** Decision */
+            decision: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string | null;
+        };
         /** AssetInstanceIn */
         AssetInstanceIn: {
             /** Asset Type Id */
@@ -2434,6 +2542,10 @@ export interface components {
             acquisition_date?: string | null;
             /** Status */
             status?: string | null;
+            /** Confidence */
+            confidence?: string | null;
+            /** Acquisition Mode */
+            acquisition_mode?: string | null;
             /** Photo Path */
             photo_path?: string | null;
             /** Remarks */
@@ -2593,6 +2705,13 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** ChangePasswordIn */
+        ChangePasswordIn: {
+            /** Old Password */
+            old_password: string;
+            /** New Password */
+            new_password: string;
+        };
         /** CircleIn */
         CircleIn: {
             /** Circle Name */
@@ -2611,6 +2730,23 @@ export interface components {
             office_contact_no?: string | null;
             /** Officer In Charge Name */
             officer_in_charge_name?: string | null;
+        };
+        /** ConversionStandardIn */
+        ConversionStandardIn: {
+            /** Silk Type Id */
+            silk_type_id: string;
+            /** Input Product Id */
+            input_product_id: string;
+            /** Output Product Id */
+            output_product_id: string;
+            /** Standard Input Qty */
+            standard_input_qty: number;
+            /** Output Min Qty */
+            output_min_qty: number;
+            /** Output Max Qty */
+            output_max_qty: number;
+            /** Is Active */
+            is_active?: boolean | null;
         };
         /** DirectorateOfficeIn */
         DirectorateOfficeIn: {
@@ -2764,6 +2900,11 @@ export interface components {
             /** Assets */
             assets?: components["schemas"]["AssetDetailIn"][];
         };
+        /** FarmerPasswordResetIn */
+        FarmerPasswordResetIn: {
+            /** Password */
+            password: string;
+        };
         /** FarmerUpdateIn */
         FarmerUpdateIn: {
             /** First Name */
@@ -2896,6 +3037,8 @@ export interface components {
              * @default []
              */
             member_ids: string[];
+            /** Assets */
+            assets?: components["schemas"]["AssetDetailIn"][];
         };
         /** FigMemberIn */
         FigMemberIn: {
@@ -3052,6 +3195,48 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
+        /**
+         * MeetingCorrectionIn
+         * @description Same shape as MeetingIn minus fig_id — the meeting (and its FIG) is implied by the URL.
+         */
+        MeetingCorrectionIn: {
+            /** Meeting Title */
+            meeting_title: string;
+            /**
+             * Meeting Date
+             * Format: date
+             */
+            meeting_date: string;
+            /**
+             * Meeting Time
+             * @default
+             */
+            meeting_time: string | null;
+            /** Meeting Venue */
+            meeting_venue: string;
+            /**
+             * Meeting Details
+             * @default
+             */
+            meeting_details: string | null;
+            /** Minutes Path */
+            minutes_path?: string | null;
+            /** Next Meeting Date */
+            next_meeting_date?: string | null;
+            /** Attendance */
+            attendance: {
+                [key: string]: unknown;
+            }[];
+            /** Entries */
+            entries: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** MeetingCorrectionRejectIn */
+        MeetingCorrectionRejectIn: {
+            /** Rejection Reason */
+            rejection_reason: string;
+        };
         /** MeetingIn */
         MeetingIn: {
             /** Fig Id */
@@ -3101,12 +3286,12 @@ export interface components {
             /** Recipient Ids */
             recipient_ids?: string[];
         };
-        /** PresidentPasswordResetIn */
-        PresidentPasswordResetIn: {
-            /** Fig Id */
-            fig_id: string;
-            /** Password */
-            password: string;
+        /** NotificationReplyIn */
+        NotificationReplyIn: {
+            /** Details */
+            details: string;
+            /** Attachment Path */
+            attachment_path?: string | null;
         };
         /** PresidentSetIn */
         PresidentSetIn: {
@@ -3114,10 +3299,6 @@ export interface components {
             fig_id: string;
             /** Farmer Id */
             farmer_id: string;
-            /** Mobile No */
-            mobile_no: string;
-            /** Password */
-            password: string;
         };
         /** ProductIn */
         ProductIn: {
@@ -3576,6 +3757,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    change_password_api_auth_change_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5964,6 +6178,172 @@ export interface operations {
             };
         };
     };
+    list_conversion_standards_api_master_conversion_standards_get: {
+        parameters: {
+            query?: {
+                silk_type_id?: string | null;
+                all?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_conversion_standard_api_master_conversion_standards_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversionStandardIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_conversion_standard_api_master_conversion_standards__cs_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cs_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_conversion_standard_api_master_conversion_standards__cs_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cs_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversionStandardIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toggle_conversion_standard_api_master_conversion_standards__cs_id__active_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cs_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActiveToggleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_asset_types_api_master_asset_types_get: {
         parameters: {
             query?: {
@@ -6207,6 +6587,66 @@ export interface operations {
             };
         };
     };
+    get_own_farmer_api_farmers_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_own_summary_api_farmers_me_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_own_meetings_api_farmers_me_meetings_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
     get_farmer_api_farmers__farmer_id__get: {
         parameters: {
             query?: never;
@@ -6285,6 +6725,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ActiveToggleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_farmer_password_api_farmers__farmer_id__reset_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                farmer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FarmerPasswordResetIn"];
             };
         };
         responses: {
@@ -6579,39 +7054,6 @@ export interface operations {
             };
         };
     };
-    reset_president_password_api_figs_president_reset_password_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PresidentPasswordResetIn"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_meetings_api_meetings_get: {
         parameters: {
             query?: {
@@ -6654,6 +7096,285 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["MeetingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_submission_status_api_meetings_submission_status_get: {
+        parameters: {
+            query: {
+                month: string;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_submission_history_api_meetings_submission_history_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pending_corrections_api_meetings_corrections_pending_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_meeting_detail_api_meetings__meeting_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_meeting_corrections_api_meetings__meeting_id__corrections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_correction_api_meetings__meeting_id__corrections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meeting_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetingCorrectionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_correction_api_meetings_corrections__correction_id__preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                correction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_correction_api_meetings_corrections__correction_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                correction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_correction_api_meetings_corrections__correction_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                correction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetingCorrectionRejectIn"];
             };
         };
         responses: {
@@ -6844,6 +7565,8 @@ export interface operations {
             query?: {
                 farmer_id?: string | null;
                 status?: string | null;
+                page?: number | null;
+                page_size?: number | null;
             };
             header?: never;
             path?: never;
@@ -7849,9 +8572,11 @@ export interface operations {
             };
         };
     };
-    inbox_api_notifications_inbox_get: {
+    candidates_api_notifications_candidates_get: {
         parameters: {
-            query?: never;
+            query: {
+                recipient_type: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7867,14 +8592,122 @@ export interface operations {
                     "application/json": unknown;
                 };
             };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
     };
-    mark_read_api_notifications_read__recipient_id__post: {
+    list_threads_route_api_notifications_threads_get: {
+        parameters: {
+            query: {
+                box: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    thread_detail_api_notifications_threads__thread_id__get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                recipient_id: string;
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reply_to_thread_api_notifications_threads__thread_id__reply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NotificationReplyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    mark_thread_read_route_api_notifications_threads__thread_id__read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                thread_id: string;
             };
             cookie?: never;
         };
@@ -7962,47 +8795,7 @@ export interface operations {
             };
         };
     };
-    sent_api_notifications_sent_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
     dashboard_api_reports_dashboard_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    silk_type_distribution_api_reports_silk_type_distribution_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -8026,91 +8819,6 @@ export interface operations {
         parameters: {
             query?: {
                 month?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    scheme_utilization_api_reports_scheme_utilization_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-        };
-    };
-    district_comparison_api_reports_district_comparison_get: {
-        parameters: {
-            query?: {
-                month?: string | null;
-                fiscal_year?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    yield_summary_api_reports_yield_summary_get: {
-        parameters: {
-            query?: {
-                month?: string | null;
-                fiscal_year?: string | null;
-                district_id?: string | null;
             };
             header?: never;
             path?: never;
@@ -8202,142 +8910,10 @@ export interface operations {
             };
         };
     };
-    input_summary_api_reports_input_summary_get: {
-        parameters: {
-            query?: {
-                month?: string | null;
-                fiscal_year?: string | null;
-                district_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    monthly_trend_api_reports_monthly_trend_get: {
-        parameters: {
-            query?: {
-                month?: string | null;
-                fiscal_year?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    product_monthly_trend_api_reports_product_monthly_trend_get: {
-        parameters: {
-            query?: {
-                metric?: string;
-                product_id?: string | null;
-                district_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     onboarding_trend_api_reports_onboarding_trend_get: {
         parameters: {
             query?: {
                 fiscal_year?: string | null;
-                district_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    yoy_trend_api_reports_yoy_trend_get: {
-        parameters: {
-            query: {
-                fiscal_years: string[];
-                product_id?: string | null;
-                metric?: string;
                 district_id?: string | null;
             };
             header?: never;
@@ -8389,6 +8965,16 @@ export interface operations {
                 formation_date_to?: string | null;
                 product_id?: string | null;
                 activity_id?: string | null;
+                level?: string | null;
+                from_month?: string | null;
+                to_month?: string | null;
+                product_ids?: string | null;
+                owner_type?: string | null;
+                asset_type_id?: string | null;
+                status?: string | null;
+                verification_status?: string | null;
+                confidence?: string | null;
+                gps_status?: string | null;
             };
             header?: never;
             path?: never;
@@ -8715,224 +9301,16 @@ export interface operations {
             };
         };
     };
-    analytics_lands_api_reports_analytics_lands_get: {
+    yield_matrix_endpoint_api_reports_analytics_yield_matrix_get: {
         parameters: {
             query: {
                 level: string;
-                district_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    analytics_products_api_reports_analytics_products_get: {
-        parameters: {
-            query: {
-                level: string;
-                product_id: string;
                 month?: string | null;
-                fiscal_year?: string | null;
                 from_month?: string | null;
                 to_month?: string | null;
-                district_id?: string | null;
-                seri_circle_id?: string | null;
-                fig_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    analytics_stock_api_reports_analytics_stock_get: {
-        parameters: {
-            query: {
-                level: string;
-                product_id: string;
-                district_id?: string | null;
-                seri_circle_id?: string | null;
-                fig_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    analytics_inputs_api_reports_analytics_inputs_get: {
-        parameters: {
-            query: {
-                level: string;
-                product_id: string;
-                month?: string | null;
-                fiscal_year?: string | null;
-                from_month?: string | null;
-                to_month?: string | null;
-                district_id?: string | null;
-                seri_circle_id?: string | null;
-                fig_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    dfl_efficiency_api_reports_analytics_dfl_efficiency_get: {
-        parameters: {
-            query?: {
-                month?: string | null;
-                fiscal_year?: string | null;
-                district_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    byproduct_ratio_api_reports_analytics_byproduct_ratio_get: {
-        parameters: {
-            query?: {
-                month?: string | null;
-                fiscal_year?: string | null;
-                district_id?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    activity_efficiency_api_reports_analytics_activity_efficiency_get: {
-        parameters: {
-            query: {
-                activity_id: string;
-                month?: string | null;
-                fiscal_year?: string | null;
-                district_id?: string | null;
+                product_ids?: string | null;
+                page?: number;
+                page_size?: number;
             };
             header?: never;
             path?: never;
@@ -9001,6 +9379,13 @@ export interface operations {
                 asset_type_id?: string | null;
                 status?: string | null;
                 verification_status?: string | null;
+                confidence?: string | null;
+                gps_status?: string | null;
+                q?: string | null;
+                district_id?: string | null;
+                seri_circle_id?: string | null;
+                page?: number | null;
+                page_size?: number | null;
             };
             header?: never;
             path?: never;
@@ -9172,6 +9557,76 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AssetVerifyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_asset_gps_api_assets__asset_id__gps_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssetGpsSubmitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    verify_asset_gps_api_assets__asset_id__gps_verify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssetGpsVerifyIn"];
             };
         };
         responses: {

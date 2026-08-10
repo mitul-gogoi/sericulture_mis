@@ -4,14 +4,16 @@ import { FigDetailView } from "./FigDetailView";
 import { FigEditForm, type FigEditFormState } from "./FigEditForm";
 import { FigMembersPanel } from "./FigMembersPanel";
 import { FigPresidentPanel, type PresForm } from "./FigPresidentPanel";
-import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, Farmer } from "@/lib/types";
+import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, Farmer, AssetType, AssetInstance } from "@/lib/types";
+import type { AssetRow } from "@/components/AssetRowsEditor";
 
 export function FigDetailModal({
   detail, staps, districts, allCircles, subdivisionCdcs,
   editingFig, editForm, setEditForm, onEditClick, onSaveEdit, onCancelEdit,
   canEditDetails, canToggleActive, canManageMembership, onToggleActive, onClose,
   memberFarmer, setMemberFarmer, detailUnassignedFarmers, onAddMember,
-  presForm, setPresForm, onSetPresident, resetPassword, setResetPassword, onResetPassword,
+  presForm, setPresForm, onSetPresident,
+  assetTypes, editAssets, editNewAssets, setEditNewAssets, onDeleteAsset,
 }: {
   detail: FigDetail; staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[];
   editingFig: boolean; editForm: FigEditFormState | null; setEditForm: (f: FigEditFormState) => void;
@@ -20,7 +22,8 @@ export function FigDetailModal({
   onToggleActive: () => void; onClose: () => void;
   memberFarmer: string; setMemberFarmer: (v: string) => void; detailUnassignedFarmers: Farmer[]; onAddMember: () => void;
   presForm: PresForm; setPresForm: (f: PresForm) => void; onSetPresident: () => void;
-  resetPassword: string; setResetPassword: (v: string) => void; onResetPassword: () => void;
+  assetTypes: AssetType[]; editAssets: AssetInstance[];
+  editNewAssets: AssetRow[]; setEditNewAssets: (rows: AssetRow[]) => void; onDeleteAsset: (assetId: string) => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(26,29,26,0.45)" }}>
@@ -44,15 +47,16 @@ export function FigDetailModal({
           {!editingFig && <FigDetailView detail={detail} staps={staps} districts={districts} allCircles={allCircles} subdivisionCdcs={subdivisionCdcs} />}
           {editingFig && editForm && (
             <FigEditForm detail={detail} editForm={editForm} setEditForm={setEditForm} staps={staps}
-                        districts={districts} allCircles={allCircles} subdivisionCdcs={subdivisionCdcs} onCancel={onCancelEdit} onSave={onSaveEdit} />
+                        districts={districts} allCircles={allCircles} subdivisionCdcs={subdivisionCdcs} onCancel={onCancelEdit} onSave={onSaveEdit}
+                        assetTypes={assetTypes} editAssets={editAssets} editNewAssets={editNewAssets}
+                        setEditNewAssets={setEditNewAssets} onDeleteAsset={onDeleteAsset} />
           )}
           <FigMembersPanel members={detail.members} canManage={canManageMembership}
                           detailUnassignedFarmers={detailUnassignedFarmers} memberFarmer={memberFarmer}
                           setMemberFarmer={setMemberFarmer} onAddMember={onAddMember} />
           {canManageMembership && (
             <FigPresidentPanel members={detail.members} presForm={presForm} setPresForm={setPresForm}
-                              onSetPresident={onSetPresident} resetPassword={resetPassword}
-                              setResetPassword={setResetPassword} onResetPassword={onResetPassword} />
+                              onSetPresident={onSetPresident} />
           )}
         </div>
       </div>

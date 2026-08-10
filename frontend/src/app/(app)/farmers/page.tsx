@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -36,7 +36,7 @@ const emptyForm = (): FarmerForm => ({
 const emptyReportFilters = (): FarmerReportFilters => ({
   gender: "", education_level_id: "", caste_id: "", religion_id: "",
   district_id: "", seri_circle_id: "", experience_min: "", experience_max: "",
-  has_bank_details: "", is_active: "",
+  has_bank_details: "", is_active: "", has_fig: "",
 });
 
 function toApiBody(form: Record<string, any>) {
@@ -61,6 +61,7 @@ function filterParamsFrom(f: FarmerReportFilters, q: string) {
   if (f.experience_max) p.experience_max = f.experience_max;
   if (f.has_bank_details) p.has_bank_details = f.has_bank_details;
   if (f.is_active) p.is_active = f.is_active;
+  if (f.has_fig) p.has_fig = f.has_fig;
   return p;
 }
 
@@ -70,6 +71,7 @@ export default function FarmersPage() {
   const searchParams = useSearchParams();
   const isReportRole = user?.role === "STATE_ADMIN" || user?.role === "DISTRICT_ADMIN" || user?.role === "FIG_PRESIDENT";
   const canRegisterEdit = user?.role === "DISTRICT_ADMIN";
+  const canResetPassword = user?.role === "STATE_ADMIN" || user?.role === "DISTRICT_ADMIN";
   const canToggleActive = user?.role === "STATE_ADMIN" || user?.role === "DISTRICT_ADMIN";
   const canView = isReportRole;
 
@@ -80,8 +82,18 @@ export default function FarmersPage() {
   const [appliedFilters, setAppliedFilters] = useState(emptyReportFilters());
   const [reportPage, setReportPage] = useState(1);
   const [reportPageSize, setReportPageSize] = useState(20);
-  const [hasSearched, setHasSearched] = useState(() => searchParams.get("autoSearch") === "1");
   const [trendFy, setTrendFy] = useState("");
+  const [justFocused, setJustFocused] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("focus") !== "onboarding-trend" || !isReportRole) return;
+    const el = document.getElementById("onboarding-trend");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    setJustFocused(true);
+    const t = setTimeout(() => setJustFocused(false), 2000);
+    return () => clearTimeout(t);
+  }, [searchParams, isReportRole]);
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<FarmerForm>(emptyForm());
@@ -90,13 +102,14 @@ export default function FarmersPage() {
   const [editNewLands, setEditNewLands] = useState<LandRow[]>([]);
   const [editNewAssets, setEditNewAssets] = useState<AssetRow[]>([]);
   const [viewing, setViewing] = useState<Farmer | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
 
   const { data: reportData } = useQuery<{ items: Farmer[]; total: number }>({
     queryKey: ["farmers-report", appliedQ, appliedFilters, reportPage, reportPageSize],
     queryFn: async () => (await api.get("/farmers", {
       params: { ...filterParamsFrom(appliedFilters, appliedQ), page: reportPage, page_size: reportPageSize },
     })).data,
-    enabled: isReportRole && hasSearched,
+    enabled: isReportRole,
   });
 
   const { data: trend } = useQuery<{ months: string[]; farmers_monthly: number[] }>({
@@ -176,7 +189,6 @@ export default function FarmersPage() {
     setAppliedQ(qInput);
     setAppliedFilters(reportFilters);
     setReportPage(1);
-    setHasSearched(true);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -239,7 +251,7 @@ export default function FarmersPage() {
           asset_type_id: row.asset_type_id, owner_type: "FARMER", owner_id: editing.id,
           quantity: Number(row.quantity) || 1,
           acquisition_date: row.acquisition_year ? `${row.acquisition_year}-01-01` : null,
-          acquisition_mode: "LEGACY_SELF_DECLARED", confidence: "FARMER_SELF_DECLARED",
+          acquisition_mode: "SELF_PROCURED", confidence: "FARMER_SELF_DECLARED",
         });
       }
       toast.success("Farmer updated");
@@ -278,6 +290,14 @@ export default function FarmersPage() {
     } catch (e: any) { toast.error(fmtErr(e.response?.data?.detail)); }
   };
 
+  const resetFarmerPassword = async () => {
+    if (!viewing) return;
+    try {
+      await api.post(`/farmers/${viewing.id}/reset-password`, { password: resetPassword });
+      toast.success("Password reset"); setResetPassword("");
+    } catch (e: any) { toast.error(fmtErr(e.response?.data?.detail)); }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
@@ -299,19 +319,19 @@ export default function FarmersPage() {
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
         <table className="seri-table">
-          <thead><tr><th>Code</th><th>Name</th><th>Mobile</th><th>Village</th><th>Gender</th><th>Status</th>{(canView || canRegisterEdit || canToggleActive) && <th>Actions</th>}</tr></thead>
+          <thead><tr><th>Code</th><th>Name</th><th>Mobile</th><th>Village</th><th>Gender</th><th>FIG</th><th>Status</th>{(canView || canRegisterEdit || canToggleActive) && <th>Actions</th>}</tr></thead>
           <tbody>
             {farmers.map((f) => (
               <FarmerRow key={f.id} f={f} canView={canView} canEdit={canRegisterEdit} canToggle={canToggleActive}
                          onView={() => setViewing(f)} onEdit={() => openEdit(f)} onToggle={() => toggleActive(f)} />
             ))}
-            {farmers.length === 0 && <tr><td colSpan={(canView || canRegisterEdit || canToggleActive) ? 7 : 6} className="text-center py-8" style={{ color: "var(--text-muted)" }}>{!hasSearched ? "Use Search to view farmers" : "No farmers found"}</td></tr>}
+            {farmers.length === 0 && <tr><td colSpan={(canView || canRegisterEdit || canToggleActive) ? 8 : 7} className="text-center py-8" style={{ color: "var(--text-muted)" }}>No farmers found</td></tr>}
           </tbody>
         </table>
         </div>
       </div>
 
-      {isReportRole && hasSearched && (
+      {isReportRole && (
         <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
           <div className="text-sm" style={{ color: "var(--text-muted)" }}>
             Showing {showingFrom}–{showingTo} of {total}
@@ -328,7 +348,7 @@ export default function FarmersPage() {
       )}
 
       {isReportRole && (
-        <div className="card p-6 mt-6">
+        <div id="onboarding-trend" className="card p-6 mt-6" style={justFocused ? { boxShadow: "0 0 0 3px var(--primary)" } : undefined}>
           <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
             <div className="flex items-center gap-2">
               <ChartLineUp size={20} weight="duotone" color="#2D5134" />
@@ -372,10 +392,12 @@ export default function FarmersPage() {
 
       {viewing && (
         <FarmerViewModal
-          viewing={viewing} onClose={() => setViewing(null)}
+          viewing={viewing} onClose={() => { setViewing(null); setResetPassword(""); }}
           viewCircles={viewCircles} subdivisionCdcs={subdivisionCdcs} viewLands={viewLands} viewAssets={viewAssets}
           districts={districts} castes={castes} religions={religions} educationLevels={educationLevels}
           activities={activities} staps={staps}
+          canResetPassword={canResetPassword} resetPassword={resetPassword} setResetPassword={setResetPassword}
+          onResetPassword={resetFarmerPassword}
         />
       )}
     </div>
