@@ -18,6 +18,7 @@ from app.schemas import (
     FarmerDraftIn,
 )
 from app.services.farmer_reports import apply_farmer_filters, fig_by_farmer
+from app.services.assets import next_asset_seq, asset_code
 from app.services.meeting_reports import fp_submission_history_rows, _serialize_farmer_submission_detail
 from app.services.notifications import create_notification
 from app.routers.lands import VALID_LAND_TYPES
@@ -113,6 +114,7 @@ def create_farmer(body: FarmerIn, user: User = Depends(require_roles("DISTRICT_A
             acquisition_date=date(year, 1, 1) if year else None,
             acquisition_mode="SELF_DECLARED_AT_REGISTRATION",
             confidence="FARMER_SELF_DECLARED", created_by_user_id=user.id,
+            asset_code=asset_code(next_asset_seq(db)),
         ))
     db.commit()
     db.refresh(farmer)

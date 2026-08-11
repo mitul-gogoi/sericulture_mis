@@ -27,7 +27,7 @@ from app.schemas import (
     SchemeIn, SchemeUpdateIn, AllocationIn, BeneficiaryIn, BeneficiaryBulkIn,
     BeneficiaryApprovalIn, BeneficiaryApprovalBulkIn,
 )
-from app.services.assets import check_asset_cooldown, resolve_owner_for_asset
+from app.services.assets import check_asset_cooldown, resolve_owner_for_asset, next_asset_seq, asset_code
 from app.services.scheme_targeting import scheme_targets_district, candidate_farmers, candidate_figs
 from app.services.notifications import create_notification
 
@@ -184,6 +184,7 @@ def _register_one(db: Session, scheme: Scheme, user: User, beneficiary_type: str
             asset_type_id=asset_type.id, owner_type=owner_type, owner_id=owner_id, quantity=1,
             acquisition_date=disbursement_date, acquisition_mode="SCHEME_DISBURSEMENT",
             scheme_id=scheme.id, beneficiary_id=b.id, created_by_user_id=user.id,
+            asset_code=asset_code(next_asset_seq(db)),
         ))
     return b
 
@@ -220,6 +221,7 @@ def _finalize_beneficiary_approval(db: Session, beneficiary: Beneficiary, scheme
             asset_type_id=asset_type.id, owner_type=owner_type, owner_id=owner_id, quantity=1,
             acquisition_date=beneficiary.disbursement_date, acquisition_mode="SCHEME_DISBURSEMENT",
             scheme_id=scheme.id, beneficiary_id=beneficiary.id, created_by_user_id=user.id,
+            asset_code=asset_code(next_asset_seq(db)),
         ))
 
     beneficiary.status = "APPROVED"
