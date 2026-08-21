@@ -2,10 +2,10 @@
 
 You have **two separate copies** of this app you can show people:
 
-|                | Where it runs                | Where the data lives       | Who can see it                 |
-| -------------- | ---------------------------- | -------------------------- | ------------------------------ |
-| **Local Demo** | Your laptop                  | Your laptop's own database | Only you, on your laptop       |
-| **Cloud Demo** | Railway (always on)          | Supabase (cloud database)  | Anyone with the link, anywhere |
+|                | Where it runs       | Where the data lives       | Who can see it                 |
+| -------------- | ------------------- | -------------------------- | ------------------------------ |
+| **Local Demo** | Your laptop         | Your laptop's own database | Only you, on your laptop       |
+| **Cloud Demo** | Railway (always on) | Supabase (cloud database)  | Anyone with the link, anywhere |
 
 **The most important thing to understand first:** these are two _completely separate_ databases, like two separate notebooks. Writing something in one notebook does NOT automatically appear in the other. If you add a farmer in the Local Demo, it will NOT show up in the Cloud Demo, and the other way around too. Later in this document (Part 4) there's a way to make them match again, but it doesn't happen automatically.
 
@@ -36,6 +36,14 @@ cd "C:\Users\Sewa Setu\Documents\MY WORKSPACES\Sericulture_MIS"
 & "backend\.venv\Scripts\uvicorn.exe" app.main:app --host 127.0.0.1 --port 8001 --app-dir backend
 ```
 
+OR
+
+Go to "Sericulture_MIS" folder and open terminal and type the following command and execute:
+
+```powershell
+PS C:\Users\Sewa Setu\Documents\MY WORKSPACES\Sericulture_MIS> & "backend\.venv\Scripts\uvicorn.exe" app.main:app --host 127.0.0.1 --port 8001 --app-dir backend
+```
+
 Wait until you see a line saying `Application startup complete.` — that means it's ready. **Leave this window open.**
 
 ### Step 3 — In the SECOND window, start the frontend
@@ -45,6 +53,15 @@ Copy and paste this, then press Enter:
 ```powershell
 cd "C:\Users\Sewa Setu\Documents\MY WORKSPACES\Sericulture_MIS\frontend"
 yarn dev
+```
+
+OR
+
+Go to "frontend" folder and open terminal and type the following command and execute:
+
+```powershell
+PS C:\Users\Sewa Setu\Documents\MY WORKSPACES\Sericulture_MIS\frontend> yarn build
+PS C:\Users\Sewa Setu\Documents\MY WORKSPACES\Sericulture_MIS\frontend> yarn start
 ```
 
 Wait until you see a line saying `Ready` — that means it's ready. **Leave this window open too.**
@@ -159,12 +176,12 @@ Then open `https://frontend-production-6eb5.up.railway.app` and log in with your
 
 Current as of the 2026-08-10 data reset — the fresh Kamrup Metropolitan demo dataset (15 farmers across 3 FIGs).
 
-| Role | Mobile number | Password |
-|---|---|---|
-| State Admin (Director) | `1111111111` | `sa@123` |
-| District Admin (Bhaskar Saikia, Kamrup Metropolitan) | `8123456780` | `District@123` |
-| FIG President (Anil Talukdar, Hatigaon Muga Rearers FIG) | `9854100012` | `Fig@123` |
-| Farmer (Manoj Sonowal, self-service login) | `9854100014` | `farmer@123` |
+| Role                                                     | Mobile number | Password       |
+| -------------------------------------------------------- | ------------- | -------------- |
+| State Admin (Director)                                   | `1111111111`  | `sa@123`       |
+| District Admin (Bhaskar Saikia, Kamrup Metropolitan)     | `8123456780`  | `District@123` |
+| FIG President (Anil Talukdar, Hatigaon Muga Rearers FIG) | `9854100012`  | `Fig@123`      |
+| Farmer (Manoj Sonowal, self-service login)               | `9854100014`  | `farmer@123`   |
 
 ---
 

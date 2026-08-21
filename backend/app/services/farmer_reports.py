@@ -2,9 +2,26 @@
 paginated table, and Excel/PDF export — shared by routers/farmers.py (list_farmers)
 and routers/reports.py (export dispatcher's "farmers" branch)."""
 from typing import Optional
-from sqlalchemy import exists
+from fastapi import HTTPException
+from datetime import date, timedelta
+from sqlalchemy import exists, func
 from sqlalchemy.orm import Query, Session
-from app.models import Farmer, Caste, Religion, EducationLevel, District, SericultureCircle, SilkTypeActivityProduct, Activity, FigMember, Fig
+from app.core.aadhaar import mask_aadhaar
+from app.models import Farmer, Caste, Religion, EducationLevel, District, SericultureCircle, SilkTypeActivityProduct, Activity, SilkType, FigMember, Fig
+
+
+def public_farmer_dict(f: Farmer) -> dict:
+    """`model_dump()` with the Aadhaar internals stripped and replaced by a masked
+    display string. THE choke point every farmer-returning endpoint must go through:
+    `aadhaar_enc` must never leave the server, and `aadhaar_hash` is brute-forceable
+    offline over a 12-digit space by anyone holding the key. The only endpoint allowed
+    to add more than the mask is GET /farmers/me, which layers `aadhaar_full` on top."""
+    d = f.model_dump()
+    d.pop("aadhaar_hash", None)
+    d.pop("aadhaar_enc", None)
+    d.pop("aadhaar_last4", None)
+    d["aadhaar_masked"] = mask_aadhaar(f.aadhaar_last4)
+    return d
 
 
 def apply_farmer_filters(
@@ -91,7 +108,7 @@ def farmer_report_rows(query: Query, db: Session) -> list[dict]:
             "gender": f.gender,
             "date_of_birth": f.date_of_birth.isoformat() if f.date_of_birth else None,
             "mobile_no": f.mobile_no,
-            "aadhaar_no": f.aadhaar_no,
+            "aadhaar_masked": mask_aadhaar(f.aadhaar_last4),
             "pan_no": f.pan_no,
             "education_level_name": education_level_names.get(f.education_level_id),
             "experience_years": f.experience_years,
@@ -107,7 +124,6 @@ def farmer_report_rows(query: Query, db: Session) -> list[dict]:
             "district_name": district_names.get(f.district_id),
             "circle_name": circle_names.get(f.seri_circle_id),
             "post_office": f.post_office,
-            "police_station": f.police_station,
             "pin_code": f.pin_code,
             "account_number": f.account_number,
             "bank_name": f.bank_name,
@@ -117,3 +133,75 @@ def farmer_report_rows(query: Query, db: Session) -> list[dict]:
             "fig_name": fig_map[f.id].fig_name if f.id in fig_map else "Solo",
         })
     return out
+
+
+def _parse_date(value: str, field: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(400, f"{field} must be a date in YYYY-MM-DD format")
+
+
+def activity_onboarding_rows(db: Session, user, district_id: Optional[str] = None,
+                             month: Optional[str] = None, from_date: Optional[str] = None,
+                             to_date: Optional[str] = None) -> dict:
+    """How many farmers are onboarded per sericulture activity.
+
+    Three separate double-counting hazards have to be handled, and all three are real:
+
+    1. One activity can produce several products, so it has several STAP rows (Eri Rearing
+       -> Eri Cocoon AND Eri Pupa). A farmer holding both must count ONCE for Eri Rearing.
+       Handled by mapping stap_id -> activity_id before counting.
+    2. `activity_name` is unique only per silk type, so "Food Plant Plantation" is three
+       different activities. Grouping keys on activities.id, never the name.
+    3. A farmer may genuinely do several activities and is counted in each — this is what
+       the user asked for, so the per-activity figures deliberately sum to MORE than the
+       headcount. `distinct_farmers` is returned alongside so the two can be reconciled.
+
+    Timing caveat: Farmer.created_at is the only date a farmer has, and nothing records
+    when an activity was added to them. So a month figure means "registered in that month
+    and doing this activity today", not "started this activity that month".
+    """
+    stap_activity = dict(
+        db.query(SilkTypeActivityProduct.id, SilkTypeActivityProduct.activity_id).all())
+
+    activities = (db.query(Activity, SilkType)
+                  .join(SilkType, SilkType.id == Activity.silk_type_id)
+                  .filter(Activity.is_active)
+                  .order_by(SilkType.silk_type_name, Activity.step_no).all())
+
+    q = db.query(Farmer.id, Farmer.district_id, Farmer.stap_ids)
+    if user.role == "DISTRICT_ADMIN":
+        q = q.filter(Farmer.district_id == user.district_id)
+    elif district_id:
+        q = q.filter(Farmer.district_id == district_id)
+    if month:
+        q = q.filter(func.to_char(Farmer.created_at, "YYYY-MM") == month)
+    if from_date:
+        q = q.filter(Farmer.created_at >= _parse_date(from_date, "from_date"))
+    if to_date:
+        # created_at carries a time component, so "<= to_date" would drop everything
+        # registered later that same day. Compare against the start of the NEXT day instead.
+        q = q.filter(Farmer.created_at < _parse_date(to_date, "to_date") + timedelta(days=1))
+
+    # Only three columns, not whole ORM rows: stap_ids is a `json` column (not `jsonb`), so
+    # Postgres containment operators and GIN indexes are unavailable and membership has to be
+    # resolved in Python — the same approach every other consumer of this column already takes.
+    by_activity: dict[str, set] = {}
+    farmer_ids = set()
+    for fid, _district, stap_ids in q.all():
+        farmer_ids.add(fid)
+        for sid in (stap_ids or []):
+            aid = stap_activity.get(sid)
+            if aid:
+                by_activity.setdefault(aid, set()).add(fid)
+
+    items = [{
+        "activity_id": a.id,
+        "silk_type_name": st.silk_type_name,
+        "activity_name": a.activity_name,
+        "step_no": a.step_no,
+        "farmers": len(by_activity.get(a.id, ())),
+    } for a, st in activities]
+
+    return {"items": items, "distinct_farmers": len(farmer_ids)}

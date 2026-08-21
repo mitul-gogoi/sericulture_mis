@@ -117,6 +117,7 @@ const FARMER_MENU_FIG_MEMBER: NavItem[] = [
 
 const FARMER_MENU: NavGroup[] = [
   { group: "Dashboard", items: [{ href: "/dashboard", label: "Dashboard", icon: House }] },
+  { group: "My Profile", collapsible: true, items: [{ href: "/farmer/profile", label: "My Profile", icon: UserCircle }] },
   { group: "Submission", collapsible: true, items: FARMER_MENU_SOLO },
   { group: "Land & GIS", collapsible: true, items: [{ href: "/lands", label: "My Land & GPS", icon: MapTrifold }] },
   { group: "Assets", collapsible: true, items: [{ href: "/assets", label: "My Assets", icon: Wrench }] },

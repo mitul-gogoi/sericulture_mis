@@ -2,6 +2,12 @@
 __pycache__/
 *.pyc
 file_uploads/
+# Every env file, not just .env: .env.docker and .env.supabase hold the live DB
+# password, both JWT secrets and AADHAAR_SECRET_KEY. COPY . . would bake them into
+# an image layer, readable by anyone the image is shared with. Nothing in the
+# container reads them either - config.py only load_dotenv()s .env, and in Docker
+# the real values arrive as env vars via compose env_file.
 .env
+.env.*
 tests/
 .pytest_cache/

@@ -6,8 +6,6 @@ import { fmtErr } from "@/lib/api";
 import { Leaf } from "@phosphor-icons/react";
 import { toast } from "sonner";
 
-const HERO =
-  "https://images.unsplash.com/photo-1640292343595-889db1c8262e?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHxoYW5kbG9vbSUyMHdlYXZpbmclMjBpbmRpYXxlbnwwfHx8fDE3ODExNTQ5ODV8MA&ixlib=rb-4.1.0&q=85";
 
 export default function LoginPage() {
   const { user, login, loading } = useAuth();
@@ -41,19 +39,24 @@ export default function LoginPage() {
         className="hidden lg:flex w-1/2 relative"
         style={{ background: "var(--primary)" }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={HERO}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover opacity-50"
-        />
+        {/* Self-contained: no external image, so the panel renders identically on an
+            air-gapped government network. The motif is a woven silk-thread lattice. */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(180deg, rgba(33,61,38,0.55), rgba(33,61,38,0.85))",
+              "radial-gradient(circle at 25% 15%, rgba(217,160,54,0.22), transparent 55%), linear-gradient(160deg, #2D5134 0%, #213D26 55%, #16281B 100%)",
           }}
         />
+        <svg className="absolute inset-0 w-full h-full" aria-hidden="true" preserveAspectRatio="none">
+          <defs>
+            <pattern id="weave" width="26" height="26" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="26" stroke="#D9A036" strokeWidth="1" strokeOpacity="0.16" />
+              <line x1="0" y1="0" x2="26" y2="0" stroke="#FFFFFF" strokeWidth="1" strokeOpacity="0.07" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#weave)" />
+        </svg>
         <div className="relative z-10 p-12 flex flex-col justify-between text-white w-full">
           <div className="flex items-center gap-3">
             <Leaf size={32} weight="duotone" color="#D9A036" />
@@ -138,14 +141,6 @@ export default function LoginPage() {
               {loading ? "Signing in…" : "Sign in"}
             </button>
           </form>
-
-          <div
-            className="mt-10 card p-4 text-xs"
-            style={{ color: "var(--text-muted)" }}
-          >
-            <div className="label-tag mb-2">Demo accounts</div>
-            <div>State Admin · 1111111111 / sa@123</div>
-          </div>
         </div>
       </div>
     </div>

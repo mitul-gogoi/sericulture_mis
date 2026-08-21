@@ -3,12 +3,14 @@ import { stapOptgroups } from "./stapOptgroups";
 import { sdoCdcName } from "@/lib/sdoCdc";
 import { AssetRowsEditor, type AssetRow } from "@/components/AssetRowsEditor";
 import { AssetsList } from "@/components/AssetsList";
+import { FigDocumentsStep } from "@/components/figs/FigDocumentsStep";
 import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, AssetType, AssetInstance } from "@/lib/types";
 
 export interface FigEditFormState {
   fig_name: string; stap_id: string; formation_date: string; meeting_venue: string;
-  village_name: string; panchayat_name: string; post_office: string; police_station: string;
+  village_name: string; panchayat_name: string; post_office: string;
   pin_code: string; address: string;
+  minutes_path: string | null; group_photo_path: string | null;
 }
 
 export function FigEditForm({
@@ -25,6 +27,7 @@ export function FigEditForm({
     <div className="mb-5 border-b pb-5" style={{ borderColor: "var(--border)" }}>
       <h4 className="font-heading font-bold mb-3">Edit FIG</h4>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="col-span-full"><h4 className="font-heading text-sm font-bold">FIG details</h4></div>
         <div className="col-span-full"><label className="label-tag">FIG Name</label><input className="input mt-1" value={editForm.fig_name} onChange={(e) => setEditForm({ ...editForm, fig_name: e.target.value })} /></div>
         <div><label className="label-tag">FIG Formation Date</label><input type="date" className="input mt-1" value={editForm.formation_date} onChange={(e) => setEditForm({ ...editForm, formation_date: e.target.value })} /></div>
         <div><label className="label-tag">Primary silk type / activity / product</label>
@@ -35,6 +38,8 @@ export function FigEditForm({
               </optgroup>
             ))}
           </select></div>
+        <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
+          <h4 className="font-heading text-sm font-bold">Location</h4></div>
         <div><label className="label-tag">District</label>
           <input disabled className="input mt-1" value={districts.find((d) => d.id === detail.district_id)?.district_name || ""} /></div>
         <div><label className="label-tag">Sericulture Circle</label>
@@ -45,9 +50,17 @@ export function FigEditForm({
         <div className="col-span-full"><label className="label-tag">Village/ Town/ City</label><input className="input mt-1" value={editForm.village_name} onChange={(e) => setEditForm({ ...editForm, village_name: e.target.value })} /></div>
         <div><label className="label-tag">Panchayat</label><input className="input mt-1" value={editForm.panchayat_name} onChange={(e) => setEditForm({ ...editForm, panchayat_name: e.target.value })} /></div>
         <div><label className="label-tag">Post Office</label><input className="input mt-1" value={editForm.post_office} onChange={(e) => setEditForm({ ...editForm, post_office: e.target.value })} /></div>
-        <div><label className="label-tag">Police Station</label><input className="input mt-1" value={editForm.police_station} onChange={(e) => setEditForm({ ...editForm, police_station: e.target.value })} /></div>
         <div><label className="label-tag">PIN Code</label><input className="input mt-1" value={editForm.pin_code} onChange={(e) => setEditForm({ ...editForm, pin_code: e.target.value })} /></div>
         <div><label className="label-tag">Meeting venue</label><input className="input mt-1" value={editForm.meeting_venue} onChange={(e) => setEditForm({ ...editForm, meeting_venue: e.target.value })} /></div>
+      </div>
+      <div className="border-t pt-4 mt-4" style={{ borderColor: "var(--border)" }}>
+        <h4 className="font-heading text-sm font-bold mb-3">FIG documents</h4>
+        <FigDocumentsStep
+          figName={detail.fig_name} figCode={detail.fig_code}
+          districtId={detail.district_id} seriCircleId={detail.seri_circle_id}
+          value={{ minutes_path: editForm.minutes_path, group_photo_path: editForm.group_photo_path }}
+          onChange={(d) => setEditForm({ ...editForm, ...d })}
+        />
       </div>
       <div className="border-t pt-4 mt-4" style={{ borderColor: "var(--border)" }}>
         <label className="label-tag">Existing Assets (Self-Declared)</label>

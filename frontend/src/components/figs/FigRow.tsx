@@ -1,5 +1,6 @@
 "use client";
 import { Eye } from "@phosphor-icons/react";
+import { figDocumentsPending } from "@/components/figs/FigDocumentsStep";
 import type { Fig, District, SericultureCircle, SilkTypeActivityProduct } from "@/lib/types";
 
 const stapLabel = (s: SilkTypeActivityProduct) => `${s.silk_type_name} · ${s.activity_name} · ${s.product_name}`;
@@ -22,7 +23,10 @@ export function FigRow({ f, staps, districts, allCircles, onView }: {
       <td>{circle?.circle_name || "—"}</td>
       <td>{f.total_members}</td>
       <td className="text-xs">{names.length ? `${shown}${extra}` : "—"}</td>
-      <td>{f.is_active ? <span className="badge badge-success">Active</span> : <span className="badge badge-muted">Inactive</span>}</td>
+      <td className="whitespace-nowrap">
+        {f.is_active ? <span className="badge badge-success">Active</span> : <span className="badge badge-muted">Inactive</span>}
+        {figDocumentsPending(f) && <span className="badge badge-warning ml-1" title="Founding minutes and/or group photo not yet uploaded">Documents pending</span>}
+      </td>
       <td>
         <button onClick={onView} className="btn-secondary px-2 py-1 text-xs inline-flex items-center gap-1" data-testid={`view-fig-${f.id}`}>
           <Eye size={14} weight="bold" /> View

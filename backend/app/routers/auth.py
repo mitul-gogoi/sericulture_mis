@@ -1,5 +1,4 @@
 """Auth: login, refresh, me — JWT bearer + refresh tokens + rate-limited."""
-from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 import jwt
@@ -15,9 +14,6 @@ from app.schemas import LoginIn, RefreshIn, TokenOut, ChangePasswordIn
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-MAX_ATTEMPTS = 5
-LOCK_MINUTES = 15
-
 
 def _user_dict(u: User) -> dict:
     return {"id": u.id, "mobile_no": u.mobile_no, "role": u.role, "name": u.name,
@@ -27,22 +23,13 @@ def _user_dict(u: User) -> dict:
 @router.post("/login", response_model=TokenOut)
 @limiter.limit(settings.RATE_LIMIT_LOGIN)
 def login(request: Request, body: LoginIn, db: Session = Depends(get_session)):
+    # No account lockout by design: a locked-out district officer costs more than a
+    # throttled guesser. Brute force is held back by the per-IP rate limit above
+    # (RATE_LIMIT_LOGIN) — which only reports the real client IP because the backend
+    # runs uvicorn with --proxy-headers behind the reverse proxy.
     user = db.query(User).filter(User.mobile_no == body.mobile_no, User.is_active).first()
-    if not user:
+    if not user or not verify_password(body.password, user.password_hash):
         raise HTTPException(401, "Invalid mobile number or password")
-    if user.lock_until and user.lock_until > datetime.now(timezone.utc):
-        raise HTTPException(429, "Account locked due to repeated failed attempts. Try again later.")
-    if not verify_password(body.password, user.password_hash):
-        user.failed_attempts += 1
-        if user.failed_attempts >= MAX_ATTEMPTS:
-            user.lock_until = datetime.now(timezone.utc) + timedelta(minutes=LOCK_MINUTES)
-            user.failed_attempts = 0
-        db.commit()
-        raise HTTPException(401, "Invalid mobile number or password")
-    # success
-    user.failed_attempts = 0
-    user.lock_until = None
-    db.commit()
     scope = {"district_id": user.district_id, "fig_id": user.fig_id}
     access = create_access_token(user.id, user.role, scope)
     refresh = create_refresh_token(user.id)

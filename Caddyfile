@@ -1,0 +1,30 @@
+# Reverse proxy for the APP SERVER (192.168.18.193).
+#
+# Certificate files are the ones the Directorate issued, copied into ./certs/ on the
+# server — see DEPLOY.md Part 6. If the department supplied a separate intermediate/CA
+# file, concatenate it onto the server certificate first or browsers will warn.
+silkmis.assam.gov.in {
+	tls /etc/ssl/dept/certificate.crt /etc/ssl/dept/private.key
+
+	# Everything under /api goes to FastAPI; everything else to Next.js. Both are served
+	# from one origin, which is why NEXT_PUBLIC_BACKEND_URL is empty and the browser never
+	# makes a cross-origin request — there is no CORS to misconfigure.
+	handle /api/* {
+		reverse_proxy backend:8001
+	}
+	handle {
+		reverse_proxy frontend:3000
+	}
+
+	encode gzip zstd
+
+	# Uploaded evidence photos and passbooks pass through here, so keep them out of
+	# shared caches and stop the browser guessing content types.
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

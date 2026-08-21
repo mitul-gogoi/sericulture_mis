@@ -9,15 +9,17 @@ from sqlalchemy.exc import IntegrityError
 from app.core.db import get_session
 from app.core.deps import get_current_user, require_roles
 from app.core.security import hash_password, DEFAULT_FARMER_PASSWORD
+from app.core.aadhaar import normalize_aadhaar, aadhaar_hash, aadhaar_fields, aadhaar_decrypt
 from app.models import (
     Farmer, User, FigMember, SilkTypeActivityProduct, Land, AssetInstance, AssetType,
     Fig, Meeting, FarmerSubmission, FarmerSubmissionCorrection, FarmerDraftEntry, _now,
+    District, SericultureCircle, Caste, Religion, EducationLevel,
 )
 from app.schemas import (
     FarmerIn, FarmerUpdateIn, FarmerPasswordResetIn, FarmerSubmissionIn, FarmerSubmissionCorrectionIn,
     FarmerDraftIn,
 )
-from app.services.farmer_reports import apply_farmer_filters, fig_by_farmer
+from app.services.farmer_reports import apply_farmer_filters, fig_by_farmer, public_farmer_dict
 from app.services.assets import next_asset_seq, asset_code
 from app.services.meeting_reports import fp_submission_history_rows, _serialize_farmer_submission_detail
 from app.services.notifications import create_notification
@@ -35,6 +37,19 @@ class ActiveToggleIn(BaseModel):
 
 def _fcode(seq: int) -> str:
     return f"SERI-FRM-{seq:06d}"
+
+
+def _set_aadhaar(f: Farmer, digits: str) -> None:
+    """Write the three derived columns; the raw digits are never stored."""
+    for field, value in aadhaar_fields(digits).items():
+        setattr(f, field, value)
+
+
+def _aadhaar_digits_or_400(raw: str) -> str:
+    try:
+        return normalize_aadhaar(raw)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
 
 
 def _require_output_staps(db: Session, stap_ids: list[str]) -> None:
@@ -71,8 +86,11 @@ def create_farmer(body: FarmerIn, user: User = Depends(require_roles("DISTRICT_A
         raise HTTPException(400, "Mobile already registered")
     if db.query(User).filter(User.mobile_no == body.mobile_no).first():
         raise HTTPException(400, "Mobile already registered")
-    if body.aadhaar_no and db.query(Farmer).filter(Farmer.aadhaar_no == body.aadhaar_no).first():
-        raise HTTPException(400, "Aadhaar already registered")
+    aadhaar_digits = None
+    if body.aadhaar_no:
+        aadhaar_digits = _aadhaar_digits_or_400(body.aadhaar_no)
+        if db.query(Farmer).filter(Farmer.aadhaar_hash == aadhaar_hash(aadhaar_digits)).first():
+            raise HTTPException(400, "Aadhaar already registered")
     if body.stap_ids and body.primary_stap_id and body.primary_stap_id not in body.stap_ids:
         raise HTTPException(400, "Primary stap must be in staps")
     _require_output_staps(db, body.stap_ids)
@@ -96,7 +114,10 @@ def create_farmer(body: FarmerIn, user: User = Depends(require_roles("DISTRICT_A
     data = body.model_dump()
     land_rows = data.pop("lands")
     asset_rows = data.pop("assets")
+    data.pop("aadhaar_no", None)  # write-only input — stored as the three derived columns below
     farmer = Farmer(farmer_code=_fcode(seq), **data)
+    if aadhaar_digits:
+        _set_aadhaar(farmer, aadhaar_digits)
     db.add(farmer)
     db.flush()
     db.add(User(
@@ -174,7 +195,7 @@ def list_farmers(
     # preserves the exact legacy flat-array contract relied on by yields/figs/lands/
     # schemes-beneficiaries pages, none of which ever pass `page`.
     if page is None:
-        return query.limit(limit).all()
+        return [public_farmer_dict(r) for r in query.limit(limit).all()]
     size = page_size or 20
     if size not in _PAGE_SIZES:
         raise HTTPException(400, "page_size must be one of 10, 20, 50, 100")
@@ -182,7 +203,7 @@ def list_farmers(
     rows = query.offset((page - 1) * size).limit(size).all()
     fig_map = fig_by_farmer(db, [r.id for r in rows])
     items = [
-        {**r.model_dump(), "fig_id": fig_map[r.id].id if r.id in fig_map else None,
+        {**public_farmer_dict(r), "fig_id": fig_map[r.id].id if r.id in fig_map else None,
          "fig_name": fig_map[r.id].fig_name if r.id in fig_map else None}
         for r in rows
     ]
@@ -196,10 +217,21 @@ def get_own_farmer(user: User = Depends(require_roles("FARMER")), db: Session = 
         raise HTTPException(404, "Farmer profile not found")
     member = db.query(FigMember).filter(FigMember.farmer_id == f.id, FigMember.is_active).first()
     fig = db.query(Fig).filter(Fig.id == member.fig_id).first() if member else None
-    data = f.model_dump()
+    data = public_farmer_dict(f)
     data["fig_id"] = fig.id if fig else None
     data["fig_name"] = fig.fig_name if fig else None
     data["fig_code"] = fig.fig_code if fig else None
+    # The ONE place the real Aadhaar is decrypted — a farmer viewing their own record.
+    data["aadhaar_full"] = aadhaar_decrypt(f.aadhaar_enc) if f.aadhaar_enc else None
+    # Resolved display names so the My Profile page never renders raw UUIDs.
+    def _name(model, col, fk):
+        row = db.query(model).filter(model.id == fk).first() if fk else None
+        return getattr(row, col) if row else None
+    data["district_name"] = _name(District, "district_name", f.district_id)
+    data["circle_name"] = _name(SericultureCircle, "circle_name", f.seri_circle_id)
+    data["caste_name"] = _name(Caste, "caste_name", f.caste_id)
+    data["religion_name"] = _name(Religion, "religion_name", f.religion_id)
+    data["education_level_name"] = _name(EducationLevel, "education_level_name", f.education_level_id)
     return data
 
 
@@ -374,7 +406,16 @@ def get_farmer(farmer_id: str, user: User = Depends(get_current_user), db: Sessi
     f = db.query(Farmer).filter(Farmer.id == farmer_id).first()
     if not f:
         raise HTTPException(404, "Not found")
-    return f
+    # Previously unscoped — any authenticated user of any role could fetch any farmer's
+    # full record by id. Mirrors list_farmers' existing scoping ladder.
+    if user.role == "DISTRICT_ADMIN" and f.district_id != user.district_id:
+        raise HTTPException(403, "District scope mismatch")
+    if user.role == "FIG_PRESIDENT" and not db.query(FigMember).filter(
+            FigMember.fig_id == user.fig_id, FigMember.farmer_id == f.id, FigMember.is_active).first():
+        raise HTTPException(403, "FIG scope mismatch")
+    if user.role == "FARMER" and f.id != user.farmer_id:
+        raise HTTPException(403, "Not your record")
+    return public_farmer_dict(f)
 
 
 @router.patch("/{farmer_id}")
@@ -396,8 +437,16 @@ def update_farmer(farmer_id: str, body: FarmerUpdateIn,
         login = db.query(User).filter(User.farmer_id == farmer_id).first()
         if login:
             login.mobile_no = data["mobile_no"]
-    if data.get("aadhaar_no") and data["aadhaar_no"] != f.aadhaar_no:
-        if db.query(Farmer).filter(Farmer.aadhaar_no == data["aadhaar_no"], Farmer.id != farmer_id).first():
+    # Absent, None, or "" all mean "leave the Aadhaar unchanged" — the edit form PATCHes the
+    # whole record, so an untouched masked field must never overwrite the stored value. There
+    # is deliberately no clear-to-empty path.
+    aadhaar_raw = data.pop("aadhaar_no", None)
+    aadhaar_digits = None
+    if aadhaar_raw:
+        aadhaar_digits = _aadhaar_digits_or_400(aadhaar_raw)
+        new_hash = aadhaar_hash(aadhaar_digits)
+        if new_hash != f.aadhaar_hash and db.query(Farmer).filter(
+                Farmer.aadhaar_hash == new_hash, Farmer.id != farmer_id).first():
             raise HTTPException(400, "Aadhaar already registered")
     stap_ids = data.get("stap_ids", f.stap_ids)
     primary_stap_id = data.get("primary_stap_id", f.primary_stap_id)
@@ -407,10 +456,12 @@ def update_farmer(farmer_id: str, body: FarmerUpdateIn,
         _require_output_staps(db, data["stap_ids"])
     for k, v in data.items():
         setattr(f, k, v)
+    if aadhaar_digits:
+        _set_aadhaar(f, aadhaar_digits)
     f.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(f)
-    return f
+    return public_farmer_dict(f)
 
 
 @router.patch("/{farmer_id}/active")

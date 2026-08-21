@@ -15,7 +15,7 @@ export interface FarmerEditForm {
   first_name: string; middle_name: string; last_name: string; gender: string; date_of_birth: string;
   mobile_no: string; aadhaar_no: string; pan_no: string;
   seri_circle_id: string; village_name: string; gaon_panchayat: string; development_block: string;
-  post_office: string; police_station: string; pin_code: string;
+  post_office: string; pin_code: string;
   stap_ids: string[]; primary_stap_id: string; experience_activity_ids: string[];
   farmer_type: string; education_level_id: string; experience_years: number;
   caste_id: string; religion_id: string; family_member_male: number; family_member_female: number;
@@ -23,11 +23,21 @@ export interface FarmerEditForm {
   account_number: string; bank_name: string; branch_name: string; ifsc_code: string; passbook_path: string | null;
 }
 
+/** Same section shape as FarmerRegisterModal — the two carry the same field set and would be
+ *  confusing to navigate if they diverged. */
+function SectionHeading({ children, first }: { children: React.ReactNode; first?: boolean }) {
+  return (
+    <div className={first ? "col-span-full" : "col-span-full border-t pt-4"} style={first ? undefined : { borderColor: "var(--border)" }}>
+      <h4 className="font-heading text-sm font-bold">{children}</h4>
+    </div>
+  );
+}
+
 export function FarmerEditModal({
   editing, editForm, setEditForm, onClose, onSubmit,
   editCircles, subdivisionCdcs, educationLevels, castes, religions, activities, staps, assetTypes,
   editLands, editAssets, editNewLands, setEditNewLands, editNewAssets, setEditNewAssets,
-  onDeleteLand, onDeleteAsset,
+  onDeleteLand, onDeleteAsset, aadhaarDirty, setAadhaarDirty,
 }: {
   editing: Farmer; editForm: FarmerEditForm; setEditForm: (f: FarmerEditForm) => void;
   onClose: () => void; onSubmit: (e: React.FormEvent) => void;
@@ -37,6 +47,7 @@ export function FarmerEditModal({
   editNewLands: LandRow[]; setEditNewLands: (rows: LandRow[]) => void;
   editNewAssets: AssetRow[]; setEditNewAssets: (rows: AssetRow[]) => void;
   onDeleteLand: (landId: string) => void; onDeleteAsset: (assetId: string) => void;
+  aadhaarDirty: boolean; setAadhaarDirty: (v: boolean) => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(26,29,26,0.45)" }}>
@@ -46,17 +57,59 @@ export function FarmerEditModal({
           <button onClick={onClose}><X size={20} /></button>
         </div>
         <form onSubmit={onSubmit} className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+          {/* ---- 1. Personal details ---- */}
+          <SectionHeading first>Personal details</SectionHeading>
           <div><label className="label-tag">First name</label><input required className="input mt-1" value={editForm.first_name} onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })} /></div>
           <div><label className="label-tag">Middle name</label><input className="input mt-1" value={editForm.middle_name} onChange={(e) => setEditForm({ ...editForm, middle_name: e.target.value })} /></div>
           <div><label className="label-tag">Last name</label><input required className="input mt-1" value={editForm.last_name} onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })} /></div>
           <div><label className="label-tag">Gender</label>
-            <select className="input mt-1" value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
+            <select required className="input mt-1" value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })}>
+              <option value="">Select</option>
               <option>Male</option><option>Female</option><option>Other</option>
             </select></div>
           <div><label className="label-tag">Date of birth</label><input type="date" className="input mt-1" value={editForm.date_of_birth} onChange={(e) => setEditForm({ ...editForm, date_of_birth: e.target.value })} /></div>
           <div><label className="label-tag">Mobile</label><input required className="input mt-1" value={editForm.mobile_no} onChange={(e) => setEditForm({ ...editForm, mobile_no: e.target.value })} /></div>
-          <div><label className="label-tag">Aadhaar</label><input className="input mt-1" value={editForm.aadhaar_no} onChange={(e) => setEditForm({ ...editForm, aadhaar_no: e.target.value })} /></div>
+          {/* Shows the mask until the field is focused; typing then replaces it with visible
+              digits. While untouched, farmers/page.tsx strips aadhaar_no from the PATCH body
+              entirely, so an unrelated edit can never overwrite the stored number. */}
+          <div><label className="label-tag">Aadhaar</label>
+            <input
+              className="input mt-1" data-testid="farmer-aadhaar-edit"
+              inputMode="numeric" maxLength={14}
+              placeholder={aadhaarDirty ? "12-digit Aadhaar" : undefined}
+              value={aadhaarDirty ? editForm.aadhaar_no : (editing.aadhaar_masked ?? "")}
+              onFocus={() => { if (!aadhaarDirty) { setAadhaarDirty(true); setEditForm({ ...editForm, aadhaar_no: "" }); } }}
+              onChange={(e) => setEditForm({ ...editForm, aadhaar_no: e.target.value })}
+            />
+            {aadhaarDirty ? (
+              <button type="button" className="text-xs mt-1 underline" style={{ color: "var(--text-muted)" }}
+                onClick={() => { setAadhaarDirty(false); setEditForm({ ...editForm, aadhaar_no: "" }); }}>
+                Keep existing Aadhaar
+              </button>
+            ) : (
+              <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>Click to enter a new 12-digit number</div>
+            )}
+          </div>
           <div><label className="label-tag">PAN number</label><input className="input mt-1" value={editForm.pan_no} onChange={(e) => setEditForm({ ...editForm, pan_no: e.target.value })} /></div>
+
+          {/* ---- 2. Location ---- */}
+          <SectionHeading>Location</SectionHeading>
+          <div><label className="label-tag">Sericulture Circle</label>
+            <select required className="input mt-1" value={editForm.seri_circle_id} onChange={(e) => setEditForm({ ...editForm, seri_circle_id: e.target.value })}>
+              <option value="">Select</option>
+              {editCircles.map((c) => <option key={c.id} value={c.id}>{c.circle_name}</option>)}
+            </select></div>
+          <div><label className="label-tag">Sub-division Office (SDO)/ CDC Office</label>
+            <input disabled className="input mt-1" value={sdoCdcName(editForm.seri_circle_id, editCircles, subdivisionCdcs)} /></div>
+          <div className="col-span-full"><label className="label-tag">Village</label><input required className="input mt-1" value={editForm.village_name} onChange={(e) => setEditForm({ ...editForm, village_name: e.target.value })} /></div>
+          <div><label className="label-tag">Panchayat</label><input className="input mt-1" value={editForm.gaon_panchayat} onChange={(e) => setEditForm({ ...editForm, gaon_panchayat: e.target.value })} /></div>
+          <div><label className="label-tag">Development Block</label><input className="input mt-1" value={editForm.development_block} onChange={(e) => setEditForm({ ...editForm, development_block: e.target.value })} /></div>
+          <div><label className="label-tag">Post Office</label><input className="input mt-1" value={editForm.post_office} onChange={(e) => setEditForm({ ...editForm, post_office: e.target.value })} /></div>
+          <div><label className="label-tag">PIN Code</label><input className="input mt-1" value={editForm.pin_code} onChange={(e) => setEditForm({ ...editForm, pin_code: e.target.value })} /></div>
+
+          {/* ---- 3. Socio-economic ---- */}
+          <SectionHeading>Socio-economic details</SectionHeading>
           <div><label className="label-tag">Farmer type</label>
             <select className="input mt-1" value={editForm.farmer_type} onChange={(e) => setEditForm({ ...editForm, farmer_type: e.target.value })}>
               <option>Small</option><option>Marginal</option><option>Medium</option><option>Large</option>
@@ -79,41 +132,9 @@ export function FarmerEditModal({
             </select></div>
           <div><label className="label-tag">Family members (male)</label><input type="number" min={0} className="input mt-1" value={editForm.family_member_male} onChange={(e) => setEditForm({ ...editForm, family_member_male: Number(e.target.value) })} /></div>
           <div><label className="label-tag">Family members (female)</label><input type="number" min={0} className="input mt-1" value={editForm.family_member_female} onChange={(e) => setEditForm({ ...editForm, family_member_female: Number(e.target.value) })} /></div>
-          <div><label className="label-tag">Sericulture Circle</label>
-            <select required className="input mt-1" value={editForm.seri_circle_id} onChange={(e) => setEditForm({ ...editForm, seri_circle_id: e.target.value })}>
-              <option value="">Select</option>
-              {editCircles.map((c) => <option key={c.id} value={c.id}>{c.circle_name}</option>)}
-            </select></div>
-          <div><label className="label-tag">Sub-division Office (SDO)/ CDC Office</label>
-            <input disabled className="input mt-1" value={sdoCdcName(editForm.seri_circle_id, editCircles, subdivisionCdcs)} /></div>
-          <div className="col-span-full"><label className="label-tag">Village</label><input required className="input mt-1" value={editForm.village_name} onChange={(e) => setEditForm({ ...editForm, village_name: e.target.value })} /></div>
-          <div><label className="label-tag">Panchayat</label><input className="input mt-1" value={editForm.gaon_panchayat} onChange={(e) => setEditForm({ ...editForm, gaon_panchayat: e.target.value })} /></div>
-          <div><label className="label-tag">Development Block</label><input className="input mt-1" value={editForm.development_block} onChange={(e) => setEditForm({ ...editForm, development_block: e.target.value })} /></div>
-          <div><label className="label-tag">Post Office</label><input className="input mt-1" value={editForm.post_office} onChange={(e) => setEditForm({ ...editForm, post_office: e.target.value })} /></div>
-          <div><label className="label-tag">Police Station</label><input className="input mt-1" value={editForm.police_station} onChange={(e) => setEditForm({ ...editForm, police_station: e.target.value })} /></div>
-          <div><label className="label-tag">PIN Code</label><input className="input mt-1" value={editForm.pin_code} onChange={(e) => setEditForm({ ...editForm, pin_code: e.target.value })} /></div>
-          <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
-            <label className="label-tag">Land Details</label>
-            {editLands.length > 0 && (
-              <div className="mt-2 mb-3">
-                <LandsList lands={editLands} onDelete={onDeleteLand} />
-              </div>
-            )}
-            <p className="text-xs mt-1 mb-2" style={{ color: "var(--text-muted)" }}>Add another land parcel — GPS boundary is added later by the FIG President.</p>
-            <LandRowsEditor value={editNewLands} onChange={setEditNewLands} />
-          </div>
-          <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
-            <label className="label-tag">Existing Assets (Self-Declared)</label>
-            {editAssets.length > 0 && (
-              <div className="mt-2 mb-3">
-                <AssetsList assets={editAssets} onDelete={onDeleteAsset} />
-              </div>
-            )}
-            <p className="text-xs mt-1 mb-2" style={{ color: "var(--text-muted)" }}>
-              Add another existing asset. FIG-level shared assets (CFC, CRC) are recorded against the FIG instead.
-            </p>
-            <AssetRowsEditor value={editNewAssets} onChange={setEditNewAssets} assetTypes={assetTypes} ownerKind="FARMER" />
-          </div>
+
+          {/* ---- 4. Sericulture activity ---- */}
+          <SectionHeading>Sericulture activity</SectionHeading>
           <div className="col-span-full">
             <label className="label-tag">Silk type / activity / product</label>
             <div className="mt-2">
@@ -147,7 +168,36 @@ export function FarmerEditModal({
               ))}
             </div>
           </div>
-          <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 border-t pt-4" style={{ borderColor: "var(--border)" }}>
+
+          {/* ---- 5. Land ---- */}
+          <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <h4 className="font-heading text-sm font-bold mb-1">Land details</h4>
+            {editLands.length > 0 && (
+              <div className="mt-2 mb-3">
+                <LandsList lands={editLands} onDelete={onDeleteLand} />
+              </div>
+            )}
+            <p className="text-xs mt-1 mb-2" style={{ color: "var(--text-muted)" }}>Add another land parcel — GPS boundary is added later by the FIG President.</p>
+            <LandRowsEditor value={editNewLands} onChange={setEditNewLands} />
+          </div>
+
+          {/* ---- 6. Assets ---- */}
+          <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
+            <h4 className="font-heading text-sm font-bold mb-1">Existing Assets (Self-Declared)</h4>
+            {editAssets.length > 0 && (
+              <div className="mt-2 mb-3">
+                <AssetsList assets={editAssets} onDelete={onDeleteAsset} />
+              </div>
+            )}
+            <p className="text-xs mt-1 mb-2" style={{ color: "var(--text-muted)" }}>
+              Add another existing asset. FIG-level shared assets (CFC, CRC) are recorded against the FIG instead.
+            </p>
+            <AssetRowsEditor value={editNewAssets} onChange={setEditNewAssets} assetTypes={assetTypes} ownerKind="FARMER" />
+          </div>
+
+          {/* ---- 7. Bank & documents ---- */}
+          <SectionHeading>Bank &amp; documents</SectionHeading>
+          <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
               <label className="label-tag block mb-2">Photo</label>
               <FileUpload label="Upload photo" testId="farmer-edit-photo-upload" value={editForm.photo_path}
@@ -171,6 +221,7 @@ export function FarmerEditModal({
             <div><label className="label-tag">IFSC Code</label><input className="input mt-1" value={editForm.ifsc_code}
                   onChange={(e) => setEditForm({ ...editForm, ifsc_code: e.target.value })} /></div>
           </div>
+
           <div className="col-span-full flex justify-end gap-2 mt-2">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
             <button type="submit" data-testid="submit-farmer-edit" className="btn-primary">Save changes</button>

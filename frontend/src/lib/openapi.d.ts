@@ -1056,6 +1056,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/farmers/me/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Own Submissions */
+        get: operations["list_own_submissions_api_farmers_me_submissions_get"];
+        put?: never;
+        /** Create Own Submission */
+        post: operations["create_own_submission_api_farmers_me_submissions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmers/me/submissions/{submission_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Own Submission Detail */
+        get: operations["get_own_submission_detail_api_farmers_me_submissions__submission_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmers/me/submissions/{submission_id}/resubmit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resubmit Own Submission */
+        post: operations["resubmit_own_submission_api_farmers_me_submissions__submission_id__resubmit_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmers/me/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Own Draft */
+        get: operations["get_own_draft_api_farmers_me_drafts_get"];
+        put?: never;
+        /** Upsert Own Draft */
+        post: operations["upsert_own_draft_api_farmers_me_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/farmers/{farmer_id}": {
         parameters: {
             query?: never;
@@ -1281,6 +1351,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/meetings/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Fig Drafts */
+        get: operations["get_fig_drafts_api_meetings_drafts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/meetings/{meeting_id}": {
         parameters: {
             query?: never;
@@ -1482,6 +1569,24 @@ export interface paths {
         post?: never;
         /** Delete Land */
         delete: operations["delete_land_api_lands__land_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/lands/{land_id}/gps/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Land Gps Draft */
+        get: operations["get_land_gps_draft_api_lands__land_id__gps_draft_get"];
+        put?: never;
+        /** Save Land Gps Draft */
+        post: operations["save_land_gps_draft_api_lands__land_id__gps_draft_post"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -2087,6 +2192,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reports/activity-onboarding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Activity Onboarding
+         * @description Distinct farmers per activity. No period params at all means all-time (cumulative).
+         */
+        get: operations["activity_onboarding_api_reports_activity_onboarding_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reports/export": {
         parameters: {
             query?: never;
@@ -2373,6 +2498,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assets/{asset_id}/gps/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Asset Gps Draft */
+        get: operations["get_asset_gps_draft_api_assets__asset_id__gps_draft_get"];
+        put?: never;
+        /** Save Asset Gps Draft */
+        post: operations["save_asset_gps_draft_api_assets__asset_id__gps_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/assets/{asset_id}/gps": {
         parameters: {
             query?: never;
@@ -2418,6 +2561,108 @@ export interface paths {
         get: operations["verification_log_api_assets__asset_id__verification_log_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmer-submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Farmer Submissions */
+        get: operations["list_farmer_submissions_api_farmer_submissions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmer-submissions/corrections/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Pending Farmer Corrections */
+        get: operations["get_pending_farmer_corrections_api_farmer_submissions_corrections_pending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmer-submissions/{submission_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Farmer Submission Detail */
+        get: operations["get_farmer_submission_detail_api_farmer_submissions__submission_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmer-submissions/corrections/{correction_id}/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Farmer Correction */
+        get: operations["preview_farmer_correction_api_farmer_submissions_corrections__correction_id__preview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmer-submissions/corrections/{correction_id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Farmer Correction */
+        post: operations["accept_farmer_correction_api_farmer_submissions_corrections__correction_id__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmer-submissions/corrections/{correction_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Farmer Correction */
+        post: operations["reject_farmer_correction_api_farmer_submissions_corrections__correction_id__reject_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2797,6 +3042,19 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
+        /**
+         * FarmerDraftIn
+         * @description A FIG-member farmer's own private staging entries for the current month — never
+         *     validated/applied until the FIG President reviews and submits the real Meeting.
+         */
+        FarmerDraftIn: {
+            /** Draft Month */
+            draft_month: string;
+            /** Entries */
+            entries: {
+                [key: string]: unknown;
+            }[];
+        };
         /** FarmerIn */
         FarmerIn: {
             /** First Name */
@@ -2870,11 +3128,6 @@ export interface components {
              */
             post_office: string | null;
             /**
-             * Police Station
-             * @default
-             */
-            police_station: string | null;
-            /**
              * Pin Code
              * @default
              */
@@ -2904,6 +3157,26 @@ export interface components {
         FarmerPasswordResetIn: {
             /** Password */
             password: string;
+        };
+        /**
+         * FarmerSubmissionCorrectionIn
+         * @description Same shape as FarmerSubmissionIn minus submission_month — the submission (and its
+         *     month) is implied by the URL; only the entries can be resubmitted for review.
+         */
+        FarmerSubmissionCorrectionIn: {
+            /** Entries */
+            entries: {
+                [key: string]: unknown;
+            }[];
+        };
+        /** FarmerSubmissionIn */
+        FarmerSubmissionIn: {
+            /** Submission Month */
+            submission_month: string;
+            /** Entries */
+            entries: {
+                [key: string]: unknown;
+            }[];
         };
         /** FarmerUpdateIn */
         FarmerUpdateIn: {
@@ -2951,8 +3224,6 @@ export interface components {
             development_block?: string | null;
             /** Post Office */
             post_office?: string | null;
-            /** Police Station */
-            police_station?: string | null;
             /** Pin Code */
             pin_code?: string | null;
             /** Stap Ids */
@@ -3002,11 +3273,6 @@ export interface components {
              * @default
              */
             post_office: string | null;
-            /**
-             * Police Station
-             * @default
-             */
-            police_station: string | null;
             /**
              * Pin Code
              * @default
@@ -3073,8 +3339,6 @@ export interface components {
             panchayat_name?: string | null;
             /** Post Office */
             post_office?: string | null;
-            /** Police Station */
-            police_station?: string | null;
             /** Pin Code */
             pin_code?: string | null;
             /** Address */
@@ -3085,6 +3349,10 @@ export interface components {
             meeting_venue?: string | null;
             /** Remarks */
             remarks?: string | null;
+            /** Minutes Path */
+            minutes_path?: string | null;
+            /** Group Photo Path */
+            group_photo_path?: string | null;
         };
         /** GpsSubmitIn */
         GpsSubmitIn: {
@@ -3160,6 +3428,13 @@ export interface components {
              * @default Owned
              */
             land_type: string | null;
+        };
+        /** LandGpsDraftIn */
+        LandGpsDraftIn: {
+            /** Points */
+            points: {
+                [key: string]: number;
+            }[];
         };
         /** LandIn */
         LandIn: {
@@ -6525,6 +6800,7 @@ export interface operations {
                 experience_max?: number | null;
                 has_bank_details?: boolean | null;
                 is_active?: boolean | null;
+                has_fig?: boolean | null;
                 page?: number | null;
                 page_size?: number | null;
             };
@@ -6643,6 +6919,201 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    list_own_submissions_api_farmers_me_submissions_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_own_submission_api_farmers_me_submissions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FarmerSubmissionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_own_submission_detail_api_farmers_me_submissions__submission_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resubmit_own_submission_api_farmers_me_submissions__submission_id__resubmit_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FarmerSubmissionCorrectionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_own_draft_api_farmers_me_drafts_get: {
+        parameters: {
+            query: {
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upsert_own_draft_api_farmers_me_drafts_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FarmerDraftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -7204,6 +7675,38 @@ export interface operations {
             };
         };
     };
+    get_fig_drafts_api_meetings_drafts_get: {
+        parameters: {
+            query: {
+                fig_id: string;
+                month: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_meeting_detail_api_meetings__meeting_id__get: {
         parameters: {
             query?: never;
@@ -7637,6 +8140,72 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_land_gps_draft_api_lands__land_id__gps_draft_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                land_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_land_gps_draft_api_lands__land_id__gps_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                land_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LandGpsDraftIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {
@@ -8942,6 +9511,40 @@ export interface operations {
             };
         };
     };
+    activity_onboarding_api_reports_activity_onboarding_get: {
+        parameters: {
+            query?: {
+                district_id?: string | null;
+                month?: string | null;
+                from_date?: string | null;
+                to_date?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     export_report_api_reports_export_get: {
         parameters: {
             query: {
@@ -8960,6 +9563,7 @@ export interface operations {
                 experience_max?: number | null;
                 has_bank_details?: boolean | null;
                 is_active?: boolean | null;
+                has_fig?: boolean | null;
                 stap_id?: string | null;
                 formation_date_from?: string | null;
                 formation_date_to?: string | null;
@@ -8968,6 +9572,8 @@ export interface operations {
                 level?: string | null;
                 from_month?: string | null;
                 to_month?: string | null;
+                from_date?: string | null;
+                to_date?: string | null;
                 product_ids?: string | null;
                 owner_type?: string | null;
                 asset_type_id?: string | null;
@@ -9580,6 +10186,72 @@ export interface operations {
             };
         };
     };
+    get_asset_gps_draft_api_assets__asset_id__gps_draft_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_asset_gps_draft_api_assets__asset_id__gps_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssetGpsSubmitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     submit_asset_gps_api_assets__asset_id__gps_post: {
         parameters: {
             query?: never;
@@ -9660,6 +10332,187 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_farmer_submissions_api_farmer_submissions_get: {
+        parameters: {
+            query?: {
+                month?: string | null;
+                page?: number;
+                page_size?: number | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_pending_farmer_corrections_api_farmer_submissions_corrections_pending_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    get_farmer_submission_detail_api_farmer_submissions__submission_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                submission_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_farmer_correction_api_farmer_submissions_corrections__correction_id__preview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                correction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_farmer_correction_api_farmer_submissions_corrections__correction_id__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                correction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_farmer_correction_api_farmer_submissions_corrections__correction_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                correction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetingCorrectionRejectIn"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

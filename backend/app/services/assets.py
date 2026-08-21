@@ -30,9 +30,17 @@ def asset_code(seq: int) -> str:
 
 def next_asset_seq(db: Session) -> int:
     """Shared by routers/assets.py (create_asset) and routers/figs.py (create_fig's
-    atomic asset capture) — no floor/skip-zero rule, unlike Farmer/FIG codes."""
+    atomic asset capture) — no floor/skip-zero rule, unlike Farmer/FIG codes.
+
+    Pending session rows count too: the session is `autoflush=False`, so assets added
+    earlier in the same transaction are invisible to the query below. Without this, a
+    caller that adds several assets before one commit (registering a farmer or FIG with
+    two self-declared assets, or a bulk scheme disbursement) hands every one of them the
+    same code and trips the `uq_asset_instances_asset_code` unique constraint."""
+    codes = [code for (code,) in db.query(AssetInstance.asset_code).all()]
+    codes += [obj.asset_code for obj in db.new if isinstance(obj, AssetInstance)]
     max_num = 0
-    for (code,) in db.query(AssetInstance.asset_code).all():
+    for code in codes:
         try:
             num = int(code.rsplit("-", 1)[-1])
         except (ValueError, AttributeError):

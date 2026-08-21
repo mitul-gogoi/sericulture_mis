@@ -41,6 +41,14 @@ STEPS = [
     ("Delete Beneficiary (references schemes, farmers, figs)", 'DELETE FROM beneficiaries'),
     ("Delete Allocation (references schemes)", 'DELETE FROM allocations'),
     ("Delete Scheme", 'DELETE FROM schemes'),
+    ("Delete AssetGpsDraft (references asset_instances, farmers, figs)", 'DELETE FROM asset_gps_drafts'),
+    ("Delete LandGpsDraft (references lands, farmers, figs)", 'DELETE FROM land_gps_drafts'),
+    ("Delete FarmerDraftEntry (references farmers, figs)", 'DELETE FROM farmer_draft_entries'),
+    ("Delete FarmerSubmissionCorrection (references farmer_submissions)", 'DELETE FROM farmer_submission_corrections'),
+    ("Delete FarmerSubmission (references farmers)", 'DELETE FROM farmer_submissions'),
+    ("Delete MeetingCorrection (references meetings, figs, users)", 'DELETE FROM meeting_corrections'),
+    ("Delete TrainingCertificate (references trainings)", 'DELETE FROM training_certificates'),
+    ("Delete TrainingAttendance (references trainings, farmers)", 'DELETE FROM training_attendance'),
     ("Delete Attendance (references meetings, figs, farmers)", 'DELETE FROM attendance'),
     ("Delete Yield_ (references figs, farmers, meetings)", 'DELETE FROM yields'),
     ("Delete Training (references users)", 'DELETE FROM trainings'),
@@ -73,10 +81,10 @@ def main() -> None:
         db.execute(
             text(
                 "INSERT INTO users (id, mobile_no, password_hash, role, name, "
-                "district_id, fig_id, farmer_id, failed_attempts, is_active, "
+                "district_id, fig_id, farmer_id, is_active, "
                 "created_at, updated_at) "
                 "VALUES (:id, :mobile_no, :password_hash, "
-                "'STATE_ADMIN', :name, NULL, NULL, NULL, 0, true, now(), now())"
+                "'STATE_ADMIN', :name, NULL, NULL, NULL, true, now(), now())"
             ),
             {
                 "id": str(uuid.uuid4()),

@@ -2,6 +2,11 @@
 import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Polygon, Marker, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
+// Leaflet's stylesheet used to be @imported in globals.css, which made every one of
+// the ~44 pages block on it — including the 40-odd with no map. Importing it here
+// scopes it to the routes that actually render a map, and serves it from the local
+// package rather than the unpkg CDN.
+import "leaflet/dist/leaflet.css";
 import { GpsFix } from "@phosphor-icons/react";
 import { toast } from "sonner";
 

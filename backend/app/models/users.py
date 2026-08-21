@@ -17,8 +17,6 @@ class User(SQLModel, table=True):
     district_id: Optional[str] = Field(default=None, foreign_key="districts.id")
     fig_id: Optional[str] = Field(default=None, foreign_key="figs.id")
     farmer_id: Optional[str] = Field(default=None)
-    failed_attempts: int = 0
-    lock_until: Optional[datetime] = None
     is_active: bool = True
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)

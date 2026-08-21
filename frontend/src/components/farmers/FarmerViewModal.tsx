@@ -42,7 +42,7 @@ export function FarmerViewModal({
           <ViewField label="Gender" value={viewing.gender} />
           <ViewField label="Date of birth" value={viewing.date_of_birth ? viewing.date_of_birth.slice(0, 10) : null} />
           <ViewField label="Mobile" value={viewing.mobile_no} />
-          <ViewField label="Aadhaar" value={viewing.aadhaar_no} />
+          <ViewField label="Aadhaar" value={viewing.aadhaar_masked} />
           <ViewField label="PAN number" value={viewing.pan_no} />
           <ViewField label="Farmer type" value={viewing.farmer_type} />
           <ViewField label="Education level" value={educationLevelName(viewing.education_level_id)} />
@@ -58,7 +58,6 @@ export function FarmerViewModal({
           <ViewField label="Panchayat" value={viewing.gaon_panchayat} />
           <ViewField label="Development Block" value={viewing.development_block} />
           <ViewField label="Post Office" value={viewing.post_office} />
-          <ViewField label="Police Station" value={viewing.police_station} />
           <ViewField label="PIN Code" value={viewing.pin_code} />
           <div className="col-span-full">
             <div className="label-tag mb-2">Land Details</div>

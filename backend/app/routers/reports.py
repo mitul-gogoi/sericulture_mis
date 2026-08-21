@@ -9,7 +9,7 @@ from app.core.deps import get_current_user, require_roles
 from app.services.fiscal import period_months, fy_to_months, month_range
 from app.services.export import rows_to_xlsx, rows_to_pdf
 from app.services.analytics import scope_district
-from app.services.farmer_reports import apply_farmer_filters, farmer_report_rows
+from app.services.farmer_reports import apply_farmer_filters, farmer_report_rows, activity_onboarding_rows
 from app.services.fig_reports import apply_fig_filters, fig_report_rows
 from app.services.land_reports import land_report_rows
 from app.services.meeting_reports import submission_status_rows, fp_submission_history_rows
@@ -305,6 +305,17 @@ def onboarding_trend(fiscal_year: Optional[str] = None, district_id: Optional[st
     return _onboarding_trend_rows(fiscal_year, district_id, user, db)
 
 
+@router.get("/activity-onboarding")
+def activity_onboarding(district_id: Optional[str] = None, month: Optional[str] = None,
+                        from_date: Optional[str] = None, to_date: Optional[str] = None,
+                        user: User = Depends(require_roles("STATE_ADMIN", "DISTRICT_ADMIN")),
+                        db: Session = Depends(get_session)):
+    """Distinct farmers per activity. No period params at all means all-time (cumulative)."""
+    if month and (from_date or to_date):
+        raise HTTPException(400, "Provide either month or a from_date/to_date range, not both")
+    return activity_onboarding_rows(db, user, district_id, month, from_date, to_date)
+
+
 _EXPORT_MEDIA_TYPES = {
     "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     "pdf": "application/pdf",
@@ -324,6 +335,7 @@ def export_report(report: str, format: str,
                   formation_date_to: Optional[str] = None,
                   product_id: Optional[str] = None, activity_id: Optional[str] = None,
                   level: Optional[str] = None, from_month: Optional[str] = None, to_month: Optional[str] = None,
+                  from_date: Optional[str] = None, to_date: Optional[str] = None,
                   product_ids: Optional[str] = None,
                   owner_type: Optional[str] = None, asset_type_id: Optional[str] = None,
                   status: Optional[str] = None, verification_status: Optional[str] = None,
@@ -369,19 +381,28 @@ def export_report(report: str, format: str,
                                       experience_min=experience_min, experience_max=experience_max,
                                       has_bank_details=has_bank_details, is_active=is_active, has_fig=has_fig)
         rows = farmer_report_rows(query, db)
-        headers = ["Farmer Code", "Full Name", "Gender", "Date of Birth", "Mobile Number", "Aadhaar Number",
+        headers = ["Farmer Code", "Full Name", "Gender", "Date of Birth", "Mobile Number", "Aadhaar (masked)",
                    "PAN Number", "Education Level", "Farmer Experience (in Years)", "Primary Activities",
                    "All Activities", "Caste", "Religion", "Family Member Counts (male)",
                    "Family Member Counts (female)", "Village Name", "Panchayat", "Development Block",
-                   "District", "Sericulture Circle", "Post Office", "Police Station", "PIN Code",
+                   "District", "Sericulture Circle", "Post Office", "PIN Code",
                    "Account Number", "Bank Name", "Branch Name", "IFSC Code", "Status", "FIG Membership"]
-        data = [[r["farmer_code"], r["full_name"], r["gender"], r["date_of_birth"], r["mobile_no"], r["aadhaar_no"],
+        data = [[r["farmer_code"], r["full_name"], r["gender"], r["date_of_birth"], r["mobile_no"], r["aadhaar_masked"],
                  r["pan_no"], r["education_level_name"], r["experience_years"], r["primary_activity"],
                  r["all_activities"], r["caste_name"], r["religion_name"], r["family_member_male"],
                  r["family_member_female"], r["village_name"], r["gaon_panchayat"], r["development_block"],
-                 r["district_name"], r["circle_name"], r["post_office"], r["police_station"], r["pin_code"],
+                 r["district_name"], r["circle_name"], r["post_office"], r["pin_code"],
                  r["account_number"], r["bank_name"], r["branch_name"], r["ifsc_code"],
                  "Active" if r["is_active"] else "Inactive", r["fig_name"]] for r in rows]
+    elif report == "activity-onboarding":
+        if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN"):
+            raise HTTPException(403, "State/District Admin only")
+        result = activity_onboarding_rows(db, user, district_id, month, from_date, to_date)
+        headers = ["Silk Type", "Activity", "Farmers Onboarded"]
+        data = [[r["silk_type_name"], r["activity_name"], r["farmers"]] for r in result["items"]]
+        # A farmer doing several activities is counted in each, so this total is intentionally
+        # larger than the headcount — spell that out rather than let the reader guess.
+        data.append(["", "Distinct farmers (counted once each)", result["distinct_farmers"]])
     elif report == "figs":
         if user.role not in ("STATE_ADMIN", "DISTRICT_ADMIN", "FIG_PRESIDENT"):
             raise HTTPException(403, "State/District Admin/FIG President only")
@@ -407,10 +428,10 @@ def export_report(report: str, format: str,
         rows = fig_report_rows(query, db)
         headers = ["FIG Code", "FIG Name", "Silk Type / Activity / Product", "District", "Sericulture Circle",
                    "Formation Date", "Contact Number", "Meeting Venue", "Total Members", "Members",
-                   "FIG President", "FIG President Mobile Number", "Status"]
+                   "FIG President", "FIG President Mobile Number", "Documents", "Status"]
         data = [[r["fig_code"], r["fig_name"], r["stap_label"], r["district_name"], r["circle_name"],
                  r["formation_date"], r["contact_no"], r["meeting_venue"], r["total_members"],
-                 r["member_names"], r["president_label"], r["president_mobile"],
+                 r["member_names"], r["president_label"], r["president_mobile"], r["documents"],
                  "Active" if r["is_active"] else "Inactive"] for r in rows]
     elif report == "lands":
         # View access mirrors GET /lands' own role scoping exactly — State Admin is
@@ -615,7 +636,8 @@ def export_report(report: str, format: str,
     title = report.replace("-", " ").title()
     generated_at = None
     filename = f"{report}.{format}"
-    if report in ("farmers", "figs", "lands", "assets", "submission-status", "submission-history"):
+    if report in ("farmers", "figs", "lands", "assets", "submission-status", "submission-history",
+                  "activity-onboarding"):
         now = datetime.now(timezone.utc)
         generated_at = now.strftime("%Y-%m-%d %H:%M:%S UTC")
         filename = f"{report}_{now.strftime('%Y%m%d_%H%M%S')}.{format}"

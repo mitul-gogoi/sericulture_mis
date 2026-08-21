@@ -16,7 +16,6 @@ class FigIn(BaseModel):
     village_name: Optional[str] = ""
     panchayat_name: Optional[str] = ""
     post_office: Optional[str] = ""
-    police_station: Optional[str] = ""
     pin_code: Optional[str] = ""
     address: Optional[str] = ""
     contact_no: Optional[str] = ""
@@ -45,9 +44,10 @@ class FigUpdateIn(BaseModel):
     village_name: Optional[str] = None
     panchayat_name: Optional[str] = None
     post_office: Optional[str] = None
-    police_station: Optional[str] = None
     pin_code: Optional[str] = None
     address: Optional[str] = None
     contact_no: Optional[str] = None
     meeting_venue: Optional[str] = None
     remarks: Optional[str] = None
+    minutes_path: Optional[str] = None
+    group_photo_path: Optional[str] = None

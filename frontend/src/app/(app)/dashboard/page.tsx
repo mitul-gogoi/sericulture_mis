@@ -7,6 +7,7 @@ import { Users, UsersThree, Calendar, MapTrifold, Wrench } from "@phosphor-icons
 import type { DashboardStats } from "@/lib/types";
 import { OnboardingSummary } from "./OnboardingSummary";
 import { ProductionTiles, StockTiles } from "./ProductTiles";
+import { ActivityMixCard, DistrictMapCard, OnboardingTrendCard, ProductionChartCard, SubmissionMeter } from "./DashboardCharts";
 
 function Stat({ icon: Icon, label, value, tone = "primary", href }: { icon: React.ElementType; label: string; value: React.ReactNode; tone?: string; href?: string }) {
   const content = (
@@ -26,10 +27,6 @@ export default function DashboardPage() {
   const { data: stats = {} as DashboardStats } = useQuery({
     queryKey: ["dashboard"], queryFn: async () => (await api.get("/reports/dashboard")).data,
     enabled: user?.role !== "FARMER",
-  });
-  const { data: heatmap = [] } = useQuery({
-    queryKey: ["district-heatmap"], queryFn: async () => (await api.get("/reports/district-heatmap")).data,
-    enabled: user?.role === "STATE_ADMIN",
   });
   const { data: farmerSummary = {} as any } = useQuery({
     queryKey: ["farmer-summary"], queryFn: async () => (await api.get("/farmers/me/summary")).data,
@@ -77,42 +74,14 @@ export default function DashboardPage() {
           </div>
 
           <OnboardingSummary />
-          <ProductionTiles />
+          <OnboardingTrendCard />
+          <DistrictMapCard month={s.current_month} />
+          <ProductionChartCard />
+          <ActivityMixCard />
           <StockTiles />
 
-          <div className="card p-6 mb-6">
-            <h3 className="font-heading text-lg font-bold mb-4">Monthly submission ({s.current_month})</h3>
-            <div className="flex gap-3">
-              <div className="flex-1 rounded p-4 text-center" style={{ background: "#E5EFE7" }}>
-                <div className="font-heading text-3xl font-extrabold" style={{ color: "var(--success)" }}>{s.monthly_submitted_count ?? 0}</div>
-                <div className="label-tag mt-1">Submitted</div>
-              </div>
-              <div className="flex-1 rounded p-4 text-center" style={{ background: "#FBEFD6" }}>
-                <div className="font-heading text-3xl font-extrabold" style={{ color: "var(--warning)" }}>{Math.max((s.figs || 0) - (s.monthly_submitted_count || 0), 0)}</div>
-                <div className="label-tag mt-1">Pending</div>
-              </div>
-            </div>
-          </div>
+          <SubmissionMeter submitted={s.monthly_submitted_count ?? 0} total={s.figs ?? 0} month={s.current_month} />
 
-          <div className="card p-6 mb-6">
-            <h3 className="font-heading text-lg font-bold mb-4">District submission heatmap ({s.current_month})</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-              {heatmap.map((d: any) => {
-                const color = d.pct >= 80 ? "var(--success)" : d.pct >= 50 ? "var(--warning)" : "var(--error)";
-                const bg = d.pct >= 80 ? "#E5EFE7" : d.pct >= 50 ? "#FBEFD6" : "#F5DDDB";
-                return (
-                  <div key={d.district_id} className="rounded px-3 py-2 flex justify-between items-center" style={{ background: bg }}>
-                    <div>
-                      <div className="text-sm font-semibold">{d.district_name}</div>
-                      <div className="text-xs" style={{ color: "var(--text-muted)" }}>{d.submitted} / {d.total} FIGs</div>
-                    </div>
-                    <div className="font-heading font-extrabold" style={{ color }}>{d.pct}%</div>
-                  </div>
-                );
-              })}
-              {heatmap.length === 0 && <div className="col-span-3 text-center py-4 text-sm" style={{ color: "var(--text-muted)" }}>No FIGs registered yet</div>}
-            </div>
-          </div>
         </>
       )}
 

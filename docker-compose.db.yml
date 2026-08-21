@@ -1,0 +1,47 @@
+# PostgreSQL + PostGIS — runs on the DATABASE SERVER, 192.168.18.194, and nothing else.
+#
+# Two things here are deliberate and should not be "tidied":
+#
+# 1. The port is published as 192.168.18.194:5432, NOT 5432 or 0.0.0.0:5432. Binding to
+#    the private address means the database is reachable from the app server and over the
+#    VPN, but never from any public interface the VM might later be given.
+#
+# 2. PostGIS is required, not optional — Land.boundary is a Geometry column and the very
+#    first Alembic migration runs CREATE EXTENSION postgis. Plain PostgreSQL will fail to
+#    migrate. The postgis/postgis image bundles it.
+#
+# Start with:  docker compose -f docker-compose.db.yml up -d
+services:
+  db:
+    image: postgis/postgis:17-3.4
+    container_name: seri-db
+    environment:
+      POSTGRES_DB: sericulture_mis
+      # The superuser. The application does NOT use this — see DEPLOY.md Part 5, which
+      # creates a non-superuser `seri_app` role for the backend to connect as.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the .env file next to this one}
+      # Keep the container's clock matched to the app server. Several timestamp columns
+      # are TIMESTAMP WITHOUT TIME ZONE, so a mismatch here shifts stored wall-clock times.
+      TZ: Asia/Kolkata
+      PGTZ: Asia/Kolkata
+    ports:
+      - "192.168.18.194:5432:5432"
+    volumes:
+      - prod_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+    # Caps disk. The database container is not recreated on an app deploy, so its logs
+    # persist far longer than the app tier's — but bound them anyway.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sericulture_mis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  prod_pgdata:

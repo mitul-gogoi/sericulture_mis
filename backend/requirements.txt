@@ -10,6 +10,7 @@ geoalchemy2>=0.15.2
 shapely>=2.0.6
 slowapi>=0.1.9
 python-jose[cryptography]>=3.3.0
+cryptography>=42.0
 passlib[bcrypt]>=1.7.4
 bcrypt==4.0.1
 PyJWT>=2.8.0

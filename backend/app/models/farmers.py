@@ -17,7 +17,12 @@ class Farmer(SQLModel, table=True):
     gender: str = Field(max_length=10)
     date_of_birth: Optional[date] = None
     mobile_no: str = Field(unique=True, index=True, max_length=15)
-    aadhaar_no: Optional[str] = Field(default=None, max_length=20, index=True)
+    # The raw 12 digits are never stored — see app/core/aadhaar.py. `aadhaar_hash` carries
+    # the index because it is what the duplicate-Aadhaar check now queries on. Neither the
+    # hash nor the ciphertext may be serialized to a client.
+    aadhaar_last4: Optional[str] = Field(default=None, max_length=4)
+    aadhaar_hash: Optional[str] = Field(default=None, max_length=64, index=True)
+    aadhaar_enc: Optional[str] = Field(default=None, max_length=255)
     pan_no: Optional[str] = Field(default=None, max_length=15)
     photo_path: Optional[str] = Field(default=None, max_length=500)
     is_pwd: bool = False
@@ -34,7 +39,6 @@ class Farmer(SQLModel, table=True):
     gaon_panchayat: Optional[str] = Field(default=None, max_length=120)
     development_block: Optional[str] = Field(default=None, max_length=120)
     post_office: Optional[str] = Field(default=None, max_length=120)
-    police_station: Optional[str] = Field(default=None, max_length=120)
     pin_code: Optional[str] = Field(default=None, max_length=10)
     stap_ids: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     primary_stap_id: Optional[str] = Field(default=None)

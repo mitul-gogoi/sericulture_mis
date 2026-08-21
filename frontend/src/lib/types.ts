@@ -64,14 +64,17 @@ export interface Farmer {
   id: string; farmer_code: string;
   first_name: string; middle_name?: string | null; last_name: string;
   gender: string; date_of_birth?: string | null; mobile_no: string;
-  aadhaar_no?: string | null; pan_no?: string | null;
+  // Display-only, e.g. "********1234". The real number is never sent to an admin client;
+  // only the farmer's own GET /farmers/me carries it (see FarmerSelfProfile).
+  aadhaar_masked?: string | null;
+  pan_no?: string | null;
   photo_path?: string | null; is_pwd?: boolean;
   education_level_id?: string | null; experience_years?: number;
   caste_id?: string | null; religion_id?: string | null;
   family_member_male?: number; family_member_female?: number;
   district_id: string; seri_circle_id: string; village_name: string;
   gaon_panchayat?: string | null; development_block?: string | null; post_office?: string | null;
-  police_station?: string | null; pin_code?: string | null;
+  pin_code?: string | null;
   stap_ids: string[]; primary_stap_id?: string | null;
   experience_activity_ids?: string[];
   farmer_type?: string | null;
@@ -81,6 +84,20 @@ export interface Farmer {
   fig_id?: string | null; fig_name?: string | null;
 }
 
+/** GET /farmers/me only — a farmer viewing their own record. This is the sole response
+ *  in the app that carries the real 12-digit Aadhaar, plus resolved display names so the
+ *  My Profile page never renders raw UUIDs. Kept separate from `Farmer` so nothing can
+ *  assume `aadhaar_full` exists on an ordinary list row. */
+export interface FarmerSelfProfile extends Farmer {
+  aadhaar_full?: string | null;
+  fig_code?: string | null;
+  district_name?: string | null;
+  circle_name?: string | null;
+  caste_name?: string | null;
+  religion_name?: string | null;
+  education_level_name?: string | null;
+}
+
 export interface AssetDetail { asset_type_id: string; quantity: number; acquisition_year?: number | null }
 
 export interface Fig {
@@ -88,8 +105,9 @@ export interface Fig {
   stap_id: string; district_id: string; seri_circle_id: string;
   formation_date: string; meeting_venue?: string | null;
   village_name?: string | null; panchayat_name?: string | null;
-  post_office?: string | null; police_station?: string | null; pin_code?: string | null;
+  post_office?: string | null; pin_code?: string | null;
   address?: string | null; contact_no?: string | null; remarks?: string | null;
+  minutes_path?: string | null; group_photo_path?: string | null;
   total_members: number; member_names?: string[]; is_active: boolean;
 }
 
@@ -473,4 +491,13 @@ export interface DashboardStats {
   lands_needing_gps?: number; assets_needing_gps?: number;
   submitted_this_month?: boolean; current_month?: string;
   fig_name?: string | null; fig_code?: string | null; district_name?: string | null;
+}
+
+export interface ActivityOnboardingItem {
+  activity_id: string; silk_type_name: string; activity_name: string; step_no: number; farmers: number;
+}
+export interface ActivityOnboardingResponse {
+  items: ActivityOnboardingItem[];
+  /** Headcount. Lower than the sum of `farmers` whenever anyone does more than one activity. */
+  distinct_farmers: number;
 }

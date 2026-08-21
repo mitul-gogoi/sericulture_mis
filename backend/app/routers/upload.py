@@ -35,6 +35,16 @@ def _build_folder(category: str, db: Session, user: User, district_id: str | Non
             fig_seg = "Unknown FIG"
         month_seg = _safe_segment(month or "Unspecified Month")
         return f"File Uploads/FIG Details/{district_name}/{circle_name}/{fig_seg}/Monthly Meetings/{month_seg}"
+    if category == "fig_registration":
+        # Unlike "fig_minutes" this must NOT read user.fig_id — the uploader is a District
+        # Admin (fig_id is None). The FIG already exists by now, so the client sends its
+        # district, circle and "Name (CODE)" identifier explicitly.
+        district = db.query(District).filter(District.id == district_id).first() if district_id else None
+        circle = db.query(SericultureCircle).filter(SericultureCircle.id == seri_circle_id).first() if seri_circle_id else None
+        district_name = _safe_segment(district.district_name if district else "Unknown District")
+        circle_name = _safe_segment(circle.circle_name if circle else "Unknown Circle")
+        fig_seg = _safe_segment(farmer_identifier or "Unknown FIG")
+        return f"File Uploads/FIG Details/{district_name}/{circle_name}/{fig_seg}/Registration"
     if category == "assets":
         district = db.query(District).filter(District.id == district_id).first() if district_id else None
         district_name = _safe_segment(district.district_name if district else "Unknown District")

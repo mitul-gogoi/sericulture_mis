@@ -16,15 +16,17 @@ import { FarmerFilterPanel, type FarmerReportFilters } from "@/components/farmer
 import { FarmerRegisterModal, type FarmerForm } from "@/components/farmers/FarmerRegisterModal";
 import { FarmerEditModal, type FarmerEditForm } from "@/components/farmers/FarmerEditModal";
 import { FarmerViewModal } from "@/components/farmers/FarmerViewModal";
-import type { Farmer, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, Caste, Religion, EducationLevel, Activity, Land, AssetType, AssetInstance } from "@/lib/types";
+import type { Farmer, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, Caste, Religion, EducationLevel, Activity, Land, AssetType, AssetInstance, ActivityOnboardingResponse } from "@/lib/types";
 
 const MultiSeriesTrendChart = dynamic(() => import("../dashboard/charts").then((m) => m.MultiSeriesTrendChart), { ssr: false });
 
 const emptyForm = (): FarmerForm => ({
-  first_name: "", middle_name: "", last_name: "", gender: "Male", date_of_birth: "",
+  // gender starts blank on purpose — it drives scheme eligibility, so the DA must choose
+  // rather than have the form quietly default every farmer to "Male".
+  first_name: "", middle_name: "", last_name: "", gender: "", date_of_birth: "",
   mobile_no: "", aadhaar_no: "", pan_no: "",
   district_id: "", seri_circle_id: "", village_name: "", gaon_panchayat: "", development_block: "",
-  post_office: "", police_station: "", pin_code: "",
+  post_office: "", pin_code: "",
   stap_ids: [], primary_stap_id: "", experience_activity_ids: [],
   farmer_type: "Small", education_level_id: "", experience_years: 0,
   caste_id: "", religion_id: "", family_member_male: 0, family_member_female: 0,
@@ -45,6 +47,11 @@ function toApiBody(form: Record<string, any>) {
   if (!body.caste_id) body.caste_id = null;
   if (!body.religion_id) body.religion_id = null;
   if (!body.education_level_id) body.education_level_id = null;
+  // Every one of these is an optional FK. An empty string is NOT null to Postgres, so
+  // sending "" fails the foreign-key constraint with a 500 instead of storing "unset" —
+  // which is exactly what happens when a farmer is registered with no silk type /
+  // activity / product picked, since that field is optional on the form.
+  if (!body.primary_stap_id) body.primary_stap_id = null;
   return body;
 }
 
@@ -83,7 +90,16 @@ export default function FarmersPage() {
   const [reportPage, setReportPage] = useState(1);
   const [reportPageSize, setReportPageSize] = useState(20);
   const [trendFy, setTrendFy] = useState("");
+  // Activity-wise onboarding: all-time by default, since that is the cumulative figure.
+  const [actMode, setActMode] = useState<"all" | "month" | "range">("all");
+  const [actMonth, setActMonth] = useState("");
+  const [actFrom, setActFrom] = useState("");
+  const [actTo, setActTo] = useState("");
+  const [actDistrict, setActDistrict] = useState("");
   const [justFocused, setJustFocused] = useState(false);
+  // False until the admin actually types a new Aadhaar. While false, submitEdit drops the
+  // field from the PATCH so the masked placeholder can never overwrite the stored number.
+  const [aadhaarDirty, setAadhaarDirty] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("focus") !== "onboarding-trend" || !isReportRole) return;
@@ -123,6 +139,19 @@ export default function FarmersPage() {
   const showingFrom = total === 0 ? 0 : (reportPage - 1) * reportPageSize + 1;
   const showingTo = Math.min(reportPage * reportPageSize, total);
   const chartData = (trend?.months ?? []).map((m, i) => ({ label: m, Farmers: trend?.farmers_monthly[i] ?? 0 }));
+
+  const activityParams: Record<string, string> = {
+    ...(actMode === "month" && actMonth ? { month: actMonth } : {}),
+    ...(actMode === "range" && actFrom ? { from_date: actFrom } : {}),
+    ...(actMode === "range" && actTo ? { to_date: actTo } : {}),
+    ...(actDistrict ? { district_id: actDistrict } : {}),
+  };
+  const { data: activityOnboarding } = useQuery<ActivityOnboardingResponse>({
+    queryKey: ["activity-onboarding", activityParams],
+    queryFn: async () => (await api.get("/reports/activity-onboarding", { params: activityParams })).data,
+    enabled: user?.role === "STATE_ADMIN" || user?.role === "DISTRICT_ADMIN",
+  });
+  const activitySum = (activityOnboarding?.items ?? []).reduce((n, i) => n + i.farmers, 0);
 
   const { data: districts = [] } = useQuery<District[]>({ queryKey: ["districts"], queryFn: async () => (await api.get("/master/districts")).data });
   const { data: subdivisionCdcs = [] } = useQuery<SubdivisionCdc[]>({ queryKey: ["subdivision-cdc-all"], queryFn: async () => (await api.get("/master/subdivision-cdc")).data });
@@ -217,13 +246,14 @@ export default function FarmersPage() {
     setEditing(f);
     setEditNewLands([]);
     setEditNewAssets([]);
+    setAadhaarDirty(false);
     setEditForm({
       first_name: f.first_name, middle_name: f.middle_name || "", last_name: f.last_name,
       gender: f.gender, date_of_birth: f.date_of_birth ? f.date_of_birth.slice(0, 10) : "",
-      mobile_no: f.mobile_no, aadhaar_no: f.aadhaar_no || "", pan_no: f.pan_no || "",
+      mobile_no: f.mobile_no, aadhaar_no: "", pan_no: f.pan_no || "",
       seri_circle_id: f.seri_circle_id, village_name: f.village_name,
       gaon_panchayat: f.gaon_panchayat || "", development_block: f.development_block || "", post_office: f.post_office || "",
-      police_station: f.police_station || "", pin_code: f.pin_code || "",
+      pin_code: f.pin_code || "",
       stap_ids: f.stap_ids || [], primary_stap_id: f.primary_stap_id || "",
       experience_activity_ids: f.experience_activity_ids || [],
       farmer_type: f.farmer_type || "Small",
@@ -240,7 +270,10 @@ export default function FarmersPage() {
     e.preventDefault();
     if (!editing || !editForm) return;
     try {
-      await api.patch(`/farmers/${editing.id}`, toApiBody(editForm));
+      const editBody = toApiBody(editForm);
+      // Untouched Aadhaar must not be sent at all — see aadhaarDirty above.
+      if (!aadhaarDirty) delete editBody.aadhaar_no;
+      await api.patch(`/farmers/${editing.id}`, editBody);
       const newLands = editNewLands.filter((row) => row.dag_no || row.patta_no);
       for (const row of newLands) {
         await api.post("/lands", { farmer_id: editing.id, ...row });
@@ -368,12 +401,92 @@ export default function FarmersPage() {
         </div>
       )}
 
+      {(user?.role === "STATE_ADMIN" || user?.role === "DISTRICT_ADMIN") && (
+        <div className="card p-6 mt-6">
+          <div className="flex items-center justify-between mb-1 flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <ChartLineUp size={20} weight="duotone" color="#2D5134" />
+              <h3 className="font-heading text-lg font-bold">Farmers onboarded by activity</h3>
+            </div>
+            <ExportButtons report="activity-onboarding" params={activityParams} />
+          </div>
+
+          <div className="flex items-end gap-3 flex-wrap mt-4">
+            <div>
+              <label className="label-tag">Period</label>
+              <select className="input mt-1" value={actMode} data-testid="activity-period-mode"
+                      onChange={(e) => setActMode(e.target.value as "all" | "month" | "range")}>
+                <option value="all">All time (cumulative)</option>
+                <option value="month">Month</option>
+                <option value="range">Date range</option>
+              </select>
+            </div>
+            {actMode === "month" && (
+              <div>
+                <label className="label-tag">Month</label>
+                <input type="month" className="input mt-1" value={actMonth} onChange={(e) => setActMonth(e.target.value)} />
+              </div>
+            )}
+            {actMode === "range" && (
+              <>
+                <div>
+                  <label className="label-tag">From</label>
+                  <input type="date" className="input mt-1" value={actFrom} onChange={(e) => setActFrom(e.target.value)} />
+                </div>
+                <div>
+                  <label className="label-tag">To</label>
+                  <input type="date" className="input mt-1" value={actTo} onChange={(e) => setActTo(e.target.value)} />
+                </div>
+              </>
+            )}
+            {user?.role === "STATE_ADMIN" && (
+              <div>
+                <label className="label-tag">District</label>
+                <select className="input mt-1" value={actDistrict} onChange={(e) => setActDistrict(e.target.value)}>
+                  <option value="">All districts</option>
+                  {districts.map((d) => <option key={d.id} value={d.id}>{d.district_name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="seri-table">
+              <thead><tr><th>Silk Type</th><th>Activity</th><th className="text-right">Farmers</th></tr></thead>
+              <tbody>
+                {(activityOnboarding?.items ?? []).map((i) => (
+                  <tr key={i.activity_id}>
+                    <td>{i.silk_type_name}</td>
+                    <td>{i.activity_name}</td>
+                    <td className="text-right font-semibold">{i.farmers}</td>
+                  </tr>
+                ))}
+                {(activityOnboarding?.items ?? []).length === 0 && (
+                  <tr><td colSpan={3} className="text-center py-6" style={{ color: "var(--text-muted)" }}>No activities configured</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="text-xs mt-3" style={{ color: "var(--text-muted)" }}>
+            <strong>{activityOnboarding?.distinct_farmers ?? 0}</strong> distinct farmers onboarded in this
+            period. The column above totals <strong>{activitySum}</strong> because a farmer registered for
+            more than one activity is counted under each of them.
+          </p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+            Counts use the date the farmer was registered and their activities as recorded today — adding an
+            activity to an existing farmer changes the figure for the month they were originally registered.
+          </p>
+        </div>
+      )}
+
       {open && (
         <FarmerRegisterModal
           form={form} setForm={setForm} onClose={() => setOpen(false)} onSubmit={submit}
           isStateAdmin={user?.role === "STATE_ADMIN"}
           districts={districts} circles={circles} subdivisionCdcs={subdivisionCdcs} educationLevels={educationLevels} castes={castes}
           religions={religions} activities={activities} staps={staps} assetTypes={assetTypes}
+          lastFarmer={reportData?.items?.[0] ?? null}
         />
       )}
 
@@ -387,6 +500,7 @@ export default function FarmersPage() {
           editNewLands={editNewLands} setEditNewLands={setEditNewLands}
           editNewAssets={editNewAssets} setEditNewAssets={setEditNewAssets}
           onDeleteLand={deleteLand} onDeleteAsset={deleteAsset}
+          aadhaarDirty={aadhaarDirty} setAadhaarDirty={setAadhaarDirty}
         />
       )}
 

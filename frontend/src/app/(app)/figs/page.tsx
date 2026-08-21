@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { FigRow } from "@/components/figs/FigRow";
 import { FigFilterPanel, type FigReportFilters } from "@/components/figs/FigFilterPanel";
 import { FigRegisterModal, type FigCreateForm } from "@/components/figs/FigRegisterModal";
+import { FigDocumentsStep, type FigDocuments } from "@/components/figs/FigDocumentsStep";
 import { FigDetailModal } from "@/components/figs/FigDetailModal";
 import { type FigEditFormState } from "@/components/figs/FigEditForm";
 import { type PresForm } from "@/components/figs/FigPresidentPanel";
@@ -22,7 +23,7 @@ const MultiSeriesTrendChart = dynamic(() => import("../dashboard/charts").then((
 
 const emptyCreateForm = (): FigCreateForm => ({
   fig_name: "", stap_id: "", seri_circle_id: "", district_id: "", formation_date: "", meeting_venue: "",
-  village_name: "", panchayat_name: "", post_office: "", police_station: "", pin_code: "", address: "",
+  village_name: "", panchayat_name: "", post_office: "", pin_code: "", address: "",
   member_ids: [], president_farmer_id: "", assets: [],
 });
 
@@ -57,8 +58,15 @@ export default function FIGsPage() {
   const [presForm, setPresForm] = useState<PresForm>({ farmer_id: "" });
   const [editingFig, setEditingFig] = useState(false);
   const [editForm, setEditForm] = useState<FigEditFormState | null>(null);
+  // Step 2 of registration: set once the FIG exists, so the upload folder can be named
+  // after its real code. Null means we're still on step 1.
+  const [newFig, setNewFig] = useState<{ id: string; fig_code: string; district_id: string; seri_circle_id: string; fig_name: string } | null>(null);
+  const [newFigDocs, setNewFigDocs] = useState<FigDocuments>({ minutes_path: null, group_photo_path: null });
   const [editNewAssets, setEditNewAssets] = useState<AssetRow[]>([]);
   const [form, setForm] = useState<FigCreateForm>(emptyCreateForm());
+  // Location fields the DA has hand-edited — the register modal's autofill-from-members
+  // effect leaves these alone so a manual correction survives a member-list change.
+  const [touchedLocation, setTouchedLocation] = useState<string[]>([]);
 
   // Filter panel — live-edited state, only takes effect on Search.
   const [qInput, setQInput] = useState("");
@@ -142,7 +150,7 @@ export default function FIGsPage() {
     enabled: !!detail,
   });
 
-  const resetCreateForm = () => setForm(emptyCreateForm());
+  const resetCreateForm = () => { setForm(emptyCreateForm()); setTouchedLocation([]); };
 
   const runSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,7 +172,7 @@ export default function FIGsPage() {
         district_id: user?.role === "DISTRICT_ADMIN" ? user.district_id : form.district_id,
         formation_date: form.formation_date, meeting_venue: form.meeting_venue,
         village_name: form.village_name, panchayat_name: form.panchayat_name,
-        post_office: form.post_office, police_station: form.police_station, pin_code: form.pin_code,
+        post_office: form.post_office, pin_code: form.pin_code,
         address: form.address, member_ids: form.member_ids,
         assets: form.assets.filter((row) => row.asset_type_id).map((row) => ({
           asset_type_id: row.asset_type_id, quantity: Number(row.quantity) || 1,
@@ -176,14 +184,37 @@ export default function FIGsPage() {
       if (form.president_farmer_id) {
         await api.post("/figs/president", { fig_id: created!.id, farmer_id: form.president_farmer_id });
       }
-      toast.success("FIG registered");
+      toast.success(`FIG registered — ${created!.fig_code}`);
+      // Hand over to step 2 rather than closing. The FIG already exists at this point;
+      // skipping the documents leaves it created and flagged, never rolled back.
+      setNewFig({
+        id: created!.id, fig_code: created!.fig_code, fig_name: form.fig_name,
+        district_id: user?.role === "DISTRICT_ADMIN" ? (user.district_id as string) : form.district_id,
+        seri_circle_id: form.seri_circle_id,
+      });
+      setNewFigDocs({ minutes_path: null, group_photo_path: null });
       setOpen(false);
-      resetCreateForm();
     } catch (e: any) {
       toast.error(fmtErr(e.response?.data?.detail) + (created ? " — FIG was created; finish setup from its detail view." : ""));
     } finally {
       qc.invalidateQueries({ queryKey: ["figs-report"] });
     }
+  };
+
+  const saveNewFigDocs = async () => {
+    if (!newFig) return;
+    try {
+      await api.patch(`/figs/${newFig.id}`, newFigDocs);
+      toast.success("Documents saved");
+      closeDocsStep();
+    } catch (e: any) { toast.error(fmtErr(e.response?.data?.detail)); }
+  };
+
+  const closeDocsStep = () => {
+    setNewFig(null);
+    setNewFigDocs({ minutes_path: null, group_photo_path: null });
+    resetCreateForm();
+    qc.invalidateQueries({ queryKey: ["figs-report"] });
   };
 
   const addMember = async () => {
@@ -216,8 +247,9 @@ export default function FIGsPage() {
       formation_date: detail.formation_date?.slice(0, 10) || "",
       meeting_venue: detail.meeting_venue || "",
       village_name: detail.village_name || "", panchayat_name: detail.panchayat_name || "",
-      post_office: detail.post_office || "", police_station: detail.police_station || "",
+      post_office: detail.post_office || "",
       pin_code: detail.pin_code || "", address: detail.address || "",
+      minutes_path: detail.minutes_path || null, group_photo_path: detail.group_photo_path || null,
     });
     setEditNewAssets([]);
     setEditingFig(true);
@@ -318,7 +350,34 @@ export default function FIGsPage() {
           isStateAdmin={user?.role === "STATE_ADMIN"} userDistrictId={user?.district_id} minMembers={minMembers}
           districts={districts} circles={circles} subdivisionCdcs={subdivisionCdcs} staps={staps} unassignedFarmers={unassignedFarmers}
           assetTypes={assetTypes}
+          touchedLocation={touchedLocation} setTouchedLocation={setTouchedLocation}
         />
+      )}
+
+      {newFig && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.45)" }}>
+          <div className="card w-full max-w-2xl p-6">
+            <h3 className="font-heading text-lg font-bold">Step 2 of 2 — FIG documents</h3>
+            <p className="text-sm mt-1 mb-4" style={{ color: "var(--text-muted)" }}>
+              <span className="font-semibold">{newFig.fig_name}</span>{" "}
+              <span className="font-mono text-xs">({newFig.fig_code})</span> has been created.
+            </p>
+            <FigDocumentsStep
+              figName={newFig.fig_name} figCode={newFig.fig_code}
+              districtId={newFig.district_id} seriCircleId={newFig.seri_circle_id}
+              value={newFigDocs} onChange={setNewFigDocs}
+            />
+            <div className="flex justify-end gap-2 mt-6">
+              <button type="button" className="btn-secondary" onClick={closeDocsStep} data-testid="fig-docs-later">
+                I&apos;ll do this later
+              </button>
+              <button type="button" className="btn-primary" onClick={saveNewFigDocs} data-testid="fig-docs-save"
+                      disabled={!newFigDocs.minutes_path && !newFigDocs.group_photo_path}>
+                Save documents
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {detailId && detail && (

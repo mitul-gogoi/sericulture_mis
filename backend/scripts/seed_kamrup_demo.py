@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import text
 from app.core.db import SessionLocal
 from app.core.security import hash_password
+from app.core.aadhaar import aadhaar_fields
 from app.services.geo import polygon_area_sqm, points_to_wkt
 from app.seed import _fcode, _gcode
 from app.models import (
@@ -65,21 +66,21 @@ FIG_PLANS = [
     {
         "circle_name": "Chandrapur", "village": "South Chandrapur",
         "panchayat": "Chandrapur Gaon Panchayat", "post_office": "Chandrapur S.O",
-        "police_station": "Panjabari PS", "pin_code": "781021",
+        "pin_code": "781021",
         "silk_type": "Eri", "activity": "Eri Rearing", "product": "Eri Cocoon",
         "fig_name": "South Chandrapur Eri Producers FIG", "lat": 26.13, "lng": 91.82,
     },
     {
         "circle_name": "Dispur", "village": "Hatigaon",
         "panchayat": "Hatigaon Gaon Panchayat", "post_office": "Hatigaon S.O",
-        "police_station": "Basistha PS", "pin_code": "781006",
+        "pin_code": "781006",
         "silk_type": "Muga", "activity": "Muga Rearing", "product": "Muga Cocoon",
         "fig_name": "Hatigaon Muga Rearers FIG", "lat": 26.13, "lng": 91.79,
     },
     {
         "circle_name": "Sonapur", "village": "Khetri",
         "panchayat": "Sonapur Gaon Panchayat", "post_office": "Sonapur S.O",
-        "police_station": "Sonapur PS", "pin_code": "782402",
+        "pin_code": "782402",
         "silk_type": "Muga", "activity": "Muga Reeling", "product": "Muga Raw Silk",
         "fig_name": "Khetri Muga Reelers FIG", "lat": 26.05, "lng": 92.02,
     },
@@ -102,8 +103,9 @@ def _full_name(gender: str) -> tuple[str, str]:
     return first, random.choice(SURNAMES)
 
 
-def _aadhaar() -> str:
-    return "".join(str(random.randint(0, 9)) for _ in range(12))
+def _aadhaar() -> dict:
+    """Aadhaar is never stored raw — return the three derived columns directly."""
+    return aadhaar_fields("".join(str(random.randint(0, 9)) for _ in range(12)))
 
 
 def _pan() -> str:
@@ -234,7 +236,7 @@ def create_figs_and_farmers(db, district, circles) -> list[dict]:
             fig_code=_gcode(fig_seq.next()), fig_name=plan["fig_name"], stap_id=stap["id"],
             district_id=district.id, seri_circle_id=circle.id, formation_date=formation_date,
             village_name=plan["village"], panchayat_name=plan["panchayat"], post_office=plan["post_office"],
-            police_station=plan["police_station"], pin_code=plan["pin_code"],
+            pin_code=plan["pin_code"],
             address=f"Ward Committee Office, {plan['village']}",
             meeting_venue=f"Community Hall, {plan['village']}",
         )
@@ -249,7 +251,7 @@ def create_figs_and_farmers(db, district, circles) -> list[dict]:
             bank_name, branch_name, ifsc = random.choice(BANKS)
             farmer = Farmer(
                 farmer_code=_fcode(farmer_seq.next()), first_name=first, last_name=last, gender=gender,
-                date_of_birth=_dob(), mobile_no=str(mobile[0]), aadhaar_no=_aadhaar(), pan_no=_pan(),
+                date_of_birth=_dob(), mobile_no=str(mobile[0]), **_aadhaar(), pan_no=_pan(),
                 education_level_id=random.choice(edu_levels).id,
                 farmer_type=random.choice(["Small", "Marginal", "Medium"]),
                 experience_years=random.randint(3, 20),
@@ -257,7 +259,7 @@ def create_figs_and_farmers(db, district, circles) -> list[dict]:
                 family_member_male=random.randint(1, 3), family_member_female=random.randint(1, 3),
                 district_id=district.id, seri_circle_id=circle.id, village_name=plan["village"],
                 gaon_panchayat=plan["panchayat"], development_block=f"{plan['circle_name']} Development Block",
-                post_office=plan["post_office"], police_station=plan["police_station"], pin_code=plan["pin_code"],
+                post_office=plan["post_office"], pin_code=plan["pin_code"],
                 stap_ids=[stap["id"]], primary_stap_id=stap["id"], experience_activity_ids=[stap["activity_id"]],
                 account_number="".join(str(random.randint(0, 9)) for _ in range(11)),
                 bank_name=bank_name, branch_name=branch_name, ifsc_code=ifsc,

@@ -20,9 +20,12 @@ class Fig(SQLModel, table=True):
     village_name: Optional[str] = Field(default=None, max_length=120)
     panchayat_name: Optional[str] = Field(default=None, max_length=120)
     post_office: Optional[str] = Field(default=None, max_length=120)
-    police_station: Optional[str] = Field(default=None, max_length=120)
     pin_code: Optional[str] = Field(default=None, max_length=10)
     address: Optional[str] = Field(default=None, sa_column=Column(Text))
+    # Registration paperwork, captured in step 2 of FIG registration (not at create time —
+    # the FIG must exist first so the upload folder can be named after its real code).
+    minutes_path: Optional[str] = Field(default=None, max_length=500)
+    group_photo_path: Optional[str] = Field(default=None, max_length=500)
     contact_no: Optional[str] = Field(default=None, max_length=15)
     meeting_venue: Optional[str] = Field(default=None, max_length=200)
     remarks: Optional[str] = Field(default=None, sa_column=Column(Text))

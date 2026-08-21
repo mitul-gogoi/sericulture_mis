@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
-@import url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css');
 
 :root {
   --bg: #F8F7F4;
@@ -20,17 +18,54 @@
   --error: #A13B35;
   --info: #2E6F8E;
   --sidebar: #F0EDE5;
+
+  /* Elevation. design_guidelines.json asked for shadow-sm and nothing ever applied it,
+     which is why every surface used to sit on one flat plane. Kept soft and low-opacity
+     to preserve the "earthy, grounded" instruction rather than heavy drop shadows. */
+  --elev-1: 0 1px 2px rgba(26,29,26,0.04), 0 1px 3px rgba(26,29,26,0.06);
+  --elev-2: 0 2px 4px rgba(26,29,26,0.05), 0 4px 12px rgba(26,29,26,0.08);
+  --elev-3: 0 8px 24px rgba(26,29,26,0.10), 0 2px 6px rgba(26,29,26,0.06);
+
+  /* Radius scale — replaces the ad hoc 5/6/8/10px values that were scattered around. */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+
+  /* Silk-type identity. Validated with the dataviz palette checker under --pairs all:
+     lightness, chroma, CVD separation (worst ΔE 11.0 deutan) and normal-vision floor all
+     PASS. Do NOT substitute the brand green here — #2D5134 has chroma 0.064 and reads as
+     grey in a chart. Muga gold carries a contrast WARN (2.19:1), so any chart using it
+     must show direct value labels. Re-run the checker before changing any of these. */
+  --silk-mulberry: #009E73;
+  --silk-muga: #E69F00;
+  --silk-eri: #D55E00;
+  --silk-tasar: #0072B2;
+
+  /* Two-series categorical, for non-silk comparisons (e.g. Farmers vs FIGs). */
+  --series-a: #0072B2;
+  --series-b: #CC79A7;
+
+  /* Sequential ramp for magnitude (the district choropleth). One hue, light -> dark,
+     luminance verified strictly monotonic 0.871 -> 0.067. */
+  --ramp-1: #EAF2EC;
+  --ramp-2: #C6DCCB;
+  --ramp-3: #9BC2A5;
+  --ramp-4: #6BA47C;
+  --ramp-5: #3E7C54;
+  --ramp-6: #2D5134;
+  --ramp-none: #E6E4DF;
 }
 
 html, body { height: 100%; margin: 0; padding: 0; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: var(--font-body), 'IBM Plex Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 h1, h2, h3, h4, h5, h6, .font-heading {
-  font-family: 'Manrope', sans-serif;
+  font-family: var(--font-heading), 'Manrope', sans-serif;
   letter-spacing: -0.01em;
 }
 .leaflet-container { z-index: 0; }
@@ -45,22 +80,22 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 
 table.seri-table { width: 100%; border-collapse: collapse; }
 table.seri-table th, table.seri-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 14px; text-align: left; }
-table.seri-table th { background: var(--bg); color: var(--text-muted); font-weight: 600; font-family: 'Manrope', sans-serif; letter-spacing: 0.04em; font-size: 12px; text-transform: uppercase; }
+table.seri-table th { background: var(--bg); color: var(--text-muted); font-weight: 600; font-family: var(--font-heading), 'Manrope', sans-serif; letter-spacing: 0.04em; font-size: 12px; text-transform: uppercase; }
 table.seri-table tr:hover { background: #FBFAF7; }
 
-.btn-primary { background: var(--primary); color: #fff; padding: 9px 16px; border-radius: 6px; font-weight: 600; font-family: 'Manrope', sans-serif; transition: background 0.15s; }
+.btn-primary { background: var(--primary); color: #fff; padding: 9px 16px; border-radius: 6px; font-weight: 600; font-family: var(--font-heading), 'Manrope', sans-serif; transition: background 0.15s; }
 .btn-primary:hover { background: var(--primary-hover); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 5px; }
-.btn-secondary { background: transparent; color: var(--primary); padding: 9px 16px; border-radius: 6px; font-weight: 600; border: 1px solid var(--primary); font-family: 'Manrope', sans-serif; }
+.btn-secondary { background: transparent; color: var(--primary); padding: 9px 16px; border-radius: 6px; font-weight: 600; border: 1px solid var(--primary); font-family: var(--font-heading), 'Manrope', sans-serif; }
 .btn-secondary:hover { background: var(--sidebar); }
 
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--elev-1); }
 
-.input { width: 100%; border: 1px solid var(--border); background: #fff; padding: 9px 12px; border-radius: 6px; font-size: 14px; font-family: 'IBM Plex Sans', sans-serif; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+.input { width: 100%; border: 1px solid var(--border); background: #fff; padding: 9px 12px; border-radius: 6px; font-size: 14px; font-family: var(--font-body), 'IBM Plex Sans', sans-serif; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
 .input:focus { border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(217,160,54,0.18); }
 
-.nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: var(--primary); font-size: 14px; font-weight: 600; font-family: 'Manrope', sans-serif; transition: background 0.15s, color 0.15s; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; color: var(--primary); font-size: 14px; font-weight: 600; font-family: var(--font-heading), 'Manrope', sans-serif; transition: background 0.15s, color 0.15s; }
 .nav-item:hover { background: rgba(45,81,52,0.07); }
 .nav-item.active { background: var(--primary); color: #fff; }
 
@@ -74,15 +109,16 @@ table.seri-table tr:hover { background: #FBFAF7; }
 .nav-section-label { font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 700; color: rgba(45,81,52,0.85); }
 .nav-section-caret { color: rgba(45,81,52,0.85); }
 
-.badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-family: 'Manrope', sans-serif; }
+.badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; font-family: var(--font-heading), 'Manrope', sans-serif; }
 .badge-success { background: #E5EFE7; color: var(--success); }
 .badge-warning { background: #FBEFD6; color: var(--warning); }
 .badge-error { background: #F5DDDB; color: var(--error); }
 .badge-muted { background: #EFEDE6; color: var(--text-muted); }
 
-.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--elev-1); transition: box-shadow 0.18s ease, transform 0.18s ease; }
+.stat-card:hover { box-shadow: var(--elev-2); transform: translateY(-1px); }
 
-.wizard-step { flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 3px solid var(--border); font-family: 'Manrope', sans-serif; font-weight: 600; font-size: 13px; color: var(--text-muted); }
+.wizard-step { flex: 1; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 3px solid var(--border); font-family: var(--font-heading), 'Manrope', sans-serif; font-weight: 600; font-size: 13px; color: var(--text-muted); }
 .wizard-step.active { border-color: var(--secondary); color: var(--text); }
 .wizard-step.done { border-color: var(--primary); color: var(--primary); }
 .wizard-step .num { width: 22px; height: 22px; border-radius: 999px; background: var(--border); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; }

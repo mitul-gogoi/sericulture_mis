@@ -13,6 +13,10 @@ class Settings:
     JWT_SECRET: str = os.environ["JWT_SECRET"]
     JWT_REFRESH_SECRET: str = os.environ["JWT_REFRESH_SECRET"]
     JWT_ALGORITHM: str = "HS256"
+    # Required, fail-closed: farmer Aadhaar numbers are unreadable without it. Losing or
+    # rotating this key permanently breaks decryption AND duplicate detection — see
+    # app/core/aadhaar.py.
+    AADHAAR_SECRET_KEY: str = os.environ["AADHAAR_SECRET_KEY"]
     ACCESS_TOKEN_MINUTES: int = int(os.environ.get("ACCESS_TOKEN_MINUTES", "30"))
     REFRESH_TOKEN_DAYS: int = int(os.environ.get("REFRESH_TOKEN_DAYS", "7"))
     UPLOAD_ROOT: Path = Path(os.environ.get("UPLOAD_ROOT", str(ROOT / "file_uploads")))

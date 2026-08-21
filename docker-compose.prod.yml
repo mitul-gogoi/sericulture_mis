@@ -1,0 +1,87 @@
+# Production application stack — runs on the APP SERVER, 192.168.18.193.
+# See DEPLOY.md for the full procedure.
+#
+# There is deliberately NO database service here. PostgreSQL lives on the separate
+# DATABASE SERVER (192.168.18.194) and is started by docker-compose.db.yml over there.
+# The connection is made purely through DATABASE_URL in backend/.env.docker — no
+# application code knows or cares where the database is.
+#
+# Each service declares BOTH `build:` and `image:` on purpose. That is what lets one
+# file serve both installation paths:
+#   - server has internet    -> docker compose -f docker-compose.prod.yml up -d --build
+#   - server has no internet -> docker load the images built elsewhere, then
+#                               docker compose -f docker-compose.prod.yml up -d --no-build
+services:
+  backend:
+    build: ./backend
+    image: seri-backend:latest
+    container_name: seri-backend
+    env_file:
+      - ./backend/.env.docker
+    environment:
+      UPLOAD_ROOT: /data/uploads
+    volumes:
+      - backend_uploads:/data/uploads
+    restart: unless-stopped
+    # Caps disk so a runaway error loop cannot fill the VM (which also holds the uploads
+    # volume). Note this does NOT make logs survive a deploy — Docker stores them with the
+    # container, and `up --build` recreates it. deploy.sh archives them first; see there.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    # No "ports:" — only Caddy reaches the backend, over this file's private network.
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Empty = call the same origin the page was served from, so the browser hits
+        # https://<domain>/api/... through Caddy. No CORS, and the built image stays
+        # portable across domains.
+        NEXT_PUBLIC_BACKEND_URL: ""
+    image: seri-frontend:latest
+    container_name: seri-frontend
+    environment:
+      # Next's standalone server reads HOSTNAME; Docker sets it to the container id,
+      # so without this it binds to that name instead of every interface.
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      - backend
+    restart: unless-stopped
+    # Caps disk so a runaway error loop cannot fill the VM (which also holds the uploads
+    # volume). Note this does NOT make logs survive a deploy — Docker stores them with the
+    # container, and `up --build` recreates it. deploy.sh archives them first; see there.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  caddy:
+    image: caddy:2
+    container_name: seri-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./certs:/etc/ssl/dept:ro
+      - caddy_data:/data
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+    # Caps disk so a runaway error loop cannot fill the VM (which also holds the uploads
+    # volume). Note this does NOT make logs survive a deploy — Docker stores them with the
+    # container, and `up --build` recreates it. deploy.sh archives them first; see there.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  backend_uploads:
+  caddy_data:

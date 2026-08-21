@@ -87,6 +87,7 @@ def fig_report_rows(query: Query, db: Session) -> list[dict]:
             "member_names": ", ".join(members.get(f.id, [])) or None,
             "president_label": f"{pres['name']} ({pres['farmer_code']})" if pres else None,
             "president_mobile": pres["mobile_no"] if pres else None,
+            "documents": "Complete" if (f.minutes_path and f.group_photo_path) else "Pending",
             "is_active": f.is_active,
         })
     return out

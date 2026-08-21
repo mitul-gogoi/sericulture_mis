@@ -19,4 +19,10 @@ ENV PATH=/home/appuser/.local/bin:$PATH
 ENV UPLOAD_ROOT=/data/uploads
 
 EXPOSE 8001
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+# --proxy-headers + --forwarded-allow-ips: behind the reverse proxy every request arrives
+# from the proxy's IP, which would collapse the per-IP login rate limit into one shared
+# bucket for all users. Trusting X-Forwarded-For restores real per-user limiting. The
+# wildcard is safe because this container publishes no port — only the proxy on the
+# internal Docker network can reach it, so the header cannot be forged from outside.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", \
+     "--proxy-headers", "--forwarded-allow-ips", "*"]

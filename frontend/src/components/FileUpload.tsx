@@ -10,7 +10,8 @@ interface Props {
   onChange: (path: string | null) => void;
   accept?: string;
   testId?: string;
-  category?: "farmer_photo" | "farmer_passbook" | "fig_minutes" | "assets" | "other";
+  category?: "farmer_photo" | "farmer_passbook" | "fig_minutes" | "fig_registration"
+    | "assets" | "certificate" | "other";
   districtId?: string;
   seriCircleId?: string;
   farmerIdentifier?: string;

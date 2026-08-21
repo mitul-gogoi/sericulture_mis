@@ -15,6 +15,10 @@ class FarmerIn(BaseModel):
     gender: str
     date_of_birth: Optional[date] = None
     mobile_no: str
+    # WRITE-ONLY: the raw 12 digits go in here and are immediately converted to
+    # aadhaar_last4/aadhaar_hash/aadhaar_enc. Responses never echo this field back —
+    # they carry `aadhaar_masked` instead. Validated by app/core/aadhaar.normalize_aadhaar
+    # in the router (not here) so create and update share one error message.
     aadhaar_no: Optional[str] = None
     pan_no: Optional[str] = None
     photo_path: Optional[str] = None
@@ -32,7 +36,6 @@ class FarmerIn(BaseModel):
     gaon_panchayat: Optional[str] = ""
     development_block: Optional[str] = ""
     post_office: Optional[str] = ""
-    police_station: Optional[str] = ""
     pin_code: Optional[str] = ""
     stap_ids: List[str] = Field(default_factory=list)
     primary_stap_id: Optional[str] = None
@@ -69,7 +72,6 @@ class FarmerUpdateIn(BaseModel):
     gaon_panchayat: Optional[str] = None
     development_block: Optional[str] = None
     post_office: Optional[str] = None
-    police_station: Optional[str] = None
     pin_code: Optional[str] = None
     stap_ids: Optional[List[str]] = None
     primary_stap_id: Optional[str] = None
