@@ -9,7 +9,11 @@ silkmis.assam.gov.in {
 	# Everything under /api goes to FastAPI; everything else to Next.js. Both are served
 	# from one origin, which is why NEXT_PUBLIC_BACKEND_URL is empty and the browser never
 	# makes a cross-origin request — there is no CORS to misconfigure.
-	handle /api/* {
+	# Matches BOTH bare /api and /api/... . "handle /api/*" alone silently misses the
+	# bare /api health endpoint, which then falls through to Next.js and returns its
+	# 404 page instead of the API's JSON -- confirmed live on the SDC deployment.
+	@api path /api /api/*
+	handle @api {
 		reverse_proxy backend:8001
 	}
 	handle {
