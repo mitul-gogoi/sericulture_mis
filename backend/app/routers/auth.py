@@ -63,6 +63,8 @@ def me(user: User = Depends(get_current_user)):
 @router.post("/change-password")
 def change_password(body: ChangePasswordIn, user: User = Depends(get_current_user),
                     db: Session = Depends(get_session)):
+    if user.mobile_no == settings.PROTECTED_ADMIN_MOBILE:
+        raise HTTPException(403, "The super admin password cannot be changed")
     if not verify_password(body.old_password, user.password_hash):
         raise HTTPException(400, "Current password is incorrect")
     if len(body.new_password) < 6:

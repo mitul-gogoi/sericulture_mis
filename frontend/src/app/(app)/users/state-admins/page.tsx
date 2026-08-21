@@ -100,25 +100,36 @@ export default function StateAdminsPage() {
             {users.map((u) => {
               const isMe = u.id === me?.id;
               const active = u.is_active !== false;
+              // The permanent super admin cannot be edited, deactivated, or have its
+              // password changed. The backend rejects all three; hiding the buttons
+              // keeps the UI honest rather than offering actions that will 403.
+              const locked = u.is_protected === true;
               return (
                 <tr key={u.id} data-testid={`users-sa-row-${u.id}`}>
                   <td><ShieldStar size={16} weight="duotone" className="inline mr-2" />{u.name || "—"}
-                    {isMe && <span className="badge badge-muted ml-2">You</span>}</td>
+                    {isMe && <span className="badge badge-muted ml-2">You</span>}
+                    {locked && <span className="badge badge-muted ml-2" title="Permanent account — cannot be edited, deactivated, or have its password changed">Protected</span>}</td>
                   <td>{u.mobile_no}</td>
                   <td>{active
                     ? <span className="badge badge-success">Active</span>
                     : <span className="badge badge-muted">Inactive</span>}</td>
                   <td className="text-right">
                     <div className="inline-flex gap-2">
-                      <button onClick={() => openEdit(u)} data-testid={`users-sa-edit-${u.id}`}
-                        className="btn-secondary btn-sm inline-flex items-center gap-1"><Pencil size={12} />Edit</button>
-                      <button onClick={() => toggleMut.mutate({ id: u.id, is_active: !active })}
-                        disabled={toggleMut.isPending || isMe}
-                        title={isMe ? "You cannot deactivate your own account" : ""}
-                        data-testid={`users-sa-toggle-${u.id}`}
-                        className={active ? "btn-secondary btn-sm" : "btn-primary btn-sm"}>
-                        {active ? "Deactivate" : "Activate"}
-                      </button>
+                      {locked ? (
+                        <span className="text-xs" style={{ color: "var(--text-muted)" }}>—</span>
+                      ) : (
+                        <>
+                          <button onClick={() => openEdit(u)} data-testid={`users-sa-edit-${u.id}`}
+                            className="btn-secondary btn-sm inline-flex items-center gap-1"><Pencil size={12} />Edit</button>
+                          <button onClick={() => toggleMut.mutate({ id: u.id, is_active: !active })}
+                            disabled={toggleMut.isPending || isMe}
+                            title={isMe ? "You cannot deactivate your own account" : ""}
+                            data-testid={`users-sa-toggle-${u.id}`}
+                            className={active ? "btn-secondary btn-sm" : "btn-primary btn-sm"}>
+                            {active ? "Deactivate" : "Activate"}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

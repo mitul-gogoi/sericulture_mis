@@ -9,6 +9,9 @@ export interface User {
   fig_id?: string | null;
   farmer_id?: string | null;
   is_active?: boolean;
+  /** The permanent super admin. Set by the server, never inferred from the mobile
+   *  number here, so there is one source of truth for who is protected. */
+  is_protected?: boolean;
 }
 
 export interface OfficeFields {

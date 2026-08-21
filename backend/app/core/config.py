@@ -31,5 +31,14 @@ class Settings:
     FIG_PRESIDENT_MOBILE: str = os.environ.get("FIG_PRESIDENT_MOBILE", "7777777777")
     FIG_PRESIDENT_PASSWORD: str = os.environ.get("FIG_PRESIDENT_PASSWORD", "Fig@123")
 
+    # The permanent super-admin account. Locked against edit, deactivation and password
+    # change through the API, and forced active + correctly named on every boot.
+    #
+    # Only the MOBILE NUMBER lives here, never the password. This repository is public, so
+    # a hardcoded password would be world-readable; the password exists solely as a bcrypt
+    # hash in the database. That also means this constant is safe to read and to change.
+    PROTECTED_ADMIN_MOBILE: str = os.environ.get("PROTECTED_ADMIN_MOBILE", "6666666000")
+    PROTECTED_ADMIN_NAME: str = os.environ.get("PROTECTED_ADMIN_NAME", "Super Admin")
+
 
 settings = Settings()

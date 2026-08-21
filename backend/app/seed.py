@@ -335,6 +335,32 @@ def seed_all(db: Session) -> None:
     # is a stale/incomplete list from before the full Education Level master data set was
     # built up directly via Master Data; calling _seed_education_levels() would either
     # NameError (constant is commented out) or reintroduce a shorter, inconsistent list.
+    _ensure_protected_admin(db)
     _backfill_stock_snapshot(db)
 
     db.commit()
+
+
+def _ensure_protected_admin(db: Session) -> None:
+    """Keep the permanent super-admin correctly named and always active.
+
+    Deliberately never touches password_hash. The password lives only in the database,
+    so it is not in this public repository, and this function does not need to know it.
+    Creates nothing: if the account does not exist, it is not invented here -- it is
+    created once by scripts/reset_all_except_masters.py.
+    """
+    u = db.query(User).filter(User.mobile_no == settings.PROTECTED_ADMIN_MOBILE).first()
+    if not u:
+        return
+    changed = False
+    if u.name != settings.PROTECTED_ADMIN_NAME:
+        u.name = settings.PROTECTED_ADMIN_NAME
+        changed = True
+    if not u.is_active:
+        u.is_active = True
+        changed = True
+    if u.role != "STATE_ADMIN":
+        u.role = "STATE_ADMIN"
+        changed = True
+    if changed:
+        print(f"[seed] super admin {settings.PROTECTED_ADMIN_MOBILE} restored to active STATE_ADMIN")

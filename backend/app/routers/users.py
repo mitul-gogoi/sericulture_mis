@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.core.db import get_session
 from app.core.security import hash_password
+from app.core.config import settings
 from app.core.deps import get_current_user, require_roles
 from app.models import User
 from app.schemas import DistrictAdminCreateIn
@@ -29,9 +30,16 @@ class ActiveToggleIn(BaseModel):
     is_active: bool
 
 
+def is_protected_admin(u: User) -> bool:
+    """The permanent super-admin: cannot be edited, deactivated, or have its password
+    changed through the API. Identified by mobile number, which is not a secret."""
+    return u.mobile_no == settings.PROTECTED_ADMIN_MOBILE
+
+
 def _serialize(u: User) -> dict:
     d = u.model_dump()
     d.pop("password_hash", None)
+    d["is_protected"] = is_protected_admin(u)
     return d
 
 
@@ -89,6 +97,8 @@ def update_user(user_id: str, body: UserUpdateIn,
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         raise HTTPException(404, "User not found")
+    if is_protected_admin(target):
+        raise HTTPException(403, "The super admin account cannot be modified")
     if body.mobile_no and body.mobile_no != target.mobile_no:
         if db.query(User).filter(User.mobile_no == body.mobile_no, User.id != user_id).first():
             raise HTTPException(400, "Mobile already exists")
@@ -119,6 +129,8 @@ def toggle_user(user_id: str, body: ActiveToggleIn,
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         raise HTTPException(404, "User not found")
+    if is_protected_admin(target):
+        raise HTTPException(403, "The super admin account cannot be deactivated")
     if target.id == user.id:
         raise HTTPException(400, "Cannot deactivate your own account")
     # Prevent deactivating the last active State Admin
