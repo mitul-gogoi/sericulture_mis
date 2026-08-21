@@ -17,7 +17,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 def _user_dict(u: User) -> dict:
     return {"id": u.id, "mobile_no": u.mobile_no, "role": u.role, "name": u.name,
-            "district_id": u.district_id, "fig_id": u.fig_id, "farmer_id": u.farmer_id}
+            "district_id": u.district_id, "fig_id": u.fig_id, "farmer_id": u.farmer_id,
+            # Lets the UI hide "Change Password" for the super admin rather than
+            # offering a button that always 403s.
+            "is_protected": u.mobile_no == settings.PROTECTED_ADMIN_MOBILE}
 
 
 @router.post("/login", response_model=TokenOut)
