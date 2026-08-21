@@ -52,6 +52,35 @@ hand in Part 7 and which is deliberately not in Git. `backend/.env.example` is t
 
 ---
 
+## The servers are Rocky Linux 10, not Ubuntu
+
+Confirmed on both VMs: `Rocky Linux 10.2 (Red Quartz)`, `platform:el10`. Parts 3 and 4
+below are written for Ubuntu and their commands do not apply. Translation:
+
+| Written (Ubuntu) | Rocky Linux 10 |
+|---|---|
+| `apt install ...` | `dnf install ...` |
+| Docker apt repo | `curl -fsSL https://download.docker.com/linux/centos/docker-ce.repo -o /etc/yum.repos.d/docker-ce.repo` |
+| (service auto-starts) | `systemctl enable --now docker` -- the RPM does not start it |
+| `ufw allow ...` | `firewall-cmd --permanent --add-port=.../tcp` (firewalld was inactive on both, so nothing was blocking) |
+| (no SELinux) | **SELinux Enforcing.** Every *bind* mount needs `:Z`. Named volumes are relabelled automatically; bind mounts are not. |
+
+**Two things that cost time on the first real deployment, both worth knowing in advance:**
+
+1. **Docker will not start until you reboot.** Installing `docker-ce` pulls in a newer
+   kernel and installs the netfilter modules for *that* kernel, not the running one.
+   `dockerd` then dies with `iptables ... Extension addrtype revision 0 not supported,
+   missing kernel module?` because `xt_addrtype` does not exist for the running kernel.
+   Reboot into the new kernel and it starts cleanly. Nothing else fixes it.
+
+2. **The SELinux label is not optional and fails in a misleading way.** Without `:Z` on the
+   database's `./init` mount, PostgreSQL starts perfectly and reports healthy -- but the
+   init script never runs, so the `seri_app` role is never created, and the only symptom is
+   an authentication failure from the backend much later. Without `:Z` on the app server's
+   `./Caddyfile` mount, Caddy exits saying its config is missing.
+
+---
+
 ## Before you start
 
 1. **VPN access** to the SDC network from your Windows laptop.
