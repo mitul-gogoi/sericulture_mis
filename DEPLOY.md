@@ -401,9 +401,14 @@ docker compose -f docker-compose.prod.yml up -d --build
 docker compose -f docker-compose.prod.yml logs --tail=40 backend
 ```
 
-Wait for `Startup complete — Alembic upgraded and DB seeded.` The first start creates every
-table automatically and seeds master data — districts, sericulture circles, silk types,
-castes, asset types.
+Wait for `Startup complete — Alembic upgraded and DB seeded.` The first start creates all
+50 tables automatically and seeds the master data it can generate itself: 35 districts,
+87 sericulture circles, 4 silk types, 16 asset types, castes and religions.
+
+It does **not** seed everything. `activities`, `products`, `silk_type_activity_products`,
+`conversion_standards`, `subdivision_cdc_offices` and `users` are all still empty at this
+point — so nobody can log in yet, and no yield can be recorded. Part 9 fixes that and is
+**not optional**.
 
 ```bash
 curl -k https://localhost/api
@@ -413,11 +418,17 @@ Expect `{"app":"Sericulture MIS API","status":"ok","version":"2.0"}`.
 
 ---
 
-## Part 9 — Load your data
+## Part 9 — Load the remaining master data, and create the first login
 
-If you are starting from the master data seeded automatically in Part 8, skip this.
+**Required. The application is not usable until both halves of this part are done.**
 
-To load a prepared dump from your laptop, copy it up and then:
+Part 8 left `activities`, `products`, the activity-to-product map, `conversion_standards`
+and `subdivision_cdc_offices` empty, and there is no user account at all. Verified against
+a genuinely fresh database, not assumed.
+
+### 9a — Restore the master-data dump
+
+Produce `masters_only.dump` on your laptop first (see "Preparing the dump" below), then:
 
 ```bash
 scp masters_only.dump seri-db:/tmp/
@@ -435,6 +446,52 @@ Check it landed:
 ```bash
 ssh seri-db "docker exec -it seri-db psql -U postgres -d sericulture_mis -c 'SELECT (SELECT count(*) FROM districts) AS districts, (SELECT count(*) FROM sericulture_circles) AS circles, (SELECT count(*) FROM products) AS products, (SELECT count(*) FROM farmers) AS farmers;'"
 ```
+
+Expect `districts=35`, `circles=87`, `products=26`, `farmers=0`. If `products` is still 0,
+the restore did not take — do not continue.
+
+### 9b — Confirm the State Admin login
+
+You do not need a separate step for this: `reset_all_except_masters.py` creates one State
+Admin as part of producing the dump, so the account arrives with the restore.
+
+```bash
+ssh seri-db "docker exec -it seri-db psql -U postgres -d sericulture_mis -c \\"SELECT mobile_no, name, role FROM users;\\""
+```
+
+Exactly one row, role `STATE_ADMIN`. Log in as it and change the password immediately
+(Part 12) — the value baked into the script is a development default and must not survive
+into production.
+
+### Preparing the dump (on your laptop, before Part 9a)
+
+**First, change the admin password the dump will carry.** `backend/scripts/reset_all_except_masters.py`
+line 25 reads:
+
+```python
+NEW_ADMIN = {"name": "Director", "mobile_no": "1111111111", "password": "sa@123"}
+```
+
+Set a real mobile number and a strong password before running it. That value becomes the
+live State Admin login on a government server.
+
+Never run the wipe against your working database. Copy it first:
+
+```bash
+createdb -U postgres seri_export && pg_dump -U postgres -Fc sericulture_mis -f full_local.dump && pg_restore -U postgres -d seri_export --no-owner --no-acl full_local.dump
+```
+
+```bash
+cd backend && DATABASE_URL=postgresql+psycopg://postgres:postgres@127.0.0.1:5432/seri_export .venv/Scripts/python scripts/reset_all_except_masters.py --confirm
+```
+
+```bash
+pg_dump -U postgres -Fc seri_export -f masters_only.dump
+```
+
+Before shipping it, confirm the copy is right: 35 districts, 87 circles, 15 activities,
+26 products, 20 conversion standards, **1 user** (the State Admin the script just created)
+and **0 farmers, 0 FIGs**.
 
 ---
 
@@ -508,7 +565,9 @@ Rehearse this once, deliberately, before you need it.
 - `docker compose -f docker-compose.prod.yml ps` on `.193` — all three services `Up`.
 - `docker compose -f docker-compose.db.yml ps` on `.194` — `seri-db` `Up` and healthy.
 - `https://silkmis.assam.gov.in` loads with a padlock and no certificate warning.
-- Log in as the State Admin and **change the password immediately**.
+- Log in as the State Admin created in Part 9b, and **change the password immediately**.
+- Open Master Data → Map Activity to Product and confirm the Eri/Muga/Mulberry chain is
+  populated. If it is empty, Part 9a did not run and no yield can be recorded.
 - Register one real farmer and upload a photo, proving file storage works.
 - Type a wrong password six times, then log in correctly — it must work. There is no
   account lockout in this system by design.
