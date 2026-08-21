@@ -11,7 +11,7 @@ from app.core.limiter import limiter
 from app.core.config import settings
 from app.core.scope import assigned_district_ids
 from app.core.deps import get_current_user
-from app.models import User
+from app.models import User, Designation
 from app.schemas import LoginIn, RefreshIn, TokenOut, ChangePasswordIn
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -26,7 +26,11 @@ def _user_dict(u: User, db: Optional[Session] = None) -> dict:
             # All districts this admin covers, primary first. The UI shows a switcher when
             # there is more than one.
             "district_ids": assigned_district_ids(db, u) if db is not None else (
-                [u.district_id] if u.district_id else [])}
+                [u.district_id] if u.district_id else []),
+            "designation_name": (
+                db.query(Designation.designation_name)
+                  .filter(Designation.id == u.designation_id).scalar()
+                if db is not None and u.designation_id else None)}
 
 
 @router.post("/login", response_model=TokenOut)

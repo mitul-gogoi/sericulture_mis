@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from app.core.db import get_session, commit_or_conflict, delete_or_conflict
 from app.core.deps import get_current_user
-from app.models import District, SericultureCircle, SubdivisionCdc, DirectorateOffice, FigSettings, User
+from app.models import District, SericultureCircle, SubdivisionCdc, DirectorateOffice, FigSettings, User, Designation
 from ._common import _SA, _q, _get_or_404, ActiveToggleIn
 
 router = APIRouter()
@@ -280,3 +280,64 @@ def update_fig_settings(body: FigSettingsIn, user: User = Depends(_SA), db: Sess
     db.commit()
     db.refresh(row)
     return row
+
+
+# ---------- Designations ----------
+# Departmental posts held by officer accounts (State / District Admin). Ordered by
+# display_order so the hierarchy reads correctly; alphabetical would list "Assistant
+# Director" above "Director".
+class DesignationIn(BaseModel):
+    designation_name: str = Field(min_length=1, max_length=120)
+    display_order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+@router.get("/designations")
+def list_designations(all: bool = False, db: Session = Depends(get_session)):
+    return _q(db, Designation, all).order_by(
+        Designation.display_order, Designation.designation_name).all()
+
+
+@router.post("/designations")
+def create_designation(body: DesignationIn, user: User = Depends(_SA),
+                       db: Session = Depends(get_session)):
+    d = Designation(designation_name=body.designation_name.strip(),
+                    display_order=body.display_order or 0,
+                    is_active=True if body.is_active is None else body.is_active)
+    db.add(d)
+    commit_or_conflict(db, "Designation already exists")
+    db.refresh(d)
+    return d
+
+
+@router.patch("/designations/{designation_id}")
+def update_designation(designation_id: str, body: DesignationIn, user: User = Depends(_SA),
+                       db: Session = Depends(get_session)):
+    d = _get_or_404(db, Designation, designation_id, "Designation")
+    d.designation_name = body.designation_name.strip()
+    if body.display_order is not None:
+        d.display_order = body.display_order
+    if body.is_active is not None:
+        d.is_active = body.is_active
+    commit_or_conflict(db, "Designation already exists")
+    db.refresh(d)
+    return d
+
+
+@router.patch("/designations/{designation_id}/active")
+def toggle_designation(designation_id: str, body: ActiveToggleIn, user: User = Depends(_SA),
+                       db: Session = Depends(get_session)):
+    d = _get_or_404(db, Designation, designation_id, "Designation")
+    d.is_active = body.is_active
+    db.commit()
+    return {"ok": True, "is_active": d.is_active}
+
+
+@router.delete("/designations/{designation_id}")
+def delete_designation(designation_id: str, user: User = Depends(_SA),
+                       db: Session = Depends(get_session)):
+    d = _get_or_404(db, Designation, designation_id, "Designation")
+    if d.is_active:
+        raise HTTPException(400, "Deactivate this designation before deleting it")
+    delete_or_conflict(db, d, "Cannot delete — one or more users still hold this designation")
+    return {"ok": True}

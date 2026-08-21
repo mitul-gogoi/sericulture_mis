@@ -6,7 +6,7 @@ from sqlmodel import SQLModel, Field, Column
 from sqlalchemy import UniqueConstraint, Text
 from ._common import _uuid, _now
 
-__all__ = [
+__all__ = ["Designation", 
     "District", "SubdivisionCdc", "DirectorateOffice", "FigSettings", "SericultureCircle",
     "Caste", "Religion", "EducationLevel", "LossReason", "InputSourceCategory", "InputSourceType",
     "SilkType", "Activity", "Product", "SilkTypeActivityProduct", "StapSourceType", "ConversionStandard",
@@ -70,6 +70,20 @@ class SericultureCircle(SQLModel, table=True):
     office_contact_no: Optional[str] = Field(default=None, max_length=15)
     officer_in_charge_name: Optional[str] = Field(default=None, max_length=120)
     __table_args__ = (UniqueConstraint("district_id", "circle_name"),)
+
+
+class Designation(SQLModel, table=True):
+    """Departmental post held by a State or District Admin, e.g. "Assistant Director of
+    Sericulture (ADS)".
+
+    display_order sorts by seniority rather than alphabetically -- listing Assistant
+    Director above Director would read as wrong in a government hierarchy.
+    """
+    __tablename__ = "designations"
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    designation_name: str = Field(unique=True, max_length=120)
+    display_order: int = 0
+    is_active: bool = True
 
 
 class Caste(SQLModel, table=True):

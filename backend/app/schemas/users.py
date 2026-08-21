@@ -13,3 +13,4 @@ class DistrictAdminCreateIn(BaseModel):
     # any existing caller keeps working.
     district_id: Optional[str] = None
     district_ids: List[str] = []
+    designation_id: Optional[str] = None

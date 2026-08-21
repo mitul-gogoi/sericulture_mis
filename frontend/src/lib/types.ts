@@ -15,6 +15,10 @@ export interface User {
   /** Every district a District Admin covers, primary first. More than one means they
    *  hold additional charge, and the header shows a district switcher. */
   district_ids?: string[];
+  /** Departmental post, for officer accounts. FIG Presidents are farmers, not
+   *  departmental staff, so it is not set for them. */
+  designation_id?: string | null;
+  designation_name?: string | null;
 }
 
 export interface OfficeFields {
@@ -22,6 +26,7 @@ export interface OfficeFields {
   office_contact_no?: string | null; officer_in_charge_name?: string | null;
 }
 export interface District extends OfficeFields { id: string; district_name: string }
+export interface Designation { id: string; designation_name: string; display_order: number; is_active: boolean }
 export interface SubdivisionCdc extends OfficeFields {
   id: string; office_type: "Sub-division Office" | "CDC"; district_id: string; is_active: boolean;
 }

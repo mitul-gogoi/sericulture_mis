@@ -12,6 +12,7 @@ import {
   CaretDown, CaretRight, Stack, MapPin, Buildings, Users as UsersIco, Star,
   Butterfly, FlowArrow, Package, TreeStructure, Warning,
   ArrowsDownUp, Compass, Tag, Wrench, List, X, Key,
+  IdentificationBadge,
 } from "@phosphor-icons/react";
 import type { Role } from "@/lib/types";
 import { ChangePasswordModal } from "@/components/ChangePasswordModal";
@@ -24,6 +25,7 @@ const MASTERS_CHILDREN: NavItem[] = [
   { href: "/masters/districts", label: "Districts", icon: MapPin },
   { href: "/masters/subdivision-cdc", label: "Sub-division/CDC", icon: Buildings },
   { href: "/masters/sericulture-circles", label: "Sericulture Circles", icon: Buildings },
+  { href: "/masters/designations", label: "Designations", icon: IdentificationBadge },
   { href: "/masters/caste", label: "Caste", icon: UsersIco },
   { href: "/masters/religion", label: "Religion", icon: Star },
   { href: "/masters/education-levels", label: "Education Level", icon: GraduationCap },

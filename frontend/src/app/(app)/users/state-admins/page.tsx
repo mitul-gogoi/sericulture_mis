@@ -5,10 +5,10 @@ import api, { fmtErr } from "@/lib/api";
 import { Plus, X, ShieldStar, Pencil } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
-import type { User } from "@/lib/types";
+import type { User, Designation } from "@/lib/types";
 
-interface Form { name: string; mobile_no: string; password: string }
-const EMPTY: Form = { name: "", mobile_no: "", password: "" };
+interface Form { name: string; mobile_no: string; password: string; designation_id: string }
+const EMPTY: Form = { name: "", mobile_no: "", password: "", designation_id: "" };
 
 export default function StateAdminsPage() {
   const { user: me } = useAuth();
@@ -17,6 +17,10 @@ export default function StateAdminsPage() {
   const [editing, setEditing] = useState<User | null>(null);
   const [form, setForm] = useState<Form>(EMPTY);
 
+  const { data: designations = [] } = useQuery<Designation[]>({
+    queryKey: ["master-designations-active"],
+    queryFn: async () => (await api.get("/master/designations")).data,
+  });
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["users-sa-all"],
     queryFn: async () => (await api.get("/users", { params: { role: "STATE_ADMIN", all: true } })).data,
@@ -31,7 +35,7 @@ export default function StateAdminsPage() {
   const updateMut = useMutation({
     mutationFn: () => {
       if (!editing) throw new Error("no target");
-      const payload: Partial<Form> = { name: form.name };
+      const payload: Partial<Form> = { name: form.name, designation_id: form.designation_id };
       if (form.mobile_no && form.mobile_no !== editing.mobile_no) payload.mobile_no = form.mobile_no;
       if (form.password) payload.password = form.password;
       return api.patch(`/users/${editing.id}`, payload);
@@ -48,7 +52,7 @@ export default function StateAdminsPage() {
 
   function reset() { setCreating(false); setEditing(null); setForm(EMPTY); }
   function openCreate() { setEditing(null); setForm(EMPTY); setCreating(true); }
-  function openEdit(u: User) { setCreating(false); setEditing(u); setForm({ name: u.name || "", mobile_no: u.mobile_no, password: "" }); }
+  function openEdit(u: User) { setCreating(false); setEditing(u); setForm({ name: u.name || "", mobile_no: u.mobile_no, password: "", designation_id: u.designation_id || "" }); }
 
   if (me?.role !== "STATE_ADMIN") return <div className="card p-6">Only State Admins can manage SA accounts.</div>;
   const showForm = creating || !!editing;
@@ -83,6 +87,14 @@ export default function StateAdminsPage() {
             <label><span className="label-tag block mb-1">{editing ? "New Password (leave blank to keep)" : "Password *"}</span>
               <input required={!editing} type="password" data-testid="users-sa-input-password" className="input"
                 value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
+            <label className="col-span-2"><span className="label-tag block mb-1">Designation</span>
+              <select className="input" data-testid="users-sa-input-designation"
+                value={form.designation_id}
+                onChange={(e) => setForm({ ...form, designation_id: e.target.value })}>
+                <option value="">Select…</option>
+                {designations.map((d) => (
+                  <option key={d.id} value={d.id}>{d.designation_name}</option>))}
+              </select></label>
             <div className="col-span-2 flex justify-end gap-2">
               <button type="button" className="btn-secondary" onClick={reset}>Cancel</button>
               <button type="submit" disabled={createMut.isPending || updateMut.isPending}
@@ -95,7 +107,7 @@ export default function StateAdminsPage() {
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
         <table className="seri-table">
-          <thead><tr><th>Name</th><th>Mobile</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Mobile</th><th>Designation</th><th>Status</th><th className="text-right">Actions</th></tr></thead>
           <tbody data-testid="users-sa-tbody">
             {users.map((u) => {
               const isMe = u.id === me?.id;
@@ -110,6 +122,7 @@ export default function StateAdminsPage() {
                     {isMe && <span className="badge badge-muted ml-2">You</span>}
                     {locked && <span className="badge badge-muted ml-2" title="Permanent account — cannot be edited, deactivated, or have its password changed">Protected</span>}</td>
                   <td>{u.mobile_no}</td>
+                  <td>{u.designation_name || "—"}</td>
                   <td>{active
                     ? <span className="badge badge-success">Active</span>
                     : <span className="badge badge-muted">Inactive</span>}</td>

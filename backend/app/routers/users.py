@@ -7,7 +7,7 @@ from app.core.db import get_session
 from app.core.security import hash_password
 from app.core.config import settings
 from app.core.deps import get_current_user, require_roles
-from app.models import User
+from app.models import User, Designation
 from app.schemas import DistrictAdminCreateIn
 from app.core.scope import active_district, assigned_district_ids, set_assigned_districts
 
@@ -18,6 +18,7 @@ class StateAdminCreateIn(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     mobile_no: str = Field(min_length=10, max_length=15)
     password: str = Field(min_length=6)
+    designation_id: Optional[str] = None
 
 
 class UserUpdateIn(BaseModel):
@@ -27,6 +28,7 @@ class UserUpdateIn(BaseModel):
     district_id: Optional[str] = None
     # Full replacement set for a District Admin; first entry becomes the primary.
     district_ids: Optional[List[str]] = None
+    designation_id: Optional[str] = None
 
 
 class ActiveToggleIn(BaseModel):
@@ -47,6 +49,11 @@ def _serialize(u: User, db: Optional[Session] = None) -> dict:
     # the "additional charge" column on the District Admins page.
     d["district_ids"] = assigned_district_ids(db, u) if db is not None else (
         [u.district_id] if u.district_id else [])
+    # Resolved here so every list can print the post without a second round trip.
+    d["designation_name"] = (
+        db.query(Designation.designation_name)
+          .filter(Designation.id == u.designation_id).scalar()
+        if db is not None and u.designation_id else None)
     return d
 
 
@@ -57,7 +64,8 @@ def create_state_admin(body: StateAdminCreateIn,
     if db.query(User).filter(User.mobile_no == body.mobile_no).first():
         raise HTTPException(400, "Mobile already exists")
     u = User(mobile_no=body.mobile_no.strip(), name=body.name.strip(),
-             password_hash=hash_password(body.password), role="STATE_ADMIN")
+             password_hash=hash_password(body.password), role="STATE_ADMIN",
+             designation_id=body.designation_id or None)
     db.add(u)
     db.commit()
     db.refresh(u)
@@ -77,7 +85,7 @@ def create_district_admin(body: DistrictAdminCreateIn,
         raise HTTPException(400, "At least one district is required")
     u = User(mobile_no=body.mobile_no, name=body.name,
              password_hash=hash_password(body.password), role="DISTRICT_ADMIN",
-             district_id=wanted[0])
+             district_id=wanted[0], designation_id=body.designation_id or None)
     db.add(u)
     db.flush()
     set_assigned_districts(db, u, wanted)
@@ -115,6 +123,8 @@ def update_user(user_id: str, body: UserUpdateIn,
         target.mobile_no = body.mobile_no.strip()
     if body.name is not None:
         target.name = body.name.strip() or None
+    if body.designation_id is not None:
+        target.designation_id = body.designation_id or None
     if body.password:
         target.password_hash = hash_password(body.password)
     # A district may have several active admins (additional charge), so there is no

@@ -16,6 +16,9 @@ class User(SQLModel, table=True):
     role: str = Field(max_length=20)  # STATE_ADMIN | DISTRICT_ADMIN | FIG_PRESIDENT | FARMER
     name: Optional[str] = Field(default=None, max_length=120)
     district_id: Optional[str] = Field(default=None, foreign_key="districts.id")
+    # Departmental post, for officer accounts (State / District Admin). Not meaningful for
+    # a FIG President, who is a farmer rather than departmental staff.
+    designation_id: Optional[str] = Field(default=None, foreign_key="designations.id")
     fig_id: Optional[str] = Field(default=None, foreign_key="figs.id")
     farmer_id: Optional[str] = Field(default=None)
     is_active: bool = True
