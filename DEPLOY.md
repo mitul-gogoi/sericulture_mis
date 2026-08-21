@@ -341,6 +341,59 @@ interface the VM has. Fix it before continuing.
 
 ## Part 6 — App Server: certificate
 
+**Which bundle.** The Directorate's certificate arrives as three zips. Use the **Apache**
+one: it holds the leaf and the CA bundle as PEM, which is what Caddy reads. IIS ships a
+binary `.p7b`; Tomcat splits the chain across extra files for no benefit.
+
+Build the file Caddy wants — leaf **first**, then the chain:
+
+```bash
+cat dcf14be23a0d700a.crt gd_bundle-g2.crt > certs/certificate.crt
+```
+
+Serving the leaf alone is the classic mistake: desktop browsers often paper over a missing
+intermediate from cache, while Android rejects it outright. Confirm three certificates:
+
+```bash
+grep -c "BEGIN CERTIFICATE" certs/certificate.crt
+```
+
+**Strip the byte-order mark from the private key.** The key arrives as
+`generated-private-key.txt` and begins with a UTF-8 BOM (`ef bb bf`). OpenSSL tolerates it,
+so every local check passes — but Caddy uses Go's PEM decoder, which requires the file to
+*start* with `-----BEGIN`, and fails with `tls: failed to find any PEM data in key input`,
+restart-looping. This cost real time on the first install and will recur at renewal:
+
+```bash
+sed -i '1s/^ï»¿//' certs/private.key
+head -c 3 certs/private.key | od -An -tx1     # must NOT be ef bb bf
+chmod 600 certs/private.key
+```
+
+**Check the key actually matches the certificate** before restarting anything — a mismatch
+is the other common way a cutover fails, and this takes two seconds:
+
+```bash
+diff <(openssl x509 -noout -pubkey -in certs/certificate.crt)      <(openssl pkey  -pubout     -in certs/private.key) && echo "key matches cert"
+```
+
+**The certificate is a wildcard for all of `assam.gov.in`**, not just this app — treat the
+key accordingly: `chmod 600`, never in git, never emailed, and delete stray copies once
+installed. It expires **21 Nov 2026** and does not auto-renew; diarise late October.
+
+**DNS is a separate, blocking step.** The certificate can be fully installed and proven
+before the domain resolves, because SNI is sent independently of DNS:
+
+```bash
+echo | openssl s_client -connect <public-ip>:443 -servername silkmis.assam.gov.in
+```
+
+`Verify return code: 0 (ok)` means TLS is correct and only the A record is missing. That
+record — `silkmis.assam.gov.in A <public-ip>` — must be created by whoever administers the
+`assam.gov.in` zone; it cannot be done from these servers.
+
+
+
 ```bash
 ssh seri-app
 cd /opt/sericulture
