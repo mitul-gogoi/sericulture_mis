@@ -8,6 +8,7 @@ from sqlalchemy import exists, func
 from sqlalchemy.orm import Query, Session
 from app.core.aadhaar import mask_aadhaar
 from app.models import Farmer, Caste, Religion, EducationLevel, District, SericultureCircle, SilkTypeActivityProduct, Activity, SilkType, FigMember, Fig
+from app.core.scope import active_district
 
 
 def public_farmer_dict(f: Farmer) -> dict:
@@ -172,7 +173,7 @@ def activity_onboarding_rows(db: Session, user, district_id: Optional[str] = Non
 
     q = db.query(Farmer.id, Farmer.district_id, Farmer.stap_ids)
     if user.role == "DISTRICT_ADMIN":
-        q = q.filter(Farmer.district_id == user.district_id)
+        q = q.filter(Farmer.district_id == active_district(user))
     elif district_id:
         q = q.filter(Farmer.district_id == district_id)
     if month:

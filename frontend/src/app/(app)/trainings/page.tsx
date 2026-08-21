@@ -21,6 +21,13 @@ const EMPTY_ROSTER: TrainingRosterEntry[] = [];
 
 export default function TrainingsPage() {
   const { user } = useAuth();
+  const myDistricts = user?.district_ids || [];
+  const multiDistrict = myDistricts.length > 1;
+  const { data: allDistricts = [] } = useQuery<{ id: string; district_name: string }[]>({
+    queryKey: ["districts-for-training"],
+    queryFn: async () => (await api.get("/master/districts")).data,
+    enabled: multiDistrict,
+  });
   const qc = useQueryClient();
   const searchParams = useSearchParams();
   const isDA = user?.role === "DISTRICT_ADMIN";
@@ -34,7 +41,7 @@ export default function TrainingsPage() {
   const [revokingCert, setRevokingCert] = useState<TrainingCertificate | null>(null);
   const [revokeReason, setRevokeReason] = useState("");
 
-  const [form, setForm] = useState({ topic: "", description: "", scheme_id: "", proposed_from_date: "", proposed_to_date: "", proposed_venue: "", estimated_participants: 0 });
+  const [form, setForm] = useState({ topic: "", description: "", scheme_id: "", proposed_from_date: "", proposed_to_date: "", proposed_venue: "", estimated_participants: 0, district_id: "" });
   const [comp, setComp] = useState({ actual_from_date: "", actual_to_date: "", actual_venue: "", actual_participants: 0, completion_report: "" });
   const [approveForm, setApproveForm] = useState({ approval_from_date: "", approval_to_date: "", approved_venue: "", approval_remarks: "" });
   const [rejectReason, setRejectReason] = useState("");
@@ -66,10 +73,10 @@ export default function TrainingsPage() {
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post("/trainings/requests", { ...form, scheme_id: form.scheme_id || undefined });
+      await api.post("/trainings/requests", { ...form, scheme_id: form.scheme_id || undefined, district_id: form.district_id || undefined });
       toast.success("Requested");
       setOpen(false);
-      setForm({ topic: "", description: "", scheme_id: "", proposed_from_date: "", proposed_to_date: "", proposed_venue: "", estimated_participants: 0 });
+      setForm({ topic: "", description: "", scheme_id: "", proposed_from_date: "", proposed_to_date: "", proposed_venue: "", estimated_participants: 0, district_id: "" });
       qc.invalidateQueries({ queryKey: ["trainings"] });
     } catch (e: unknown) { toast.error(errMsg(e)); }
   };
@@ -193,6 +200,23 @@ export default function TrainingsPage() {
           <div className="card w-full max-w-lg">
             <div className="flex items-center justify-between p-5 border-b" style={{ borderColor: "var(--border)" }}><h3 className="font-heading text-xl font-bold">Request training</h3><button onClick={() => setOpen(false)}><X size={20} /></button></div>
             <form onSubmit={create} className="p-5 grid grid-cols-2 gap-3">
+              {/* Only shown to an officer holding additional charge -- with a single
+                  district there is nothing to choose and the server uses that one. */}
+              {multiDistrict && (
+                <div className="col-span-2">
+                  <label className="label-tag">District *</label>
+                  <select required className="input mt-1" data-testid="training-district"
+                    value={form.district_id}
+                    onChange={(e) => setForm({ ...form, district_id: e.target.value })}>
+                    <option value="">Select…</option>
+                    {myDistricts.map((id) => (
+                      <option key={id} value={id}>
+                        {allDistricts.find((d) => d.id === id)?.district_name || "…"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div className="col-span-2"><label className="label-tag">Topic</label><input required className="input mt-1" value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })} /></div>
               <div className="col-span-2"><label className="label-tag">Description</label><textarea className="input mt-1" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></div>
               <div className="col-span-2">

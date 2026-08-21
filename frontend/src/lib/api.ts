@@ -4,12 +4,19 @@ import axios, { AxiosInstance } from "axios";
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 export const API = `${BACKEND_URL}/api`;
 
+export const DISTRICT_KEY = "seri_active_district";
+
 const api: AxiosInstance = axios.create({ baseURL: API });
 
 api.interceptors.request.use((cfg) => {
   if (typeof window !== "undefined") {
     const t = localStorage.getItem("seri_token");
     if (t) cfg.headers.Authorization = `Bearer ${t}`;
+    // Which district a multi-district District Admin is currently acting as. The server
+    // validates this against their actual assignments on every request, so it is a
+    // request, not a grant -- an unassigned id comes back 403.
+    const d = localStorage.getItem(DISTRICT_KEY);
+    if (d) cfg.headers["X-District-Id"] = d;
   }
   return cfg;
 });
@@ -37,12 +44,14 @@ api.interceptors.response.use(
           localStorage.removeItem("seri_token");
           localStorage.removeItem("seri_refresh");
           localStorage.removeItem("seri_user");
+        localStorage.removeItem(DISTRICT_KEY);
           if (window.location.pathname !== "/login") window.location.href = "/login";
         }
       } else {
         localStorage.removeItem("seri_token");
         localStorage.removeItem("seri_refresh");
         localStorage.removeItem("seri_user");
+        localStorage.removeItem(DISTRICT_KEY);
         if (window.location.pathname !== "/login") window.location.href = "/login";
       }
     }

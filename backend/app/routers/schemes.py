@@ -30,6 +30,7 @@ from app.schemas import (
 from app.services.assets import check_asset_cooldown, resolve_owner_for_asset, next_asset_seq, asset_code
 from app.services.scheme_targeting import scheme_targets_district, candidate_farmers, candidate_figs
 from app.services.notifications import create_notification
+from app.core.scope import active_district
 
 router = APIRouter(prefix="/schemes", tags=["schemes"])
 
@@ -70,7 +71,7 @@ def list_schemes(all: bool = False, include_archived: bool = False, q: Optional[
         query = query.filter(Scheme.support_type == support_type)
     rows = query.order_by(Scheme.created_at.desc()).all()
     if user.role == "DISTRICT_ADMIN":
-        rows = [s for s in rows if scheme_targets_district(s, user.district_id)]
+        rows = [s for s in rows if scheme_targets_district(s, active_district(user))]
     return rows
 
 
@@ -103,7 +104,7 @@ def list_allocations(scheme_id: Optional[str] = None,
     if scheme_id:
         q = q.filter(Allocation.scheme_id == scheme_id)
     if user.role == "DISTRICT_ADMIN":
-        q = q.filter(Allocation.district_id == user.district_id)
+        q = q.filter(Allocation.district_id == active_district(user))
     return q.all()
 
 
@@ -130,7 +131,7 @@ def _register_one(db: Session, scheme: Scheme, user: User, beneficiary_type: str
             raise HTTPException(404, "FIG not found")
         district_id = owner.district_id
 
-    if user.role == "DISTRICT_ADMIN" and district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if not scheme_targets_district(scheme, district_id):
         raise HTTPException(400, "This scheme does not target this district")
@@ -365,7 +366,7 @@ def list_beneficiaries(scheme_id: Optional[str] = None, status: Optional[str] = 
     if status:
         q = q.filter(Beneficiary.status == status)
     if user.role == "DISTRICT_ADMIN":
-        q = q.filter(Beneficiary.district_id == user.district_id)
+        q = q.filter(Beneficiary.district_id == active_district(user))
     rows = q.order_by(Beneficiary.created_at.desc()).limit(500).all()
     farmer_ids = [b.farmer_id for b in rows if b.farmer_id]
     fig_ids = [b.fig_id for b in rows if b.fig_id]
@@ -389,7 +390,7 @@ def list_beneficiaries(scheme_id: Optional[str] = None, status: Optional[str] = 
 @router.get("/{scheme_id}")
 def get_scheme(scheme_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_session)):
     s = _scheme_or_404(db, scheme_id)
-    if user.role == "DISTRICT_ADMIN" and not scheme_targets_district(s, user.district_id):
+    if user.role == "DISTRICT_ADMIN" and not scheme_targets_district(s, active_district(user)):
         raise HTTPException(403, "This scheme does not target your district")
     return s
 
@@ -453,8 +454,8 @@ def publish_scheme(scheme_id: str, user: User = Depends(require_roles("STATE_ADM
 def scheme_candidates(scheme_id: str, user: User = Depends(require_roles("DISTRICT_ADMIN")),
                       db: Session = Depends(get_session)):
     s = _scheme_or_404(db, scheme_id)
-    if not scheme_targets_district(s, user.district_id):
+    if not scheme_targets_district(s, active_district(user)):
         raise HTTPException(403, "This scheme does not target your district")
     if s.beneficiary_kind == "FIG":
-        return {"beneficiary_kind": "FIG", "candidates": candidate_figs(db, s, user.district_id)}
-    return {"beneficiary_kind": "FARMER", "candidates": candidate_farmers(db, s, user.district_id)}
+        return {"beneficiary_kind": "FIG", "candidates": candidate_figs(db, s, active_district(user))}
+    return {"beneficiary_kind": "FARMER", "candidates": candidate_farmers(db, s, active_district(user))}

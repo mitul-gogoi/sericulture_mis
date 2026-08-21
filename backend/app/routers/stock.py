@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_session
 from app.core.deps import get_current_user
 from app.models import Stock, User
+from app.core.scope import active_district
 
 router = APIRouter(prefix="/stock", tags=["stock"])
 
@@ -24,7 +25,7 @@ def list_stock(fig_id: Optional[str] = None, farmer_id: Optional[str] = None,
     elif user.role == "FIG_PRESIDENT":
         q = q.filter(Stock.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        q = q.filter(Stock.district_id == user.district_id)
+        q = q.filter(Stock.district_id == active_district(user))
         if fig_id:
             q = q.filter(Stock.fig_id == fig_id)
     elif fig_id:

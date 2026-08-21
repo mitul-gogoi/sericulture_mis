@@ -25,6 +25,7 @@ from app.schemas import (
     AssetInstanceIn, AssetInstanceUpdateIn, AssetVerifyIn, AssetGpsSubmitIn, AssetGpsVerifyIn,
 )
 from app.services.assets import check_asset_cooldown, asset_report_rows, next_asset_seq, asset_code
+from app.core.scope import active_district
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -53,7 +54,7 @@ def _owner_district_circle(db: Session, owner_type: str, owner_id: str) -> tuple
 
 def _assert_owner_in_scope(db: Session, user: User, owner_type: str, owner_id: str) -> None:
     district_id, _, _ = _owner_district_circle(db, owner_type, owner_id)
-    if user.role == "DISTRICT_ADMIN" and district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
 
 
@@ -83,8 +84,8 @@ def _visible_owner_filter(db: Session, user: User, q):
     if user.role == "STATE_ADMIN":
         return q
     if user.role == "DISTRICT_ADMIN":
-        farmer_ids = [f.id for f in db.query(Farmer).filter(Farmer.district_id == user.district_id).all()]
-        fig_ids = [g.id for g in db.query(Fig).filter(Fig.district_id == user.district_id).all()]
+        farmer_ids = [f.id for f in db.query(Farmer).filter(Farmer.district_id == active_district(user)).all()]
+        fig_ids = [g.id for g in db.query(Fig).filter(Fig.district_id == active_district(user)).all()]
         return q.filter(AssetInstance.owner_id.in_((farmer_ids + fig_ids) or [""]))
     if user.role == "FARMER":
         return q.filter(AssetInstance.owner_type == "FARMER", AssetInstance.owner_id == user.farmer_id)

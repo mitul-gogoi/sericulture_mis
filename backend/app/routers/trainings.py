@@ -23,6 +23,7 @@ from app.schemas import (
 from app.services.scheme_targeting import scheme_targets_district
 from app.services.certificates import next_certificate_number, render_certificate_pdf
 from app.services.storage import put_object
+from app.core.scope import active_district, assigned_district_ids
 
 router = APIRouter(prefix="/trainings", tags=["trainings"])
 
@@ -53,8 +54,16 @@ def create(body: TrainingRequestIn, user: User = Depends(require_roles("DISTRICT
             raise HTTPException(404, "Scheme not found")
         if scheme.support_type != "Training":
             raise HTTPException(400, "This scheme is not a Training-support-type scheme")
-        if not scheme_targets_district(scheme, user.district_id):
+        if not scheme_targets_district(scheme, active_district(user)):
             raise HTTPException(400, "This scheme does not target your district")
+
+    # An admin holding additional charge must be able to file against either district, so
+    # the form sends one explicitly; fall back to whichever they are currently acting as.
+    target_district = body.district_id or active_district(user)
+    if not target_district:
+        raise HTTPException(400, "A district is required")
+    if target_district not in assigned_district_ids(db, user):
+        raise HTTPException(403, "You are not assigned to that district")
 
     t = Training(
         topic=body.topic, description=body.description, activity_id=body.activity_id,
@@ -62,7 +71,7 @@ def create(body: TrainingRequestIn, user: User = Depends(require_roles("DISTRICT
         proposed_from_date=body.proposed_from_date, proposed_to_date=body.proposed_to_date,
         proposed_venue=body.proposed_venue, estimated_participants=body.estimated_participants,
         participant_names=body.participant_names,
-        requesting_da_id=user.id, district_id=user.district_id,
+        requesting_da_id=user.id, district_id=target_district,
     )
     db.add(t)
     db.commit()
@@ -75,7 +84,7 @@ def list_requests(status: Optional[str] = None,
                   user: User = Depends(get_current_user), db: Session = Depends(get_session)):
     q = db.query(Training)
     if user.role == "DISTRICT_ADMIN":
-        q = q.filter(Training.district_id == user.district_id)
+        q = q.filter(Training.district_id == active_district(user))
     if status:
         q = q.filter(Training.status == status)
     return q.order_by(Training.created_at.desc()).all()
@@ -122,7 +131,7 @@ def complete(body: TrainingCompletionIn, user: User = Depends(require_roles("DIS
 @router.get("/{training_id}/roster")
 def roster(training_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_session)):
     t = _training_or_404(db, training_id)
-    if user.role == "DISTRICT_ADMIN" and t.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and t.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if not t.scheme_id:
         return []
@@ -157,7 +166,7 @@ def mark_attendance(training_id: str, body: TrainingAttendanceMarkIn,
                     user: User = Depends(require_roles("DISTRICT_ADMIN")),
                     db: Session = Depends(get_session)):
     t = _training_or_404(db, training_id)
-    if t.district_id != user.district_id:
+    if t.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if t.status not in ("Approved", "Completed"):
         raise HTTPException(400, "Attendance can only be marked once the training is Approved or Completed")
@@ -192,7 +201,7 @@ def mark_attendance(training_id: str, body: TrainingAttendanceMarkIn,
 def generate_certificates(training_id: str, user: User = Depends(require_roles("DISTRICT_ADMIN")),
                           db: Session = Depends(get_session)):
     t = _training_or_404(db, training_id)
-    if t.district_id != user.district_id:
+    if t.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if t.status != "Completed":
         raise HTTPException(400, "Certificates can only be generated once the training is Completed")
@@ -249,7 +258,7 @@ def generate_certificates(training_id: str, user: User = Depends(require_roles("
 @router.get("/{training_id}/certificates")
 def list_certificates(training_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_session)):
     t = _training_or_404(db, training_id)
-    if user.role == "DISTRICT_ADMIN" and t.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and t.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     certs = db.query(TrainingCertificate).filter(
         TrainingCertificate.training_id == training_id).order_by(TrainingCertificate.issued_at.desc()).all()
@@ -283,7 +292,7 @@ def revoke_certificate(certificate_id: str, body: CertificateRevokeIn,
         raise HTTPException(404, "Certificate not found")
     if user.role == "DISTRICT_ADMIN":
         t = _training_or_404(db, c.training_id)
-        if t.district_id != user.district_id:
+        if t.district_id != active_district(user):
             raise HTTPException(403, "District scope mismatch")
     c.revoked = True
     c.revoked_at = datetime.now(timezone.utc)

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from .db import get_session
 from .security import decode_access
 from app.models import User
+from .scope import DISTRICT_HEADER, resolve_active_district, set_active_district
 
 
 def get_current_user(request: Request, db: Session = Depends(get_session)) -> User:
@@ -24,6 +25,12 @@ def get_current_user(request: Request, db: Session = Depends(get_session)) -> Us
     user = db.query(User).filter(User.id == payload["sub"], User.is_active).first()
     if not user:
         raise HTTPException(401, "User not found")
+    # Resolve which district this request acts as, validating the header against what the
+    # user actually holds. Stored in a request-scoped ContextVar rather than written onto
+    # the User object, which is live in this session and must not be mutated -- see
+    # core/scope.py.
+    set_active_district(
+        user, resolve_active_district(db, user, request.headers.get(DISTRICT_HEADER)))
     return user
 
 

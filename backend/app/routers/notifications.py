@@ -6,6 +6,7 @@ from app.core.deps import get_current_user, require_roles
 from app.models import Notification, NotificationRecipient, User, District, Fig
 from app.schemas import NotificationIn, NotificationReplyIn
 from app.services.notifications import create_notification, create_reply, list_threads, get_thread_messages, mark_thread_read
+from app.core.scope import active_district
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -31,7 +32,7 @@ def candidates(recipient_type: str, user: User = Depends(get_current_user),
     elif recipient_type == "SELECTED_FP":
         q = db.query(User).filter(User.role == "FIG_PRESIDENT", User.is_active)
         if user.role == "DISTRICT_ADMIN":
-            q = q.filter(User.district_id == user.district_id)
+            q = q.filter(User.district_id == active_district(user))
         rows = q.all()
     elif recipient_type == "SELECTED_SA":
         rows = db.query(User).filter(User.role == "STATE_ADMIN", User.is_active).all()

@@ -1,4 +1,5 @@
 """Auth: login, refresh, me — JWT bearer + refresh tokens + rate-limited."""
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 import jwt
@@ -8,6 +9,7 @@ from app.core.security import (
 )
 from app.core.limiter import limiter
 from app.core.config import settings
+from app.core.scope import assigned_district_ids
 from app.core.deps import get_current_user
 from app.models import User
 from app.schemas import LoginIn, RefreshIn, TokenOut, ChangePasswordIn
@@ -15,12 +17,16 @@ from app.schemas import LoginIn, RefreshIn, TokenOut, ChangePasswordIn
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-def _user_dict(u: User) -> dict:
+def _user_dict(u: User, db: Optional[Session] = None) -> dict:
     return {"id": u.id, "mobile_no": u.mobile_no, "role": u.role, "name": u.name,
             "district_id": u.district_id, "fig_id": u.fig_id, "farmer_id": u.farmer_id,
             # Lets the UI hide "Change Password" for the super admin rather than
             # offering a button that always 403s.
-            "is_protected": u.mobile_no == settings.PROTECTED_ADMIN_MOBILE}
+            "is_protected": u.mobile_no == settings.PROTECTED_ADMIN_MOBILE,
+            # All districts this admin covers, primary first. The UI shows a switcher when
+            # there is more than one.
+            "district_ids": assigned_district_ids(db, u) if db is not None else (
+                [u.district_id] if u.district_id else [])}
 
 
 @router.post("/login", response_model=TokenOut)
@@ -36,7 +42,7 @@ def login(request: Request, body: LoginIn, db: Session = Depends(get_session)):
     scope = {"district_id": user.district_id, "fig_id": user.fig_id}
     access = create_access_token(user.id, user.role, scope)
     refresh = create_refresh_token(user.id)
-    return TokenOut(access_token=access, refresh_token=refresh, user=_user_dict(user))
+    return TokenOut(access_token=access, refresh_token=refresh, user=_user_dict(user, db))
 
 
 @router.post("/refresh", response_model=TokenOut)
@@ -55,12 +61,12 @@ def refresh(body: RefreshIn, db: Session = Depends(get_session)):
     scope = {"district_id": user.district_id, "fig_id": user.fig_id}
     access = create_access_token(user.id, user.role, scope)
     new_refresh = create_refresh_token(user.id)
-    return TokenOut(access_token=access, refresh_token=new_refresh, user=_user_dict(user))
+    return TokenOut(access_token=access, refresh_token=new_refresh, user=_user_dict(user, db))
 
 
 @router.get("/me")
 def me(user: User = Depends(get_current_user)):
-    return _user_dict(user)
+    return _user_dict(user, db)
 
 
 @router.post("/change-password")

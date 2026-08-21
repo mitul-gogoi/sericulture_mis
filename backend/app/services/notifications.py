@@ -17,6 +17,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import Notification, NotificationRecipient, User, _uuid
+from app.core.scope import active_district
 
 _SENDER_ROLE_TO_SELECTED_TAG = {
     "STATE_ADMIN": "SELECTED_SA",
@@ -70,7 +71,7 @@ def create_notification(db: Session, sender_user: User, title: str, details: str
     elif recipient_type == "ALL_FP":
         q = db.query(User).filter(User.role == "FIG_PRESIDENT", User.is_active)
         if sender_user.role == "DISTRICT_ADMIN":
-            q = q.filter(User.district_id == sender_user.district_id)
+            q = q.filter(User.district_id == active_district(sender_user))
         recip_ids = [u.id for u in q.all()]
     elif recipient_type == "ALL_DA_AND_FP":
         recip_ids = [u.id for u in db.query(User).filter(
@@ -80,7 +81,7 @@ def create_notification(db: Session, sender_user: User, title: str, details: str
             # A DA's picker only ever offers their own district's FPs — enforce that server-side
             # too, rather than trusting a client-supplied recipient_ids list verbatim.
             recip_ids = [u.id for u in db.query(User).filter(
-                User.id.in_(recipient_ids or [""]), User.district_id == sender_user.district_id).all()]
+                User.id.in_(recipient_ids or [""]), User.district_id == active_district(sender_user)).all()]
         else:
             recip_ids = recipient_ids
     elif recipient_type == "ALL_SA":

@@ -20,6 +20,7 @@ from app.models import (
     InputSourceType, StapSourceType, Activity, LossReason, FarmerDraftEntry, _now,
 )
 from app.schemas import MeetingIn, MeetingCorrectionIn, MeetingCorrectionRejectIn
+from app.core.scope import active_district
 
 router = APIRouter(tags=["meetings_yields"])
 
@@ -232,7 +233,7 @@ def list_meetings(fig_id: Optional[str] = None, month: Optional[str] = None,
     if user.role == "FIG_PRESIDENT":
         q = q.filter(Meeting.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        fig_ids = [f.id for f in db.query(Fig).filter(Fig.district_id == user.district_id).all()]
+        fig_ids = [f.id for f in db.query(Fig).filter(Fig.district_id == active_district(user)).all()]
         q = q.filter(Meeting.fig_id.in_(fig_ids or [""]))
         if fig_id:
             q = q.filter(Meeting.fig_id == fig_id)
@@ -247,7 +248,7 @@ def list_meetings(fig_id: Optional[str] = None, month: Optional[str] = None,
 def get_submission_status(month: str, page: int = Query(1, ge=1), page_size: Optional[int] = None,
                           user: User = Depends(require_roles("STATE_ADMIN", "DISTRICT_ADMIN")),
                           db: Session = Depends(get_session)):
-    district_id = user.district_id if user.role == "DISTRICT_ADMIN" else None
+    district_id = active_district(user) if user.role == "DISTRICT_ADMIN" else None
     rows = submission_status_rows(db, user.role, district_id, month)
     return _paginate(rows, page, page_size)
 
@@ -381,7 +382,7 @@ def _meeting_or_404_scoped(meeting_id: str, user: User, db: Session) -> Meeting:
             raise HTTPException(403, "FIG scope mismatch")
     if user.role == "DISTRICT_ADMIN":
         fig = db.query(Fig).filter(Fig.id == meeting.fig_id).first()
-        if not fig or fig.district_id != user.district_id:
+        if not fig or fig.district_id != active_district(user):
             raise HTTPException(403, "District scope mismatch")
     return meeting
 
@@ -676,7 +677,7 @@ def list_yields(fig_id: Optional[str] = None, month: Optional[str] = None,
     elif user.role == "FIG_PRESIDENT":
         q = q.filter(Yield_.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        q = q.filter(Yield_.district_id == user.district_id)
+        q = q.filter(Yield_.district_id == active_district(user))
     else:
         if district_id:
             q = q.filter(Yield_.district_id == district_id)
@@ -696,7 +697,7 @@ def _fig_scoped_yield_query(db: Session, user: User):
     elif user.role == "FIG_PRESIDENT":
         q = q.filter(ByproductEntry.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        q = q.filter(ByproductEntry.district_id == user.district_id)
+        q = q.filter(ByproductEntry.district_id == active_district(user))
     return q
 
 
@@ -709,7 +710,7 @@ def get_yield_byproducts(yield_id: str, user: User = Depends(get_current_user), 
         raise HTTPException(403, "Farmer scope mismatch")
     if user.role == "FIG_PRESIDENT" and parent.fig_id != user.fig_id:
         raise HTTPException(403, "FIG scope mismatch")
-    if user.role == "DISTRICT_ADMIN" and parent.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and parent.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     return db.query(ByproductEntry).filter(ByproductEntry.parent_yield_id == yield_id).all()
 
@@ -751,7 +752,7 @@ def get_yield_inputs(yield_id: str, user: User = Depends(get_current_user), db: 
         raise HTTPException(403, "Farmer scope mismatch")
     if user.role == "FIG_PRESIDENT" and parent.fig_id != user.fig_id:
         raise HTTPException(403, "FIG scope mismatch")
-    if user.role == "DISTRICT_ADMIN" and parent.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and parent.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     rows = db.query(YieldInputEntry).filter(YieldInputEntry.parent_yield_id == yield_id).all()
     return _with_scheme_name(db, rows)
@@ -767,7 +768,7 @@ def list_inputs(fig_id: Optional[str] = None, month: Optional[str] = None,
     elif user.role == "FIG_PRESIDENT":
         q = q.filter(YieldInputEntry.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        q = q.filter(YieldInputEntry.district_id == user.district_id)
+        q = q.filter(YieldInputEntry.district_id == active_district(user))
     elif fig_id:
         q = q.filter(YieldInputEntry.fig_id == fig_id)
     if farmer_id:

@@ -10,14 +10,15 @@ from fastapi import HTTPException
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models import Farmer, Fig, FigMember, District, SericultureCircle, User, SilkType, SilkTypeActivityProduct
+from app.core.scope import active_district
 
 
 def scope_district(user: User, district_id: Optional[str]) -> Optional[str]:
     """DISTRICT_ADMIN is pinned to their own district; STATE_ADMIN may pass any (or none, for state level)."""
     if user.role == "DISTRICT_ADMIN":
-        if district_id and district_id != user.district_id:
+        if district_id and district_id != active_district(user):
             raise HTTPException(403, "Cannot access another district's analytics")
-        return user.district_id
+        return active_district(user)
     return district_id
 
 

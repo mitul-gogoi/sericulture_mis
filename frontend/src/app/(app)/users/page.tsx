@@ -7,14 +7,16 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import type { User, District } from "@/lib/types";
 
-interface EditForm { name: string; mobile_no: string; password: string; district_id: string }
+// district_ids: the first entry is the primary district. An officer may hold additional
+// charge of more than one, so this is a set rather than a single value.
+interface EditForm { name: string; mobile_no: string; password: string; district_ids: string[] }
 
 export default function DistrictAdminsPage() {
   const { user: me } = useAuth();
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<User | null>(null);
-  const [form, setForm] = useState<EditForm>({ name: "", mobile_no: "", password: "", district_id: "" });
+  const [form, setForm] = useState<EditForm>({ name: "", mobile_no: "", password: "", district_ids: [] });
 
   const { data: users = [] } = useQuery<User[]>({
     queryKey: ["users-da-all"],
@@ -34,7 +36,7 @@ export default function DistrictAdminsPage() {
   const updateMut = useMutation({
     mutationFn: () => {
       if (!editing) throw new Error("no target");
-      const payload: Partial<EditForm> = { name: form.name, district_id: form.district_id };
+      const payload: Partial<EditForm> = { name: form.name, district_ids: form.district_ids };
       if (form.mobile_no && form.mobile_no !== editing.mobile_no) payload.mobile_no = form.mobile_no;
       if (form.password) payload.password = form.password;
       return api.patch(`/users/${editing.id}`, payload);
@@ -52,12 +54,12 @@ export default function DistrictAdminsPage() {
   function reset() {
     setCreateOpen(false);
     setEditing(null);
-    setForm({ name: "", mobile_no: "", password: "", district_id: "" });
+    setForm({ name: "", mobile_no: "", password: "", district_ids: [] });
   }
 
   function openEdit(u: User) {
     setEditing(u);
-    setForm({ name: u.name || "", mobile_no: u.mobile_no, password: "", district_id: u.district_id || "" });
+    setForm({ name: u.name || "", mobile_no: u.mobile_no, password: "", district_ids: u.district_ids && u.district_ids.length ? u.district_ids : (u.district_id ? [u.district_id] : []) });
     setCreateOpen(false);
   }
 
@@ -73,7 +75,7 @@ export default function DistrictAdminsPage() {
           <h1 className="font-heading text-3xl font-extrabold">District Admins</h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>One active DA per district. Deactivate before reassigning a district.</p>
         </div>
-        <button onClick={() => { setEditing(null); setForm({ name: "", mobile_no: "", password: "", district_id: "" }); setCreateOpen(true); }}
+        <button onClick={() => { setEditing(null); setForm({ name: "", mobile_no: "", password: "", district_ids: [] }); setCreateOpen(true); }}
           data-testid="users-da-add"
           className="btn-primary inline-flex items-center gap-2"><Plus size={16} weight="bold" />New DA</button>
       </div>
@@ -95,12 +97,32 @@ export default function DistrictAdminsPage() {
             <label><span className="label-tag block mb-1">{editing ? "New Password (leave blank to keep)" : "Password *"}</span>
               <input required={!editing} type="password" data-testid="users-da-input-password" className="input"
                 value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></label>
-            <label className="col-span-2"><span className="label-tag block mb-1">District *</span>
-              <select required data-testid="users-da-input-district" className="input"
-                value={form.district_id} onChange={(e) => setForm({ ...form, district_id: e.target.value })}>
-                <option value="">Select…</option>
-                {districts.map((d) => (<option key={d.id} value={d.id}>{d.district_name}</option>))}
-              </select></label>
+            <div className="col-span-2">
+              <span className="label-tag block mb-1">Districts *</span>
+              <p className="text-xs mb-2" style={{ color: "var(--text-muted)" }}>
+                Tick every district this officer is responsible for. The first one ticked is
+                their primary district; the rest are additional charge.
+              </p>
+              <div className="max-h-48 overflow-y-auto border rounded-lg p-2" style={{ borderColor: "var(--border)" }}>
+                {districts.map((d) => {
+                  const on = form.district_ids.includes(d.id);
+                  return (
+                    <label key={d.id} className="flex items-center gap-2 py-1 text-sm cursor-pointer">
+                      <input type="checkbox" checked={on} data-testid={`users-da-district-${d.id}`}
+                        onChange={() => setForm({
+                          ...form,
+                          district_ids: on
+                            ? form.district_ids.filter((x) => x !== d.id)
+                            : [...form.district_ids, d.id],
+                        })} />
+                      <span>{d.district_name}</span>
+                      {on && form.district_ids[0] === d.id &&
+                        <span className="badge badge-muted">primary</span>}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
             <div className="col-span-2 flex justify-end gap-2">
               <button type="button" className="btn-secondary" onClick={reset}>Cancel</button>
               <button type="submit" disabled={createMut.isPending || updateMut.isPending}
@@ -119,7 +141,8 @@ export default function DistrictAdminsPage() {
               <tr key={u.id} data-testid={`users-da-row-${u.id}`}>
                 <td><UserCircle size={16} weight="duotone" className="inline mr-2" />{u.name || "—"}</td>
                 <td>{u.mobile_no}</td>
-                <td>{distName(u.district_id)}</td>
+                <td>{(u.district_ids && u.district_ids.length ? u.district_ids : (u.district_id ? [u.district_id] : []))
+                      .map(distName).join(", ") || "—"}</td>
                 <td>{u.is_active !== false
                   ? <span className="badge badge-success">Active</span>
                   : <span className="badge badge-muted">Inactive</span>}</td>

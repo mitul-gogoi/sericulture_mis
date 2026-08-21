@@ -11,6 +11,7 @@ from app.models import Land, Farmer, User, FigMember, LandGpsDraft
 from app.schemas import LandIn, GpsSubmitIn, GpsVerifyIn, LandGpsDraftIn
 from app.services.geo import polygon_area_sqm, points_to_wkt, MIN_GPS_POINTS
 from app.services.land_reports import land_report_rows
+from app.core.scope import active_district
 
 router = APIRouter(prefix="/lands", tags=["lands"])
 
@@ -61,7 +62,7 @@ def _assert_land_gps_submit_scope(db: Session, user: User, land: Land) -> None:
         return
     if user.role == "DISTRICT_ADMIN":
         farmer = db.query(Farmer).filter(Farmer.id == land.farmer_id).first()
-        if not farmer or farmer.district_id != user.district_id:
+        if not farmer or farmer.district_id != active_district(user):
             raise HTTPException(403, "District scope mismatch")
         return
     raise HTTPException(403, "Not permitted")
@@ -79,7 +80,7 @@ def create_land(body: LandIn, user: User = Depends(require_roles("DISTRICT_ADMIN
     farmer = db.query(Farmer).filter(Farmer.id == body.farmer_id).first()
     if not farmer:
         raise HTTPException(404, "Farmer not found")
-    if farmer.district_id != user.district_id:
+    if farmer.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if body.land_type not in VALID_LAND_TYPES:
         raise HTTPException(400, f"Invalid land_type: {body.land_type}")
@@ -97,7 +98,7 @@ def delete_land(land_id: str, user: User = Depends(require_roles("DISTRICT_ADMIN
     if not land:
         raise HTTPException(404, "Not found")
     farmer = db.query(Farmer).filter(Farmer.id == land.farmer_id).first()
-    if not farmer or farmer.district_id != user.district_id:
+    if not farmer or farmer.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if land.gps_verified != "Not Submitted":
         raise HTTPException(400, "Cannot delete a land parcel with GPS data already submitted")
@@ -118,7 +119,7 @@ def list_lands(farmer_id: Optional[str] = None, status: Optional[str] = None,
     if status:
         q = q.filter(Land.gps_verified == status)
     if user.role == "DISTRICT_ADMIN":
-        farmer_ids = [f.id for f in db.query(Farmer).filter(Farmer.district_id == user.district_id).all()]
+        farmer_ids = [f.id for f in db.query(Farmer).filter(Farmer.district_id == active_district(user)).all()]
         q = q.filter(Land.farmer_id.in_(farmer_ids or [""]))
     elif user.role == "FIG_PRESIDENT":
         member_ids = [m.farmer_id for m in db.query(FigMember).filter(
@@ -251,7 +252,7 @@ def verify_gps(body: GpsVerifyIn, user: User = Depends(require_roles("DISTRICT_A
     if not land:
         raise HTTPException(404, "Not found")
     farmer = db.query(Farmer).filter(Farmer.id == land.farmer_id).first()
-    if not farmer or farmer.district_id != user.district_id:
+    if not farmer or farmer.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if land.overlap_detected and not body.override_overlap and body.decision == "verified":
         raise HTTPException(400, "Overlap detected — pass override_overlap=true to verify regardless")

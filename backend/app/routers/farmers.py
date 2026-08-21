@@ -25,6 +25,7 @@ from app.services.meeting_reports import fp_submission_history_rows, _serialize_
 from app.services.notifications import create_notification
 from app.routers.lands import VALID_LAND_TYPES
 from app.routers.meetings import _apply_yield_entries, _validate_entries_readonly
+from app.core.scope import active_district
 
 _PAGE_SIZES = {10, 20, 50, 100}
 
@@ -80,7 +81,7 @@ def _next_farmer_seq(db: Session) -> int:
 @router.post("")
 def create_farmer(body: FarmerIn, user: User = Depends(require_roles("DISTRICT_ADMIN")),
                   db: Session = Depends(get_session)):
-    if user.role == "DISTRICT_ADMIN" and body.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and body.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if db.query(Farmer).filter(Farmer.mobile_no == body.mobile_no).first():
         raise HTTPException(400, "Mobile already registered")
@@ -165,7 +166,7 @@ def list_farmers(
 ):
     query = db.query(Farmer)
     if user.role == "DISTRICT_ADMIN":
-        query = query.filter(Farmer.district_id == user.district_id)
+        query = query.filter(Farmer.district_id == active_district(user))
     elif user.role == "FIG_PRESIDENT":
         member_ids = [m.farmer_id for m in db.query(FigMember).filter(
             FigMember.fig_id == user.fig_id, FigMember.is_active).all()]
@@ -408,7 +409,7 @@ def get_farmer(farmer_id: str, user: User = Depends(get_current_user), db: Sessi
         raise HTTPException(404, "Not found")
     # Previously unscoped — any authenticated user of any role could fetch any farmer's
     # full record by id. Mirrors list_farmers' existing scoping ladder.
-    if user.role == "DISTRICT_ADMIN" and f.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and f.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if user.role == "FIG_PRESIDENT" and not db.query(FigMember).filter(
             FigMember.fig_id == user.fig_id, FigMember.farmer_id == f.id, FigMember.is_active).first():
@@ -425,7 +426,7 @@ def update_farmer(farmer_id: str, body: FarmerUpdateIn,
     f = db.query(Farmer).filter(Farmer.id == farmer_id).first()
     if not f:
         raise HTTPException(404, "Not found")
-    if user.role == "DISTRICT_ADMIN" and f.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and f.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     data = body.model_dump(exclude_unset=True)
     login = None
@@ -471,7 +472,7 @@ def toggle_farmer(farmer_id: str, body: ActiveToggleIn,
     f = db.query(Farmer).filter(Farmer.id == farmer_id).first()
     if not f:
         raise HTTPException(404, "Not found")
-    if user.role == "DISTRICT_ADMIN" and f.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and f.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     f.is_active = body.is_active
     db.commit()
@@ -485,7 +486,7 @@ def reset_farmer_password(farmer_id: str, body: FarmerPasswordResetIn,
     f = db.query(Farmer).filter(Farmer.id == farmer_id).first()
     if not f:
         raise HTTPException(404, "Not found")
-    if user.role == "DISTRICT_ADMIN" and f.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and f.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     login = db.query(User).filter(User.farmer_id == farmer_id).first()
     if not login:

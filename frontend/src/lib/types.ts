@@ -12,6 +12,9 @@ export interface User {
   /** The permanent super admin. Set by the server, never inferred from the mobile
    *  number here, so there is one source of truth for who is protected. */
   is_protected?: boolean;
+  /** Every district a District Admin covers, primary first. More than one means they
+   *  hold additional charge, and the header shows a district switcher. */
+  district_ids?: string[];
 }
 
 export interface OfficeFields {

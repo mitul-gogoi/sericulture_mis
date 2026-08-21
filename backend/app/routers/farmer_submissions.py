@@ -19,6 +19,7 @@ from app.services.meeting_reports import (
 from app.services.stock import reverse_stock_for_yield, reverse_stock_for_byproduct
 from app.services.notifications import create_notification
 from app.routers.meetings import _apply_yield_entries, _validate_entries_readonly
+from app.core.scope import active_district
 
 router = APIRouter(prefix="/farmer-submissions", tags=["farmer_submissions"])
 
@@ -39,7 +40,7 @@ def list_farmer_submissions(month: Optional[str] = None, page: int = Query(1, ge
                             page_size: Optional[int] = None,
                             user: User = Depends(require_roles("STATE_ADMIN", "DISTRICT_ADMIN")),
                             db: Session = Depends(get_session)):
-    district_id = user.district_id if user.role == "DISTRICT_ADMIN" else None
+    district_id = active_district(user) if user.role == "DISTRICT_ADMIN" else None
     rows = farmer_submission_rows(db, user.role, district_id, month)
     return _paginate(rows, page, page_size)
 
@@ -47,7 +48,7 @@ def list_farmer_submissions(month: Optional[str] = None, page: int = Query(1, ge
 @router.get("/corrections/pending")
 def get_pending_farmer_corrections(user: User = Depends(require_roles("DISTRICT_ADMIN")),
                                    db: Session = Depends(get_session)):
-    return pending_farmer_corrections_rows(db, user.district_id)
+    return pending_farmer_corrections_rows(db, active_district(user))
 
 
 def _submission_or_404_scoped(submission_id: str, user: User, db: Session) -> FarmerSubmission:
@@ -56,7 +57,7 @@ def _submission_or_404_scoped(submission_id: str, user: User, db: Session) -> Fa
         raise HTTPException(404, "Submission not found")
     if user.role == "DISTRICT_ADMIN":
         farmer = db.query(Farmer).filter(Farmer.id == submission.farmer_id).first()
-        if not farmer or farmer.district_id != user.district_id:
+        if not farmer or farmer.district_id != active_district(user):
             raise HTTPException(403, "District scope mismatch")
     return submission
 

@@ -13,6 +13,7 @@ from app.models import Fig, FigMember, Farmer, User, SilkTypeActivityProduct, Fi
 from app.schemas import FigIn, FigMemberIn, PresidentSetIn, FigUpdateIn
 from app.services.fig_reports import apply_fig_filters, member_names_by_fig
 from app.services.assets import next_asset_seq, asset_code
+from app.core.scope import active_district
 
 _PAGE_SIZES = {10, 20, 50, 100}
 
@@ -51,7 +52,7 @@ def _require_output_stap(db: Session, stap_id: str) -> None:
 @router.post("")
 def create_fig(body: FigIn, user: User = Depends(require_roles("DISTRICT_ADMIN")),
                db: Session = Depends(get_session)):
-    if user.role == "DISTRICT_ADMIN" and body.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and body.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     _require_output_stap(db, body.stap_id)
     settings = db.query(FigSettings).first()
@@ -116,7 +117,7 @@ def list_figs(
     if not all:
         query = query.filter(Fig.is_active)
     if user.role == "DISTRICT_ADMIN":
-        query = query.filter(Fig.district_id == user.district_id)
+        query = query.filter(Fig.district_id == active_district(user))
     elif user.role == "FIG_PRESIDENT":
         query = query.filter(Fig.id == user.fig_id)
     elif district_id:
@@ -166,7 +167,7 @@ def get_fig(fig_id: str, user: User = Depends(get_current_user), db: Session = D
     f = db.query(Fig).filter(Fig.id == fig_id).first()
     if not f:
         raise HTTPException(404, "Not found")
-    if user.role == "DISTRICT_ADMIN" and f.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and f.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if user.role == "FIG_PRESIDENT" and f.id != user.fig_id:
         raise HTTPException(403, "FIG scope mismatch")
@@ -189,7 +190,7 @@ def update_fig(fig_id: str, body: FigUpdateIn,
     fig = db.query(Fig).filter(Fig.id == fig_id).first()
     if not fig:
         raise HTTPException(404, "Not found")
-    if fig.district_id != user.district_id:
+    if fig.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if body.stap_id is not None:
         _require_output_stap(db, body.stap_id)
@@ -209,7 +210,7 @@ def toggle_fig(fig_id: str, body: ActiveToggleIn,
     fig = db.query(Fig).filter(Fig.id == fig_id).first()
     if not fig:
         raise HTTPException(404, "Not found")
-    if user.role == "DISTRICT_ADMIN" and fig.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and fig.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     fig.is_active = body.is_active
     db.commit()
@@ -222,7 +223,7 @@ def add_member(body: FigMemberIn, user: User = Depends(require_roles("STATE_ADMI
     fig = db.query(Fig).filter(Fig.id == body.fig_id).first()
     if not fig:
         raise HTTPException(404, "FIG not found")
-    if user.role == "DISTRICT_ADMIN" and fig.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and fig.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     if db.query(FigMember).filter(FigMember.farmer_id == body.farmer_id, FigMember.is_active).first():
         raise HTTPException(400, "Farmer already in an active FIG")
@@ -249,7 +250,7 @@ def set_president(body: PresidentSetIn, user: User = Depends(require_roles("STAT
     fig = db.query(Fig).filter(Fig.id == body.fig_id).first()
     if not fig:
         raise HTTPException(404, "FIG not found")
-    if user.role == "DISTRICT_ADMIN" and fig.district_id != user.district_id:
+    if user.role == "DISTRICT_ADMIN" and fig.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
     # Demote existing presidents — both the FigMember role flag and, since a FIG President's
     # login is just their own farmer account promoted in place (not a separate account), the

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
+import { DistrictSwitcher } from "@/components/DistrictSwitcher";
 import {
   House, Users, UsersThree, Calendar, MapTrifold, Gift,
   GraduationCap, Bell, SignOut, UserCircle, Leaf, ListChecks,
@@ -297,6 +298,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <div className="text-sm font-semibold mt-1 truncate">{user.name || user.mobile_no}</div>
             <div className="text-xs" style={{ color: "var(--text-muted)" }}>{ROLE_LABEL[user.role]}</div>
           </div>
+          {/* Only rendered for a District Admin holding more than one district. */}
+          <DistrictSwitcher />
           {/* Hidden for the permanent super admin: its password cannot be changed, and
               the backend 403s the attempt. Better to not offer it than to fail on click. */}
           {user?.is_protected !== true && <button onClick={() => setChangePasswordOpen(true)} data-testid="change-password-btn"

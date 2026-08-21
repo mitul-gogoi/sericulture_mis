@@ -15,6 +15,7 @@ from app.services.land_reports import land_report_rows
 from app.services.meeting_reports import submission_status_rows, fp_submission_history_rows
 from app.services.assets import asset_report_rows
 from app.services import yield_matrix
+from app.core.scope import active_district
 from app.models import (
     Farmer, Fig, District, Land, Training, FigMember, Meeting, Yield_,
     User, Product, ByproductEntry, Stock, MeetingCorrection,
@@ -56,17 +57,17 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
             "monthly_submitted_count": db.query(func.count(Meeting.id)).filter(Meeting.meeting_month == cur_month).scalar() or 0,
         }
     if user.role == "DISTRICT_ADMIN":
-        farmer_ids = [f.id for f in db.query(Farmer.id).filter(Farmer.district_id == user.district_id).all()]
-        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == user.district_id, Fig.is_active).all()]
+        farmer_ids = [f.id for f in db.query(Farmer.id).filter(Farmer.district_id == active_district(user)).all()]
+        fig_ids = [f.id for f in db.query(Fig.id).filter(Fig.district_id == active_district(user), Fig.is_active).all()]
         cur_month = datetime.now(timezone.utc).strftime("%Y-%m")
         return {
             "farmers": db.query(func.count(Farmer.id)).filter(
-                Farmer.district_id == user.district_id, Farmer.is_active).scalar() or 0,
+                Farmer.district_id == active_district(user), Farmer.is_active).scalar() or 0,
             "figs": db.query(func.count(Fig.id)).filter(
-                Fig.district_id == user.district_id, Fig.is_active).scalar() or 0,
+                Fig.district_id == active_district(user), Fig.is_active).scalar() or 0,
             "activities": db.query(func.count(func.distinct(SilkTypeActivityProduct.activity_id))).join(
                 Fig, Fig.stap_id == SilkTypeActivityProduct.id).filter(
-                Fig.district_id == user.district_id, Fig.is_active).scalar() or 0,
+                Fig.district_id == active_district(user), Fig.is_active).scalar() or 0,
             "total_members": db.query(func.count(FigMember.id)).filter(
                 FigMember.fig_id.in_(fig_ids or [""]), FigMember.is_active).scalar() or 0,
             "lands_pending": db.query(func.count(Land.id)).filter(
@@ -76,14 +77,14 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
                 AssetInstance.owner_id.in_((farmer_ids + fig_ids) or [""]),
                 AssetInstance.gps_status == "Pending").scalar() or 0,
             "pending_trainings": db.query(func.count(Training.id)).filter(
-                Training.district_id == user.district_id, Training.status == "Pending").scalar() or 0,
+                Training.district_id == active_district(user), Training.status == "Pending").scalar() or 0,
             "current_month": cur_month,
             "monthly_submitted_count": db.query(func.count(Meeting.id)).filter(
                 Meeting.fig_id.in_(fig_ids or [""]), Meeting.meeting_month == cur_month).scalar() or 0,
         }
     if user.role == "FIG_PRESIDENT":
         fig = db.query(Fig).filter(Fig.id == user.fig_id).first()
-        district = db.query(District).filter(District.id == user.district_id).first()
+        district = db.query(District).filter(District.id == active_district(user)).first()
         members = db.query(func.count(FigMember.id)).filter(
             FigMember.fig_id == user.fig_id, FigMember.is_active).scalar() or 0
         meetings = db.query(func.count(Meeting.id)).filter(Meeting.fig_id == user.fig_id).scalar() or 0
@@ -133,7 +134,7 @@ def _scope_yield_query(q, user: User, district_id: Optional[str], db: Session):
     elif user.role == "FIG_PRESIDENT":
         return q.filter(Yield_.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        return q.filter(Yield_.district_id == user.district_id)
+        return q.filter(Yield_.district_id == active_district(user))
     elif district_id:
         return q.filter(Yield_.district_id == district_id)
     return q
@@ -169,7 +170,7 @@ def _product_summary_rows(month: Optional[str], fiscal_year: Optional[str], dist
     elif user.role == "FIG_PRESIDENT":
         bp_q = bp_q.filter(ByproductEntry.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        bp_q = bp_q.filter(ByproductEntry.district_id == user.district_id)
+        bp_q = bp_q.filter(ByproductEntry.district_id == active_district(user))
     elif district_id:
         bp_q = bp_q.filter(ByproductEntry.district_id == district_id)
     bp_rows = {r.product_id: r for r in bp_q.group_by(ByproductEntry.product_id).all()}
@@ -218,7 +219,7 @@ def _stock_summary_rows(district_id: Optional[str], user: User, db: Session) -> 
     elif user.role == "FIG_PRESIDENT":
         q = q.filter(Stock.fig_id == user.fig_id)
     elif user.role == "DISTRICT_ADMIN":
-        q = q.filter(Stock.district_id == user.district_id)
+        q = q.filter(Stock.district_id == active_district(user))
     elif district_id:
         q = q.filter(Stock.district_id == district_id)
     rows = q.group_by(Stock.product_id).all()
@@ -268,8 +269,8 @@ def _onboarding_trend_rows(fiscal_year: Optional[str], district_id: Optional[str
     farmer_q = db.query(Farmer)
     fig_q = db.query(Fig)
     if user.role == "DISTRICT_ADMIN":
-        farmer_q = farmer_q.filter(Farmer.district_id == user.district_id)
-        fig_q = fig_q.filter(Fig.district_id == user.district_id)
+        farmer_q = farmer_q.filter(Farmer.district_id == active_district(user))
+        fig_q = fig_q.filter(Fig.district_id == active_district(user))
     elif user.role == "FIG_PRESIDENT":
         member_ids = [m.farmer_id for m in db.query(FigMember).filter(
             FigMember.fig_id == user.fig_id, FigMember.is_active).all()]
@@ -363,7 +364,7 @@ def export_report(report: str, format: str,
             raise HTTPException(403, "State/District Admin/FIG President only")
         query = db.query(Farmer)
         if user.role == "DISTRICT_ADMIN":
-            query = query.filter(Farmer.district_id == user.district_id)
+            query = query.filter(Farmer.district_id == active_district(user))
         elif user.role == "FIG_PRESIDENT":
             member_ids = [m.farmer_id for m in db.query(FigMember).filter(
                 FigMember.fig_id == user.fig_id, FigMember.is_active).all()]
@@ -408,7 +409,7 @@ def export_report(report: str, format: str,
             raise HTTPException(403, "State/District Admin/FIG President only")
         query = db.query(Fig)
         if user.role == "DISTRICT_ADMIN":
-            query = query.filter(Fig.district_id == user.district_id)
+            query = query.filter(Fig.district_id == active_district(user))
         elif user.role == "FIG_PRESIDENT":
             query = query.filter(Fig.id == user.fig_id)
         elif district_id:
@@ -441,7 +442,7 @@ def export_report(report: str, format: str,
             raise HTTPException(403, "State/District Admin/FIG President only")
         query = db.query(Land)
         if user.role == "DISTRICT_ADMIN":
-            farmer_ids = [f.id for f in db.query(Farmer).filter(Farmer.district_id == user.district_id).all()]
+            farmer_ids = [f.id for f in db.query(Farmer).filter(Farmer.district_id == active_district(user)).all()]
             query = query.filter(Land.farmer_id.in_(farmer_ids or [""]))
         elif user.role == "FIG_PRESIDENT":
             member_ids = [m.farmer_id for m in db.query(FigMember).filter(
@@ -495,8 +496,8 @@ def export_report(report: str, format: str,
                 and_(AssetInstance.owner_type == "FIG", AssetInstance.owner_id.in_(fig_ids or [""])),
             ))
         if user.role == "DISTRICT_ADMIN":
-            farmer_ids2 = [f.id for f in db.query(Farmer).filter(Farmer.district_id == user.district_id).all()]
-            fig_ids2 = [g.id for g in db.query(Fig).filter(Fig.district_id == user.district_id).all()]
+            farmer_ids2 = [f.id for f in db.query(Farmer).filter(Farmer.district_id == active_district(user)).all()]
+            fig_ids2 = [g.id for g in db.query(Fig).filter(Fig.district_id == active_district(user)).all()]
             query = query.filter(AssetInstance.owner_id.in_((farmer_ids2 + fig_ids2) or [""]))
         elif user.role == "FIG_PRESIDENT":
             member_ids = [m.farmer_id for m in db.query(FigMember).filter(
@@ -518,7 +519,7 @@ def export_report(report: str, format: str,
             raise HTTPException(403, "State/District Admin only")
         if not month:
             raise HTTPException(400, "month is required")
-        district_scope = user.district_id if user.role == "DISTRICT_ADMIN" else None
+        district_scope = active_district(user) if user.role == "DISTRICT_ADMIN" else None
         rows = submission_status_rows(db, user.role, district_scope, month)
         headers = ["FIG", "District", "Status", "Submitted On"]
         data = [[r["fig_name"], r["district_name"], r["status"], r["submitted_on"]] for r in rows]

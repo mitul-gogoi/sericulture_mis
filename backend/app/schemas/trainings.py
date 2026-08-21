@@ -19,6 +19,9 @@ class TrainingRequestIn(BaseModel):
     proposed_venue: str
     estimated_participants: int = 0
     participant_names: Optional[str] = ""
+    # Which district the request is filed against. Optional: admins covering a single
+    # district need not send it, and it falls back to the district they are acting as.
+    district_id: Optional[str] = None
 
 
 class TrainingAttendanceItemIn(BaseModel):

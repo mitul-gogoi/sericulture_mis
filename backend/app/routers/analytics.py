@@ -13,6 +13,7 @@ from app.services.analytics import (
 )
 from app.services import yield_matrix
 from app.models import User, SericultureCircle, Fig
+from app.core.scope import active_district
 
 router = APIRouter(prefix="/reports/analytics", tags=["analytics"])
 
@@ -84,7 +85,7 @@ def analytics_figs(level: str, district_id: Optional[str] = None, seri_circle_id
     if not seri_circle_id:
         raise HTTPException(400, "seri_circle_id is required at fig level")
     if user.role == "DISTRICT_ADMIN":
-        _validate_circle_in_district(db, seri_circle_id, user.district_id)
+        _validate_circle_in_district(db, seri_circle_id, active_district(user))
     return {"level": "fig", "rows": figs_in_circle(db, seri_circle_id)}
 
 
