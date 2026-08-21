@@ -30,28 +30,36 @@ NEW_ADMIN = {"name": "Director", "mobile_no": "1111111111", "password": "sa@123"
 # input_source_types, asset_types, caste, religion, education_levels, sericulture_circles,
 # subdivision_cdc_offices, directorate_offices, fig_settings) are never touched below.
 STEPS = [
+    # Topological order, derived from the live foreign-key graph rather than by hand.
+    # A table is deleted only after every table that references it. Four edges are easy
+    # to miss and each one previously aborted this script mid-run:
+    #   training_attendance  -> beneficiaries
+    #   training_certificates-> beneficiaries
+    #   asset_gps_drafts     -> asset_instances
+    #   yields               -> farmer_submissions
+    #   trainings            -> schemes
     ("Delete NotificationRecipient", 'DELETE FROM notification_recipients'),
     ("Delete Notification", 'DELETE FROM notifications'),
     ("Delete FileRecord", 'DELETE FROM files'),
-    ("Delete AssetVerificationLog", 'DELETE FROM asset_verification_logs'),
-    ("Delete YieldInputEntry (references yields + schemes)", 'DELETE FROM yield_input_entries'),
+    ("Delete AssetVerificationLog (references asset_instances)", 'DELETE FROM asset_verification_logs'),
+    ("Delete AssetGpsDraft (references asset_instances)", 'DELETE FROM asset_gps_drafts'),
     ("Delete Stock (references yields + byproduct_entries)", 'DELETE FROM stock'),
     ("Delete ByproductEntry (references yields)", 'DELETE FROM byproduct_entries'),
-    ("Delete AssetInstance (references schemes + beneficiaries)", 'DELETE FROM asset_instances'),
-    ("Delete Beneficiary (references schemes, farmers, figs)", 'DELETE FROM beneficiaries'),
+    ("Delete YieldInputEntry (references yields + schemes)", 'DELETE FROM yield_input_entries'),
+    ("Delete TrainingAttendance (references beneficiaries + trainings)", 'DELETE FROM training_attendance'),
+    ("Delete TrainingCertificate (references beneficiaries + trainings)", 'DELETE FROM training_certificates'),
+    ("Delete AssetInstance (references beneficiaries + schemes)", 'DELETE FROM asset_instances'),
+    ("Delete Beneficiary (references schemes, farmers, figs, users)", 'DELETE FROM beneficiaries'),
     ("Delete Allocation (references schemes)", 'DELETE FROM allocations'),
+    ("Delete Training (references schemes + users)", 'DELETE FROM trainings'),
     ("Delete Scheme", 'DELETE FROM schemes'),
-    ("Delete AssetGpsDraft (references asset_instances, farmers, figs)", 'DELETE FROM asset_gps_drafts'),
-    ("Delete LandGpsDraft (references lands, farmers, figs)", 'DELETE FROM land_gps_drafts'),
+    ("Delete LandGpsDraft (references lands)", 'DELETE FROM land_gps_drafts'),
     ("Delete FarmerDraftEntry (references farmers, figs)", 'DELETE FROM farmer_draft_entries'),
+    ("Delete MeetingCorrection (references meetings, figs, users)", 'DELETE FROM meeting_corrections'),
+    ("Delete Attendance (references meetings, figs, farmers)", 'DELETE FROM attendance'),
+    ("Delete Yield_ (references farmer_submissions, meetings, farmers, figs)", 'DELETE FROM yields'),
     ("Delete FarmerSubmissionCorrection (references farmer_submissions)", 'DELETE FROM farmer_submission_corrections'),
     ("Delete FarmerSubmission (references farmers)", 'DELETE FROM farmer_submissions'),
-    ("Delete MeetingCorrection (references meetings, figs, users)", 'DELETE FROM meeting_corrections'),
-    ("Delete TrainingCertificate (references trainings)", 'DELETE FROM training_certificates'),
-    ("Delete TrainingAttendance (references trainings, farmers)", 'DELETE FROM training_attendance'),
-    ("Delete Attendance (references meetings, figs, farmers)", 'DELETE FROM attendance'),
-    ("Delete Yield_ (references figs, farmers, meetings)", 'DELETE FROM yields'),
-    ("Delete Training (references users)", 'DELETE FROM trainings'),
     ("Delete Meeting (references figs)", 'DELETE FROM meetings'),
     ("Delete Land (references farmers)", 'DELETE FROM lands'),
     ("Delete FigMember (references figs, farmers)", 'DELETE FROM fig_members'),
