@@ -298,7 +298,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <div className="px-2 py-2 mb-2">
             <div className="text-xs label-tag">Signed in as</div>
             <div className="text-sm font-semibold mt-1 truncate">{user.name || user.mobile_no}</div>
-            <div className="text-xs" style={{ color: "var(--text-muted)" }}>{ROLE_LABEL[user.role]}</div>
+            {/* Departmental post, e.g. "Assistant Director of Sericulture (ADS)". Allowed to
+                wrap rather than truncate -- these titles are long and the abbreviation at the
+                end is the part people recognise, so cutting it off defeats the purpose. */}
+            {user.designation_name && (
+              <div className="text-xs font-medium leading-snug mt-0.5" style={{ color: "var(--primary)" }}>
+                {user.designation_name}
+              </div>
+            )}
+            {/* The system role stays: it is what determines what they can actually do, which
+                is not always obvious from the departmental post. */}
+            <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>{ROLE_LABEL[user.role]}</div>
           </div>
           {/* Only rendered for a District Admin holding more than one district. */}
           <DistrictSwitcher />

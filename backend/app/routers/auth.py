@@ -69,7 +69,7 @@ def refresh(body: RefreshIn, db: Session = Depends(get_session)):
 
 
 @router.get("/me")
-def me(user: User = Depends(get_current_user)):
+def me(user: User = Depends(get_current_user), db: Session = Depends(get_session)):
     return _user_dict(user, db)
 
 
