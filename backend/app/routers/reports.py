@@ -383,13 +383,13 @@ def export_report(report: str, format: str,
                                       has_bank_details=has_bank_details, is_active=is_active, has_fig=has_fig)
         rows = farmer_report_rows(query, db)
         headers = ["Farmer Code", "Full Name", "Gender", "Date of Birth", "Mobile Number", "Aadhaar (masked)",
-                   "PAN Number", "Education Level", "Farmer Experience (in Years)", "Primary Activities",
-                   "All Activities", "Caste", "Religion", "Family Member Counts (male)",
+                   "PAN Number", "Education Level", "Farmer Experience (in Years)",
+                   "Activities", "Caste", "Religion", "Family Member Counts (male)",
                    "Family Member Counts (female)", "Village Name", "Panchayat", "Development Block",
                    "District", "Sericulture Circle", "Post Office", "PIN Code",
                    "Account Number", "Bank Name", "Branch Name", "IFSC Code", "Status", "FIG Membership"]
         data = [[r["farmer_code"], r["full_name"], r["gender"], r["date_of_birth"], r["mobile_no"], r["aadhaar_masked"],
-                 r["pan_no"], r["education_level_name"], r["experience_years"], r["primary_activity"],
+                 r["pan_no"], r["education_level_name"], r["experience_years"],
                  r["all_activities"], r["caste_name"], r["religion_name"], r["family_member_male"],
                  r["family_member_female"], r["village_name"], r["gaon_panchayat"], r["development_block"],
                  r["district_name"], r["circle_name"], r["post_office"], r["pin_code"],
