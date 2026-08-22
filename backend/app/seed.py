@@ -200,6 +200,11 @@ def _seed_lacs(db: Session, district_map: dict[str, str]) -> None:
             db.add(Lac(district_id=district_id, lac_no=lac_no, lac_name=lac_name))
         elif row.lac_no != lac_no:
             row.lac_no = lac_no
+    # The session is autoflush=False, so _seed_circles' Lac lookup would not see any of the
+    # rows just added and every circle would come out unmapped. That only bites on a database
+    # where the LACs are created in this same transaction — i.e. a fresh deployment, which is
+    # precisely where it matters and precisely where an already-seeded dev box cannot show it.
+    db.flush()
 
 
 def _seed_circles(db: Session, district_map: dict[str, str]) -> None:
