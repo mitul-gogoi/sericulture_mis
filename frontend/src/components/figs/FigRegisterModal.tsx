@@ -2,9 +2,9 @@
 import { useEffect } from "react";
 import { X } from "@phosphor-icons/react";
 import { FigActivityPicker } from "./FigActivityPicker";
-import { sdoCdcName } from "@/lib/sdoCdc";
+import { lacName } from "@/lib/lac";
 import { AssetRowsEditor, type AssetRow } from "@/components/AssetRowsEditor";
-import type { District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, Farmer, AssetType } from "@/lib/types";
+import type { District, SericultureCircle, Lac, SilkTypeActivityProduct, Farmer, AssetType } from "@/lib/types";
 
 export interface FigCreateForm {
   fig_name: string; silk_type_id: string; activity_ids: string[]; seri_circle_id: string; district_id: string; formation_date: string;
@@ -45,12 +45,12 @@ function modeOf(values: (string | null | undefined)[]): string {
 
 export function FigRegisterModal({
   form, setForm, onClose, onSubmit, isStateAdmin, userDistrictId, minMembers,
-  districts, circles, subdivisionCdcs, staps, unassignedFarmers, assetTypes,
+  districts, circles, lacs, staps, unassignedFarmers, assetTypes,
   touchedLocation, setTouchedLocation,
 }: {
   form: FigCreateForm; setForm: (f: FigCreateForm) => void; onClose: () => void; onSubmit: (e: React.FormEvent) => void;
   isStateAdmin: boolean; userDistrictId?: string | null; minMembers: number;
-  districts: District[]; circles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[]; staps: SilkTypeActivityProduct[]; unassignedFarmers: Farmer[];
+  districts: District[]; circles: SericultureCircle[]; lacs: Lac[]; staps: SilkTypeActivityProduct[]; unassignedFarmers: Farmer[];
   assetTypes: AssetType[];
   touchedLocation: string[]; setTouchedLocation: (keys: string[]) => void;
 }) {
@@ -188,8 +188,8 @@ export function FigRegisterModal({
             <select required className="input mt-1" value={form.seri_circle_id} onChange={(e) => editLocation("seri_circle_id", e.target.value)}>
               <option value="">Select</option>{circles.map((c) => <option key={c.id} value={c.id}>{c.circle_name}</option>)}
             </select></div>
-          <div><label className="label-tag">Sub-division Office (SDO)/ CDC Office</label>
-            <input disabled className="input mt-1" value={sdoCdcName(form.seri_circle_id, circles, subdivisionCdcs)} /></div>
+          <div><label className="label-tag">LAC</label>
+            <input disabled className="input mt-1" value={lacName(form.seri_circle_id, circles, lacs)} /></div>
           <div className="col-span-full"><label className="label-tag">Village/ Town/ City</label><input className="input mt-1" value={form.village_name} onChange={(e) => editLocation("village_name", e.target.value)} /></div>
           <div><label className="label-tag">Panchayat</label><input className="input mt-1" value={form.panchayat_name} onChange={(e) => editLocation("panchayat_name", e.target.value)} /></div>
           <div><label className="label-tag">Post Office</label><input className="input mt-1" value={form.post_office} onChange={(e) => editLocation("post_office", e.target.value)} /></div>

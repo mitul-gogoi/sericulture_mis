@@ -28,7 +28,7 @@ NEW_ADMIN = {"name": "Director", "mobile_no": "1111111111", "password": "sa@123"
 # Master Data tables (districts, silk_types, activities, products,
 # silk_type_activity_products, stap_source_types, loss_reasons, input_source_categories,
 # input_source_types, asset_types, caste, religion, education_levels, sericulture_circles,
-# subdivision_cdc_offices, directorate_offices, fig_settings) are never touched below.
+# lacs, directorate_offices, fig_settings) are never touched below.
 STEPS = [
     # Topological order, derived from the live foreign-key graph rather than by hand.
     # A table is deleted only after every table that references it. Four edges are easy

@@ -17,7 +17,7 @@ import { FigDetailModal } from "@/components/figs/FigDetailModal";
 import { type FigEditFormState } from "@/components/figs/FigEditForm";
 import { type PresForm } from "@/components/figs/FigPresidentPanel";
 import { type AssetRow } from "@/components/AssetRowsEditor";
-import type { Fig, FigDetail, Farmer, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, FigSettings, AssetType, AssetInstance } from "@/lib/types";
+import type { Fig, FigDetail, Farmer, District, SericultureCircle, Lac, SilkTypeActivityProduct, FigSettings, AssetType, AssetInstance } from "@/lib/types";
 
 const MultiSeriesTrendChart = dynamic(() => import("../dashboard/charts").then((m) => m.MultiSeriesTrendChart), { ssr: false });
 
@@ -110,7 +110,7 @@ export default function FIGsPage() {
   const minMembers = figSettings?.min_members ?? 1;
   const { data: districts = [] } = useQuery<District[]>({ queryKey: ["districts"], queryFn: async () => (await api.get("/master/districts")).data });
   const { data: allCircles = [] } = useQuery<SericultureCircle[]>({ queryKey: ["circles-all-figs"], queryFn: async () => (await api.get("/master/sericulture-circles")).data });
-  const { data: subdivisionCdcs = [] } = useQuery<SubdivisionCdc[]>({ queryKey: ["subdivision-cdc-all"], queryFn: async () => (await api.get("/master/subdivision-cdc")).data });
+  const { data: lacs = [] } = useQuery<Lac[]>({ queryKey: ["lacs-all"], queryFn: async () => (await api.get("/master/lacs")).data });
   const { data: assetTypes = [] } = useQuery<AssetType[]>({ queryKey: ["master-asset-types-all"], queryFn: async () => (await api.get("/master/asset-types?all=true")).data });
   const { data: circles = [] } = useQuery<SericultureCircle[]>({
     queryKey: ["circles-fig", form.district_id || activeDistrictId],
@@ -349,7 +349,7 @@ export default function FIGsPage() {
         <FigRegisterModal
           form={form} setForm={setForm} onClose={() => { setOpen(false); resetCreateForm(); }} onSubmit={submit}
           isStateAdmin={user?.role === "STATE_ADMIN"} userDistrictId={activeDistrictId} minMembers={minMembers}
-          districts={districts} circles={circles} subdivisionCdcs={subdivisionCdcs} staps={staps} unassignedFarmers={unassignedFarmers}
+          districts={districts} circles={circles} lacs={lacs} staps={staps} unassignedFarmers={unassignedFarmers}
           assetTypes={assetTypes}
           touchedLocation={touchedLocation} setTouchedLocation={setTouchedLocation}
         />
@@ -383,7 +383,7 @@ export default function FIGsPage() {
 
       {detailId && detail && (
         <FigDetailModal
-          detail={detail} staps={staps} districts={districts} allCircles={allCircles} subdivisionCdcs={subdivisionCdcs}
+          detail={detail} staps={staps} districts={districts} allCircles={allCircles} lacs={lacs}
           editingFig={editingFig} editForm={editForm} setEditForm={setEditForm}
           onEditClick={openFigEdit} onSaveEdit={saveFigEdit} onCancelEdit={() => { setEditingFig(false); setEditForm(null); setEditNewAssets([]); }}
           canEditDetails={canEditDetails} canToggleActive={canToggleActive} canManageMembership={canManageMembership}

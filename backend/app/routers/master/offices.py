@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 from app.core.db import get_session, commit_or_conflict, delete_or_conflict
 from app.core.deps import get_current_user
-from app.models import District, SericultureCircle, SubdivisionCdc, DirectorateOffice, FigSettings, User, Designation
+from app.models import District, SericultureCircle, Lac, DirectorateOffice, FigSettings, User, Designation
 from ._common import _SA, _q, _get_or_404, ActiveToggleIn
 
 router = APIRouter()
@@ -27,12 +27,12 @@ def list_circles(district_id: Optional[str] = None, all: bool = False, db: Sessi
     return q.order_by(SericultureCircle.circle_name).all()
 
 
-@router.get("/subdivision-cdc")
-def list_subdivision_cdc(district_id: Optional[str] = None, all: bool = False, db: Session = Depends(get_session)):
-    q = _q(db, SubdivisionCdc, all)
+@router.get("/lacs")
+def list_lacs(district_id: Optional[str] = None, all: bool = False, db: Session = Depends(get_session)):
+    q = _q(db, Lac, all)
     if district_id:
-        q = q.filter(SubdivisionCdc.district_id == district_id)
-    return q.order_by(SubdivisionCdc.office_name).all()
+        q = q.filter(Lac.district_id == district_id)
+    return q.order_by(Lac.lac_no, Lac.lac_name).all()
 
 
 @router.get("/directorate-office")
@@ -67,7 +67,7 @@ class DistrictIn(BaseModel):
 class CircleIn(BaseModel):
     circle_name: str = Field(min_length=1, max_length=80)
     district_id: str
-    subdivision_cdc_id: Optional[str] = None
+    lac_id: Optional[str] = None
     is_active: Optional[bool] = None
     office_name: Optional[str] = None
     office_address: Optional[str] = None
@@ -75,14 +75,11 @@ class CircleIn(BaseModel):
     officer_in_charge_name: Optional[str] = None
 
 
-class SubdivisionCdcIn(BaseModel):
-    office_type: str = Field(pattern="^(Sub-division Office|CDC)$")
-    office_name: str = Field(min_length=1, max_length=160)
+class LacIn(BaseModel):
+    lac_name: str = Field(min_length=1, max_length=160)
+    lac_no: Optional[int] = Field(default=None, ge=1, le=126)
     district_id: str
     is_active: Optional[bool] = None
-    office_address: Optional[str] = None
-    office_contact_no: Optional[str] = None
-    officer_in_charge_name: Optional[str] = None
 
 
 class DirectorateOfficeIn(BaseModel):
@@ -143,52 +140,46 @@ def delete_district(district_id: str, user: User = Depends(_SA), db: Session = D
     return {"ok": True}
 
 
-# ---------- Sub-division/CDC ----------
-@router.post("/subdivision-cdc")
-def create_subdivision_cdc(body: SubdivisionCdcIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
+# ---------- LAC (Legislative Assembly Constituency) ----------
+@router.post("/lacs")
+def create_lac(body: LacIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
     _get_or_404(db, District, body.district_id, "District")
-    s = SubdivisionCdc(office_type=body.office_type, office_name=body.office_name.strip(),
-                       district_id=body.district_id,
-                       is_active=True if body.is_active is None else body.is_active,
-                       office_address=body.office_address, office_contact_no=body.office_contact_no,
-                       officer_in_charge_name=body.officer_in_charge_name)
-    db.add(s)
-    commit_or_conflict(db, "Sub-division/CDC office already exists in this district")
-    db.refresh(s)
-    return s
+    row = Lac(lac_name=body.lac_name.strip(), lac_no=body.lac_no, district_id=body.district_id,
+              is_active=True if body.is_active is None else body.is_active)
+    db.add(row)
+    commit_or_conflict(db, "This LAC already exists in this district")
+    db.refresh(row)
+    return row
 
 
-@router.patch("/subdivision-cdc/{subdivision_cdc_id}")
-def update_subdivision_cdc(subdivision_cdc_id: str, body: SubdivisionCdcIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
-    s = _get_or_404(db, SubdivisionCdc, subdivision_cdc_id, "Sub-division/CDC office")
+@router.patch("/lacs/{lac_id}")
+def update_lac(lac_id: str, body: LacIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
+    row = _get_or_404(db, Lac, lac_id, "LAC")
     _get_or_404(db, District, body.district_id, "District")
-    s.office_type = body.office_type
-    s.office_name = body.office_name.strip()
-    s.district_id = body.district_id
-    s.office_address = body.office_address
-    s.office_contact_no = body.office_contact_no
-    s.officer_in_charge_name = body.officer_in_charge_name
+    row.lac_name = body.lac_name.strip()
+    row.lac_no = body.lac_no
+    row.district_id = body.district_id
     if body.is_active is not None:
-        s.is_active = body.is_active
-    commit_or_conflict(db, "Sub-division/CDC office already exists in this district")
-    db.refresh(s)
-    return s
+        row.is_active = body.is_active
+    commit_or_conflict(db, "This LAC already exists in this district")
+    db.refresh(row)
+    return row
 
 
-@router.patch("/subdivision-cdc/{subdivision_cdc_id}/active")
-def toggle_subdivision_cdc(subdivision_cdc_id: str, body: ActiveToggleIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
-    s = _get_or_404(db, SubdivisionCdc, subdivision_cdc_id, "Sub-division/CDC office")
-    s.is_active = body.is_active
+@router.patch("/lacs/{lac_id}/active")
+def toggle_lac(lac_id: str, body: ActiveToggleIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
+    row = _get_or_404(db, Lac, lac_id, "LAC")
+    row.is_active = body.is_active
     db.commit()
-    return {"ok": True, "is_active": s.is_active}
+    return {"ok": True, "is_active": row.is_active}
 
 
-@router.delete("/subdivision-cdc/{subdivision_cdc_id}")
-def delete_subdivision_cdc(subdivision_cdc_id: str, user: User = Depends(_SA), db: Session = Depends(get_session)):
-    s = _get_or_404(db, SubdivisionCdc, subdivision_cdc_id, "Sub-division/CDC office")
-    if s.is_active:
-        raise HTTPException(400, "Deactivate this Sub-division/CDC office before deleting it")
-    delete_or_conflict(db, s, "Cannot delete — one or more sericulture circles still reference this Sub-division/CDC office")
+@router.delete("/lacs/{lac_id}")
+def delete_lac(lac_id: str, user: User = Depends(_SA), db: Session = Depends(get_session)):
+    row = _get_or_404(db, Lac, lac_id, "LAC")
+    if row.is_active:
+        raise HTTPException(400, "Deactivate this LAC before deleting it")
+    delete_or_conflict(db, row, "Cannot delete — one or more sericulture circles still reference this LAC")
     return {"ok": True}
 
 
@@ -196,12 +187,12 @@ def delete_subdivision_cdc(subdivision_cdc_id: str, user: User = Depends(_SA), d
 @router.post("/sericulture-circles")
 def create_circle(body: CircleIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
     _get_or_404(db, District, body.district_id, "District")
-    if body.subdivision_cdc_id:
-        sc = _get_or_404(db, SubdivisionCdc, body.subdivision_cdc_id, "Sub-division/CDC office")
-        if sc.district_id != body.district_id:
-            raise HTTPException(400, "Selected Sub-division/CDC office does not belong to this district")
+    if body.lac_id:
+        lac = _get_or_404(db, Lac, body.lac_id, "LAC")
+        if lac.district_id != body.district_id:
+            raise HTTPException(400, "Selected LAC does not belong to this district")
     c = SericultureCircle(circle_name=body.circle_name.strip(), district_id=body.district_id,
-                          subdivision_cdc_id=body.subdivision_cdc_id,
+                          lac_id=body.lac_id,
                           is_active=True if body.is_active is None else body.is_active,
                           office_name=body.office_name, office_address=body.office_address,
                           office_contact_no=body.office_contact_no, officer_in_charge_name=body.officer_in_charge_name)
@@ -215,13 +206,13 @@ def create_circle(body: CircleIn, user: User = Depends(_SA), db: Session = Depen
 def update_circle(circle_id: str, body: CircleIn, user: User = Depends(_SA), db: Session = Depends(get_session)):
     c = _get_or_404(db, SericultureCircle, circle_id, "Sericulture Circle")
     _get_or_404(db, District, body.district_id, "District")
-    if body.subdivision_cdc_id:
-        sc = _get_or_404(db, SubdivisionCdc, body.subdivision_cdc_id, "Sub-division/CDC office")
-        if sc.district_id != body.district_id:
-            raise HTTPException(400, "Selected Sub-division/CDC office does not belong to this district")
+    if body.lac_id:
+        lac = _get_or_404(db, Lac, body.lac_id, "LAC")
+        if lac.district_id != body.district_id:
+            raise HTTPException(400, "Selected LAC does not belong to this district")
     c.circle_name = body.circle_name.strip()
     c.district_id = body.district_id
-    c.subdivision_cdc_id = body.subdivision_cdc_id
+    c.lac_id = body.lac_id
     c.office_name = body.office_name
     c.office_address = body.office_address
     c.office_contact_no = body.office_contact_no

@@ -108,18 +108,18 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/master/subdivision-cdc": {
+    "/api/master/lacs": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List Subdivision Cdc */
-        get: operations["list_subdivision_cdc_api_master_subdivision_cdc_get"];
+        /** List Lacs */
+        get: operations["list_lacs_api_master_lacs_get"];
         put?: never;
-        /** Create Subdivision Cdc */
-        post: operations["create_subdivision_cdc_api_master_subdivision_cdc_post"];
+        /** Create Lac */
+        post: operations["create_lac_api_master_lacs_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -197,7 +197,7 @@ export interface paths {
         patch: operations["toggle_district_api_master_districts__district_id__active_patch"];
         trace?: never;
     };
-    "/api/master/subdivision-cdc/{subdivision_cdc_id}": {
+    "/api/master/lacs/{lac_id}": {
         parameters: {
             query?: never;
             header?: never;
@@ -207,15 +207,15 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete Subdivision Cdc */
-        delete: operations["delete_subdivision_cdc_api_master_subdivision_cdc__subdivision_cdc_id__delete"];
+        /** Delete Lac */
+        delete: operations["delete_lac_api_master_lacs__lac_id__delete"];
         options?: never;
         head?: never;
-        /** Update Subdivision Cdc */
-        patch: operations["update_subdivision_cdc_api_master_subdivision_cdc__subdivision_cdc_id__patch"];
+        /** Update Lac */
+        patch: operations["update_lac_api_master_lacs__lac_id__patch"];
         trace?: never;
     };
-    "/api/master/subdivision-cdc/{subdivision_cdc_id}/active": {
+    "/api/master/lacs/{lac_id}/active": {
         parameters: {
             query?: never;
             header?: never;
@@ -228,8 +228,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Toggle Subdivision Cdc */
-        patch: operations["toggle_subdivision_cdc_api_master_subdivision_cdc__subdivision_cdc_id__active_patch"];
+        /** Toggle Lac */
+        patch: operations["toggle_lac_api_master_lacs__lac_id__active_patch"];
         trace?: never;
     };
     "/api/master/sericulture-circles/{circle_id}": {
@@ -1038,6 +1038,84 @@ export interface paths {
         head?: never;
         /** Toggle Asset Type */
         patch: operations["toggle_asset_type_api_master_asset_types__asset_type_id__active_patch"];
+        trace?: never;
+    };
+    "/api/farmers/bulk-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Bulk Template */
+        get: operations["bulk_template_api_farmers_bulk_template_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmers/bulk-validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Validate
+         * @description Dry run — parses and checks the sheet and writes absolutely nothing.
+         */
+        post: operations["bulk_validate_api_farmers_bulk_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmers/bulk-errors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk Errors */
+        post: operations["bulk_errors_api_farmers_bulk_errors_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/farmers/bulk-import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bulk Import
+         * @description Re-validates against current data, then creates every farmer in one transaction.
+         *
+         *     The client re-posts the same file rather than the server holding parsed rows behind a
+         *     token: this app keeps no server-side session state, and re-checking at commit time
+         *     also catches a mobile someone else registered since the preview.
+         */
+        post: operations["bulk_import_api_farmers_bulk_import_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/farmers": {
@@ -2970,6 +3048,30 @@ export interface components {
             /** Cooldown Override Reason */
             cooldown_override_reason?: string | null;
         };
+        /** Body_bulk_errors_api_farmers_bulk_errors_post */
+        Body_bulk_errors_api_farmers_bulk_errors_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+        };
+        /** Body_bulk_import_api_farmers_bulk_import_post */
+        Body_bulk_import_api_farmers_bulk_import_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+        };
+        /** Body_bulk_validate_api_farmers_bulk_validate_post */
+        Body_bulk_validate_api_farmers_bulk_validate_post: {
+            /**
+             * File
+             * Format: binary
+             */
+            file: string;
+        };
         /** Body_upload_api_upload_post */
         Body_upload_api_upload_post: {
             /**
@@ -3016,8 +3118,8 @@ export interface components {
             circle_name: string;
             /** District Id */
             district_id: string;
-            /** Subdivision Cdc Id */
-            subdivision_cdc_id?: string | null;
+            /** Lac Id */
+            lac_id?: string | null;
             /** Is Active */
             is_active?: boolean | null;
             /** Office Name */
@@ -3480,6 +3582,17 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
+        /** LacIn */
+        LacIn: {
+            /** Lac Name */
+            lac_name: string;
+            /** Lac No */
+            lac_no?: number | null;
+            /** District Id */
+            district_id: string;
+            /** Is Active */
+            is_active?: boolean | null;
+        };
         /** LandDetailIn */
         LandDetailIn: {
             /**
@@ -3863,23 +3976,6 @@ export interface components {
             password: string;
             /** Designation Id */
             designation_id?: string | null;
-        };
-        /** SubdivisionCdcIn */
-        SubdivisionCdcIn: {
-            /** Office Type */
-            office_type: string;
-            /** Office Name */
-            office_name: string;
-            /** District Id */
-            district_id: string;
-            /** Is Active */
-            is_active?: boolean | null;
-            /** Office Address */
-            office_address?: string | null;
-            /** Office Contact No */
-            office_contact_no?: string | null;
-            /** Officer In Charge Name */
-            officer_in_charge_name?: string | null;
         };
         /** TokenOut */
         TokenOut: {
@@ -4275,7 +4371,7 @@ export interface operations {
             };
         };
     };
-    list_subdivision_cdc_api_master_subdivision_cdc_get: {
+    list_lacs_api_master_lacs_get: {
         parameters: {
             query?: {
                 district_id?: string | null;
@@ -4307,7 +4403,7 @@ export interface operations {
             };
         };
     };
-    create_subdivision_cdc_api_master_subdivision_cdc_post: {
+    create_lac_api_master_lacs_post: {
         parameters: {
             query?: never;
             header?: never;
@@ -4316,7 +4412,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SubdivisionCdcIn"];
+                "application/json": components["schemas"]["LacIn"];
             };
         };
         responses: {
@@ -4547,12 +4643,12 @@ export interface operations {
             };
         };
     };
-    delete_subdivision_cdc_api_master_subdivision_cdc__subdivision_cdc_id__delete: {
+    delete_lac_api_master_lacs__lac_id__delete: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                subdivision_cdc_id: string;
+                lac_id: string;
             };
             cookie?: never;
         };
@@ -4578,18 +4674,18 @@ export interface operations {
             };
         };
     };
-    update_subdivision_cdc_api_master_subdivision_cdc__subdivision_cdc_id__patch: {
+    update_lac_api_master_lacs__lac_id__patch: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                subdivision_cdc_id: string;
+                lac_id: string;
             };
             cookie?: never;
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SubdivisionCdcIn"];
+                "application/json": components["schemas"]["LacIn"];
             };
         };
         responses: {
@@ -4613,12 +4709,12 @@ export interface operations {
             };
         };
     };
-    toggle_subdivision_cdc_api_master_subdivision_cdc__subdivision_cdc_id__active_patch: {
+    toggle_lac_api_master_lacs__lac_id__active_patch: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                subdivision_cdc_id: string;
+                lac_id: string;
             };
             cookie?: never;
         };
@@ -7003,6 +7099,125 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ActiveToggleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_template_api_farmers_bulk_template_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    bulk_validate_api_farmers_bulk_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_bulk_validate_api_farmers_bulk_validate_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_errors_api_farmers_bulk_errors_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_bulk_errors_api_farmers_bulk_errors_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_import_api_farmers_bulk_import_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_bulk_import_api_farmers_bulk_import_post"];
             };
         };
         responses: {

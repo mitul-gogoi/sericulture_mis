@@ -4,18 +4,18 @@ import { FigDetailView } from "./FigDetailView";
 import { FigEditForm, type FigEditFormState } from "./FigEditForm";
 import { FigMembersPanel } from "./FigMembersPanel";
 import { FigPresidentPanel, type PresForm } from "./FigPresidentPanel";
-import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, Farmer, AssetType, AssetInstance } from "@/lib/types";
+import type { FigDetail, District, SericultureCircle, Lac, SilkTypeActivityProduct, Farmer, AssetType, AssetInstance } from "@/lib/types";
 import type { AssetRow } from "@/components/AssetRowsEditor";
 
 export function FigDetailModal({
-  detail, staps, districts, allCircles, subdivisionCdcs,
+  detail, staps, districts, allCircles, lacs,
   editingFig, editForm, setEditForm, onEditClick, onSaveEdit, onCancelEdit,
   canEditDetails, canToggleActive, canManageMembership, onToggleActive, onClose,
   memberFarmer, setMemberFarmer, detailUnassignedFarmers, onAddMember,
   presForm, setPresForm, onSetPresident,
   assetTypes, editAssets, editNewAssets, setEditNewAssets, onDeleteAsset,
 }: {
-  detail: FigDetail; staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[];
+  detail: FigDetail; staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; lacs: Lac[];
   editingFig: boolean; editForm: FigEditFormState | null; setEditForm: (f: FigEditFormState) => void;
   onEditClick: () => void; onSaveEdit: () => void; onCancelEdit: () => void;
   canEditDetails: boolean; canToggleActive: boolean; canManageMembership: boolean;
@@ -44,10 +44,10 @@ export function FigDetailModal({
           </div>
         </div>
         <div className="p-5">
-          {!editingFig && <FigDetailView detail={detail} staps={staps} districts={districts} allCircles={allCircles} subdivisionCdcs={subdivisionCdcs} />}
+          {!editingFig && <FigDetailView detail={detail} staps={staps} districts={districts} allCircles={allCircles} lacs={lacs} />}
           {editingFig && editForm && (
             <FigEditForm detail={detail} editForm={editForm} setEditForm={setEditForm} staps={staps}
-                        districts={districts} allCircles={allCircles} subdivisionCdcs={subdivisionCdcs} onCancel={onCancelEdit} onSave={onSaveEdit}
+                        districts={districts} allCircles={allCircles} lacs={lacs} onCancel={onCancelEdit} onSave={onSaveEdit}
                         assetTypes={assetTypes} editAssets={editAssets} editNewAssets={editNewAssets}
                         setEditNewAssets={setEditNewAssets} onDeleteAsset={onDeleteAsset} />
           )}

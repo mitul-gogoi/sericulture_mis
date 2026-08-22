@@ -26,3 +26,22 @@ export async function downloadReport(report: string, format: "xlsx" | "pdf", par
   a.remove();
   URL.revokeObjectURL(url);
 }
+
+/** Save an already-fetched blob. Used by the bulk-upload template and error report, which
+ *  are not "reports" and so do not belong in the /reports/export dispatcher. */
+export function downloadBlob(data: BlobPart, filename: string, format: "xlsx" | "pdf" = "xlsx") {
+  const blob = new Blob([data], { type: MEDIA_TYPES[format] });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadFarmerBulkTemplate() {
+  const { data } = await api.get("/farmers/bulk-template", { responseType: "blob" });
+  downloadBlob(data, "Farmer Registration - Bulk Upload Template.xlsx");
+}

@@ -3,8 +3,8 @@ import { X } from "@phosphor-icons/react";
 import { ViewField } from "@/components/ViewField";
 import { LandsList } from "@/components/LandsList";
 import { AssetsList } from "@/components/AssetsList";
-import { sdoCdcName } from "@/lib/sdoCdc";
-import type { Farmer, District, SericultureCircle, SubdivisionCdc, Caste, Religion, EducationLevel, Activity, SilkTypeActivityProduct, Land, AssetInstance } from "@/lib/types";
+import { lacName } from "@/lib/lac";
+import type { Farmer, District, SericultureCircle, Lac, Caste, Religion, EducationLevel, Activity, SilkTypeActivityProduct, Land, AssetInstance } from "@/lib/types";
 
 /** Registration is activity-level, so several STAP ids collapse to one line here — a farmer
  *  doing Eri Rearing holds both its output rows and should read as one activity, not two. */
@@ -21,12 +21,12 @@ function stapActivityLabels(stapIds: string[], staps: SilkTypeActivityProduct[])
 }
 
 export function FarmerViewModal({
-  viewing, onClose, viewCircles, subdivisionCdcs, viewLands, viewAssets,
+  viewing, onClose, viewCircles, lacs, viewLands, viewAssets,
   districts, castes, religions, educationLevels, activities, staps,
   canResetPassword, resetPassword, setResetPassword, onResetPassword,
 }: {
   viewing: Farmer; onClose: () => void;
-  viewCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[]; viewLands: Land[]; viewAssets: AssetInstance[];
+  viewCircles: SericultureCircle[]; lacs: Lac[]; viewLands: Land[]; viewAssets: AssetInstance[];
   districts: District[]; castes: Caste[]; religions: Religion[]; educationLevels: EducationLevel[];
   activities: Activity[]; staps: SilkTypeActivityProduct[];
   canResetPassword?: boolean; resetPassword?: string; setResetPassword?: (v: string) => void; onResetPassword?: () => void;
@@ -63,7 +63,7 @@ export function FarmerViewModal({
           <ViewField label="Family members (female)" value={viewing.family_member_female} />
           <ViewField label="District" value={districtName(viewing.district_id)} />
           <ViewField label="Sericulture Circle" value={circleName(viewing.seri_circle_id)} />
-          <ViewField label="Sub-division Office (SDO)/ CDC Office" value={sdoCdcName(viewing.seri_circle_id, viewCircles, subdivisionCdcs)} />
+          <ViewField label="LAC" value={lacName(viewing.seri_circle_id, viewCircles, lacs)} />
           <div className="col-span-full"><ViewField label="Village" value={viewing.village_name} /></div>
           <ViewField label="Panchayat" value={viewing.gaon_panchayat} />
           <ViewField label="Development Block" value={viewing.development_block} />

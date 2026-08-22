@@ -152,8 +152,10 @@ def activity_onboarding_rows(db: Session, user, district_id: Optional[str] = Non
     1. One activity can produce several products, so it has several STAP rows (Eri Rearing
        -> Eri Cocoon AND Eri Pupa). A farmer holding both must count ONCE for Eri Rearing.
        Handled by mapping stap_id -> activity_id before counting.
-    2. `activity_name` is unique only per silk type, so "Food Plant Plantation" is three
-       different activities. Grouping keys on activities.id, never the name.
+    2. `activity_name` is only guaranteed unique *per silk type* — the schema's unique
+       constraint is (silk_type_id, activity_name), not the name alone. Today's names all
+       happen to differ, but grouping keys on activities.id and never the name, so a future
+       rename that reintroduces a collision cannot silently merge two activities.
     3. A farmer may genuinely do several activities and is counted in each — this is what
        the user asked for, so the per-activity figures deliberately sum to MORE than the
        headcount. `distinct_farmers` is returned alongside so the two can be reconciled.

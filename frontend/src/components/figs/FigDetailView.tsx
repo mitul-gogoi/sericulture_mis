@@ -1,13 +1,13 @@
 "use client";
 import { ViewField } from "@/components/ViewField";
 import { figActivityLabel } from "./figActivities";
-import { sdoCdcName } from "@/lib/sdoCdc";
+import { lacName } from "@/lib/lac";
 import { fileViewerUrl } from "@/lib/fileUrl";
 import { Paperclip } from "@phosphor-icons/react";
-import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct } from "@/lib/types";
+import type { FigDetail, District, SericultureCircle, Lac, SilkTypeActivityProduct } from "@/lib/types";
 
-export function FigDetailView({ detail, staps, districts, allCircles, subdivisionCdcs }: {
-  detail: FigDetail; staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[];
+export function FigDetailView({ detail, staps, districts, allCircles, lacs }: {
+  detail: FigDetail; staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; lacs: Lac[];
 }) {
   const docLink = (path?: string | null) => path ? (
     <a href={fileViewerUrl(path)} target="_blank" rel="noopener noreferrer"
@@ -24,7 +24,7 @@ export function FigDetailView({ detail, staps, districts, allCircles, subdivisio
         <ViewField label="Primary silk type / activity" value={figActivityLabel(detail.silk_type_id, detail.activity_ids, staps)} />
         <ViewField label="District" value={districts.find((d) => d.id === detail.district_id)?.district_name} />
         <ViewField label="Sericulture Circle" value={allCircles.find((c) => c.id === detail.seri_circle_id)?.circle_name} />
-        <ViewField label="Sub-division Office (SDO)/ CDC Office" value={sdoCdcName(detail.seri_circle_id, allCircles, subdivisionCdcs)} />
+        <ViewField label="LAC" value={lacName(detail.seri_circle_id, allCircles, lacs)} />
         <div className="col-span-full"><ViewField label="Address line" value={detail.address} /></div>
         <div className="col-span-full"><ViewField label="Village/ Town/ City" value={detail.village_name} /></div>
         <ViewField label="Panchayat" value={detail.panchayat_name} />

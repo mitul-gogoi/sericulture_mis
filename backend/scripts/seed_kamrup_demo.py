@@ -24,7 +24,7 @@ from app.services.geo import polygon_area_sqm, points_to_wkt
 from app.seed import _fcode, _gcode
 from app.models import (
     FigActivity,
-    District, SericultureCircle, SubdivisionCdc, SilkType, Activity, Product, SilkTypeActivityProduct,
+    District, SericultureCircle, SilkType, Activity, Product, SilkTypeActivityProduct,
     Caste, Religion, EducationLevel, AssetType, InputSourceType, LossReason,
     User, Farmer, Fig, FigMember, Land, AssetInstance,
     Meeting, Attendance, Yield_, ByproductEntry, YieldInputEntry, Stock,
@@ -72,7 +72,7 @@ FIG_PLANS = [
         "fig_name": "South Chandrapur Eri Producers FIG", "lat": 26.13, "lng": 91.82,
     },
     {
-        "circle_name": "Dispur", "village": "Hatigaon",
+        "circle_name": "Greater Guwahati (Dispur)", "village": "Hatigaon",
         "panchayat": "Hatigaon Gaon Panchayat", "post_office": "Hatigaon S.O",
         "pin_code": "781006",
         "silk_type": "Muga", "activity": "Muga Rearing", "product": "Muga Cocoon",
@@ -166,14 +166,8 @@ def delete_test_data(db) -> None:
 def resolve_kamrup_context(db):
     district = db.query(District).filter(District.district_name == "Kamrup Metropolitan").first()
     circles = {c.circle_name: c for c in db.query(SericultureCircle).filter(SericultureCircle.district_id == district.id).all()}
-    cdcs = {c.office_name: c for c in db.query(SubdivisionCdc).filter(SubdivisionCdc.district_id == district.id).all()}
-    for circle_name, cdc_name in [("Dispur", "Dispur CDC"), ("Sonapur", "Sonapur SDO")]:
-        circle = circles[circle_name]
-        if not circle.subdivision_cdc_id and cdc_name in cdcs:
-            circle.subdivision_cdc_id = cdcs[cdc_name].id
-            db.add(circle)
-    db.commit()
-    print("SDO/CDC backfilled for Dispur and Sonapur circles (Chandrapur already had one).")
+    # Circle -> LAC mapping is owned by app/seed.py's CIRCLE_LACS and applied on
+    # boot; nothing to do here.
     return district, circles
 
 

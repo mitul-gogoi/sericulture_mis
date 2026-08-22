@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { fmtErr } from "@/lib/api";
 import { Leaf } from "@phosphor-icons/react";
 import { toast } from "sonner";
+import { Attribution } from "@/components/Attribution";
 
 
 export default function LoginPage() {
@@ -141,6 +142,10 @@ export default function LoginPage() {
               {loading ? "Signing in…" : "Sign in"}
             </button>
           </form>
+          {/* Under the form rather than in the hero panel: the hero is hidden below lg,
+              so this is the one spot visible on every screen size. */}
+          <Attribution className="mt-8 text-center"
+                       style={{ color: "var(--text-muted)" }} />
         </div>
       </div>
     </div>

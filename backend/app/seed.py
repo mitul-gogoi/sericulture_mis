@@ -18,95 +18,79 @@ DISTRICTS = [
     "Udalguri", "West Karbi Anglong",
 ]
 
+# Sericulture Circles, as supplied by the Directorate. Only the districts whose mapping
+# sheet has arrived are listed — a district with no entry here simply has no circles
+# yet, and its District Admin cannot register a farmer until its sheet is loaded.
+#
+# NOTE: _seed_circles recreates anything listed here on every boot. Removing a circle
+# from the database without removing it from this list will silently restore it.
 CIRCLES = [
-    ("Kamrup Metropolitan", "Dispur"),
-    ("Kamrup Metropolitan", "Sonapur"),
-    ("Kamrup Metropolitan", "Chandrapur"),
-    ("Kamrup", "Rangia"),
-    ("Kamrup", "Hajo"),
-    ("Kamrup", "Boko"),
-    ("Nalbari", "Barkhetri"),
-    ("Nalbari", "Tihu"),
-    ("Nalbari", "Nalbari Sadar"),
-    ("Barpeta", "Sarukhetri"),
-    ("Barpeta", "Barpeta Sadar"),
-    ("Barpeta", "Chenga"),
-    ("Goalpara", "Balijana"),
-    ("Goalpara", "Goalpara Sadar"),
-    ("Goalpara", "Lakhipur"),
-    ("Dhubri", "Gauripur"),
-    ("Dhubri", "Bilasipara"),
-    ("Dhubri", "Golakganj"),
-    ("Bongaigaon", "Boitamari"),
-    ("Bongaigaon", "Bongaigaon Sadar"),
-    ("Sonitpur", "Tezpur"),
-    ("Sonitpur", "Dhekiajuli"),
-    ("Sonitpur", "Rangapara"),
-    ("Lakhimpur", "Bihpuria"),
-    ("Lakhimpur", "Lakhimpur Sadar"),
-    ("Lakhimpur", "Narayanpur"),
-    ("Dibrugarh", "Tengakhat"),
-    ("Dibrugarh", "Barbaruah"),
-    ("Dibrugarh", "Chabua"),
-    ("Sivasagar", "Demow"),
-    ("Sivasagar", "Nazira"),
-    ("Sivasagar", "Sivasagar Sadar"),
-    ("Jorhat", "Titabor"),
-    ("Jorhat", "Jorhat Sadar"),
-    ("Jorhat", "Teok"),
-    ("Golaghat", "Sarupathar"),
-    ("Golaghat", "Golaghat Sadar"),
-    ("Golaghat", "Dergaon"),
-    ("Nagaon", "Kaliabor"),
-    ("Nagaon", "Nagaon Sadar"),
-    ("Nagaon", "Raha"),
-    ("Karbi Anglong", "Diphu"),
-    ("Karbi Anglong", "Bokajan"),
-    ("Karbi Anglong", "Howraghat"),
-    ("Cachar", "Sonai"),
-    ("Cachar", "Silchar Sadar"),
-    ("Cachar", "Lakhipur"),
-    ("Sribhumi", "Patharkandi"),
-    ("Sribhumi", "Sribhumi Sadar"),
-    ("Sribhumi", "Ratabari"),
-    ("Bajali", "Bajali Sadar"),
-    ("Bajali", "Pathsala"),
-    ("Baksa", "Baksa Sadar"),
-    ("Baksa", "Barama"),
-    ("Biswanath", "Biswanath Chariali"),
-    ("Biswanath", "Gohpur"),
-    ("Charaideo", "Sonari"),
-    ("Charaideo", "Charaideo Sadar"),
-    ("Chirang", "Kajalgaon"),
-    ("Chirang", "Chirang Sadar"),
-    ("Darrang", "Mangaldai"),
-    ("Darrang", "Sipajhar"),
-    ("Dhemaji", "Dhemaji Sadar"),
-    ("Dhemaji", "Sissiborgaon"),
-    ("Dima Hasao", "Haflong"),
-    ("Dima Hasao", "Maibang"),
-    ("Hailakandi", "Hailakandi Sadar"),
-    ("Hailakandi", "Lala"),
-    ("Hojai", "Hojai Sadar"),
-    ("Hojai", "Lanka"),
-    ("Kokrajhar", "Kokrajhar Sadar"),
-    ("Kokrajhar", "Gossaigaon"),
-    ("Majuli", "Majuli Sadar"),
-    ("Majuli", "Kamalabari"),
-    ("Morigaon", "Morigaon Sadar"),
-    ("Morigaon", "Mayong"),
-    ("South Salmara-Mankachar", "Salmara"),
-    ("South Salmara-Mankachar", "Mankachar"),
-    ("Tamulpur", "Tamulpur Sadar"),
-    ("Tamulpur", "Baganpara"),
-    ("Tinsukia", "Tinsukia Sadar"),
-    ("Tinsukia", "Doomdooma"),
-    ("Tinsukia", "Margherita"),
-    ("Udalguri", "Udalguri Sadar"),
-    ("Udalguri", "Kalaigaon"),
-    ("West Karbi Anglong", "Hamren"),
-    ("West Karbi Anglong", "Amri"),
+    ('Kamrup', 'Boko'),
+    ('Kamrup', 'Bezera'),
+    ('Kamrup', 'Bhutarguri'),
+    ('Kamrup', 'Barduar'),
+    ('Kamrup', 'Gohalkona'),
+    ('Kamrup', 'Hajo'),
+    ('Kamrup', 'Hahim'),
+    ('Kamrup', 'Langkona'),
+    ('Kamrup', 'Palasbari'),
+    ('Kamrup', 'Ratanpur East'),
+    ('Kamrup', 'Ratanpur West'),
+    ('Kamrup', 'Rampur'),
+    ('Kamrup', 'Rajapara'),
+    ('Kamrup', 'Rani'),
+    ('Kamrup', 'Singra'),
+    ('Kamrup', 'Sualkuchi East'),
+    ('Kamrup', 'Sualkuchi West'),
+    ('Kamrup', 'Sakhati South'),
+    ('Kamrup', 'Sakhati North'),
+    ('Kamrup', 'Turukpara'),
+    ('Kamrup', 'Umsur'),
+    ('Kamrup Metropolitan', 'Chandrapur'),
+    ('Kamrup Metropolitan', 'Dhupguri'),
+    ('Kamrup Metropolitan', 'Gandhinagar'),
+    ('Kamrup Metropolitan', 'Greater Guwahati (Central)'),
+    ('Kamrup Metropolitan', 'Greater Guwahati (Dispur)'),
+    ('Kamrup Metropolitan', 'Greater Guwahati (New Guwahati)'),
+    ('Kamrup Metropolitan', 'Panikhaiti Dimoria'),
+    ('Kamrup Metropolitan', 'Panikhaiti New Guwahati'),
+    ('Kamrup Metropolitan', 'Sonapur'),
 ]
+
+# Which Legislative Assembly Constituency each circle falls in. Kept beside CIRCLES so
+# the two cannot drift; _seed_circles applies it on create and backfills a null.
+CIRCLE_LACS = {
+    ('Kamrup', 'Boko'): 'Boko-Chaygaon',
+    ('Kamrup', 'Bezera'): 'Kamalpur',
+    ('Kamrup', 'Bhutarguri'): 'Boko-Chaygaon',
+    ('Kamrup', 'Barduar'): 'Palasbari',
+    ('Kamrup', 'Gohalkona'): 'Boko-Chaygaon',
+    ('Kamrup', 'Hajo'): 'Hajo-Sualkuchi',
+    ('Kamrup', 'Hahim'): 'Boko-Chaygaon',
+    ('Kamrup', 'Langkona'): 'Boko-Chaygaon',
+    ('Kamrup', 'Palasbari'): 'Palasbari',
+    ('Kamrup', 'Ratanpur East'): 'Boko-Chaygaon',
+    ('Kamrup', 'Ratanpur West'): 'Boko-Chaygaon',
+    ('Kamrup', 'Rampur'): 'Palasbari',
+    ('Kamrup', 'Rajapara'): 'Palasbari',
+    ('Kamrup', 'Rani'): 'Palasbari',
+    ('Kamrup', 'Singra'): 'Boko-Chaygaon',
+    ('Kamrup', 'Sualkuchi East'): 'Hajo-Sualkuchi',
+    ('Kamrup', 'Sualkuchi West'): 'Hajo-Sualkuchi',
+    ('Kamrup', 'Sakhati South'): 'Boko-Chaygaon',
+    ('Kamrup', 'Sakhati North'): 'Boko-Chaygaon',
+    ('Kamrup', 'Turukpara'): 'Boko-Chaygaon',
+    ('Kamrup', 'Umsur'): 'Palasbari',
+    ('Kamrup Metropolitan', 'Chandrapur'): 'Dimoria',
+    ('Kamrup Metropolitan', 'Dhupguri'): 'Dimoria',
+    ('Kamrup Metropolitan', 'Gandhinagar'): 'Dimoria',
+    ('Kamrup Metropolitan', 'Greater Guwahati (Central)'): 'Guwahati Central',
+    ('Kamrup Metropolitan', 'Greater Guwahati (Dispur)'): 'Dispur',
+    ('Kamrup Metropolitan', 'Greater Guwahati (New Guwahati)'): 'New Guwahati',
+    ('Kamrup Metropolitan', 'Panikhaiti Dimoria'): 'Dimoria',
+    ('Kamrup Metropolitan', 'Panikhaiti New Guwahati'): 'New Guwahati',
+    ('Kamrup Metropolitan', 'Sonapur'): 'Dimoria',
+}
 
 CASTES = ["General", "OBC", "SC", "ST", "MOBC"]
 RELIGIONS = ["Hindu", "Muslim", "Christian", "Sikh", "Buddhist", "Jain", "Other"]
@@ -201,13 +185,49 @@ def _seed_districts(db: Session) -> dict[str, str]:
     return out
 
 
+def _seed_lacs(db: Session, district_map: dict[str, str]) -> None:
+    """Assam's 126 constituencies. Idempotent: matched on (district, name), so re-running
+    adds only what is missing and never duplicates."""
+    from app.models import Lac
+    from app.seed_lacs import ASSAM_LACS
+    for lac_no, lac_name, district_name in ASSAM_LACS:
+        district_id = district_map.get(district_name)
+        if not district_id:
+            continue  # a district this app does not carry — skip rather than fail the boot
+        row = db.query(Lac).filter(Lac.district_id == district_id,
+                                   Lac.lac_name == lac_name).first()
+        if not row:
+            db.add(Lac(district_id=district_id, lac_no=lac_no, lac_name=lac_name))
+        elif row.lac_no != lac_no:
+            row.lac_no = lac_no
+
+
 def _seed_circles(db: Session, district_map: dict[str, str]) -> None:
+    """Create each circle and point it at its LAC.
+
+    The LAC is only ever written when it is missing — never overwritten — so a mapping a
+    State Admin has since corrected by hand survives a restart."""
+    from app.models import Lac
+    lac_ids: dict[tuple[str, str], str] = {}
+    for (dn, cn), lac_name in CIRCLE_LACS.items():
+        district_id = district_map.get(dn)
+        if not district_id:
+            continue
+        row = db.query(Lac).filter(Lac.district_id == district_id,
+                                   Lac.lac_name == lac_name).first()
+        if row:
+            lac_ids[(dn, cn)] = row.id
+
     for dn, cn in CIRCLES:
-        exists = db.query(SericultureCircle).filter(
-            SericultureCircle.district_id == district_map[dn], SericultureCircle.circle_name == cn,
+        district_id = district_map[dn]
+        circle = db.query(SericultureCircle).filter(
+            SericultureCircle.district_id == district_id, SericultureCircle.circle_name == cn,
         ).first()
-        if not exists:
-            db.add(SericultureCircle(circle_name=cn, district_id=district_map[dn]))
+        if not circle:
+            circle = SericultureCircle(circle_name=cn, district_id=district_id)
+            db.add(circle)
+        if circle.lac_id is None:
+            circle.lac_id = lac_ids.get((dn, cn))
 
 
 def _seed_directorate_office(db: Session) -> None:
@@ -319,6 +339,7 @@ def _seed_district_admin(db: Session) -> "District | None":
 
 def seed_all(db: Session) -> None:
     district_map = _seed_districts(db)
+    _seed_lacs(db, district_map)
     _seed_circles(db, district_map)
     _seed_directorate_office(db)
     _seed_fig_settings(db)

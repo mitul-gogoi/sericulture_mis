@@ -1,10 +1,10 @@
 "use client";
 import { FigActivityPicker } from "./FigActivityPicker";
-import { sdoCdcName } from "@/lib/sdoCdc";
+import { lacName } from "@/lib/lac";
 import { AssetRowsEditor, type AssetRow } from "@/components/AssetRowsEditor";
 import { AssetsList } from "@/components/AssetsList";
 import { FigDocumentsStep } from "@/components/figs/FigDocumentsStep";
-import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, AssetType, AssetInstance } from "@/lib/types";
+import type { FigDetail, District, SericultureCircle, Lac, SilkTypeActivityProduct, AssetType, AssetInstance } from "@/lib/types";
 
 export interface FigEditFormState {
   fig_name: string; silk_type_id: string; activity_ids: string[];
@@ -15,11 +15,11 @@ export interface FigEditFormState {
 }
 
 export function FigEditForm({
-  detail, editForm, setEditForm, staps, districts, allCircles, subdivisionCdcs, onCancel, onSave,
+  detail, editForm, setEditForm, staps, districts, allCircles, lacs, onCancel, onSave,
   assetTypes, editAssets, editNewAssets, setEditNewAssets, onDeleteAsset,
 }: {
   detail: FigDetail; editForm: FigEditFormState; setEditForm: (f: FigEditFormState) => void;
-  staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[];
+  staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; lacs: Lac[];
   onCancel: () => void; onSave: () => void;
   assetTypes: AssetType[]; editAssets: AssetInstance[];
   editNewAssets: AssetRow[]; setEditNewAssets: (rows: AssetRow[]) => void; onDeleteAsset: (assetId: string) => void;
@@ -48,8 +48,8 @@ export function FigEditForm({
           <input disabled className="input mt-1" value={districts.find((d) => d.id === detail.district_id)?.district_name || ""} /></div>
         <div><label className="label-tag">Sericulture Circle</label>
           <input disabled className="input mt-1" value={allCircles.find((c) => c.id === detail.seri_circle_id)?.circle_name || ""} /></div>
-        <div><label className="label-tag">Sub-division Office (SDO)/ CDC Office</label>
-          <input disabled className="input mt-1" value={sdoCdcName(detail.seri_circle_id, allCircles, subdivisionCdcs)} /></div>
+        <div><label className="label-tag">LAC</label>
+          <input disabled className="input mt-1" value={lacName(detail.seri_circle_id, allCircles, lacs)} /></div>
         <div className="col-span-full"><label className="label-tag">Address line</label><input className="input mt-1" value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} /></div>
         <div className="col-span-full"><label className="label-tag">Village/ Town/ City</label><input className="input mt-1" value={editForm.village_name} onChange={(e) => setEditForm({ ...editForm, village_name: e.target.value })} /></div>
         <div><label className="label-tag">Panchayat</label><input className="input mt-1" value={editForm.panchayat_name} onChange={(e) => setEditForm({ ...editForm, panchayat_name: e.target.value })} /></div>

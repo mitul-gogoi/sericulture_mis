@@ -1,7 +1,8 @@
 """Farmers."""
 from datetime import datetime, timezone, date
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
@@ -23,6 +24,7 @@ from app.services.farmer_reports import apply_farmer_filters, fig_by_farmer, pub
 from app.services.assets import next_asset_seq, asset_code
 from app.services.meeting_reports import fp_submission_history_rows, _serialize_farmer_submission_detail
 from app.services.notifications import create_notification
+from app.services import farmer_bulk
 from app.routers.lands import VALID_LAND_TYPES
 from app.routers.meetings import _apply_yield_entries, _validate_entries_readonly
 from app.core.scope import active_district
@@ -64,9 +66,16 @@ def _require_output_staps(db: Session, stap_ids: list[str]) -> None:
 
 
 def _next_farmer_seq(db: Session) -> int:
-    # Codes must be >= 100001 and never end in 0.
+    """Codes must be >= 100001 and never end in 0.
+
+    Pending session rows count too: the session is `autoflush=False`, so farmers added
+    earlier in the same transaction are invisible to the query below. Without this a bulk
+    import hands every farmer in the batch the same code and trips `farmer_code`'s unique
+    constraint — the same trap `services/assets.py`'s next_asset_seq documents."""
+    codes = [code for (code,) in db.query(Farmer.farmer_code).all()]
+    codes += [obj.farmer_code for obj in db.new if isinstance(obj, Farmer)]
     max_num = 100000
-    for (code,) in db.query(Farmer.farmer_code).all():
+    for code in codes:
         try:
             num = int(code.rsplit("-", 1)[-1])
         except (ValueError, AttributeError):
@@ -76,6 +85,145 @@ def _next_farmer_seq(db: Session) -> int:
     while candidate % 10 == 0:
         candidate += 1
     return candidate
+
+
+def _persist_farmer(db: Session, data: dict, aadhaar_digits: Optional[str],
+                    created_by_user_id: str) -> Farmer:
+    """Build the Farmer plus its login, lands and assets. Shared by the Register Farmer
+    dialog and the bulk import so the two paths can never drift; the caller owns the
+    commit, which is what lets a bulk import be all-or-nothing."""
+    data = dict(data)
+    land_rows = data.pop("lands", []) or []
+    asset_rows = data.pop("assets", []) or []
+    data.pop("aadhaar_no", None)  # write-only input — stored as the three derived columns below
+    farmer = Farmer(farmer_code=_fcode(_next_farmer_seq(db)), **data)
+    if aadhaar_digits:
+        _set_aadhaar(farmer, aadhaar_digits)
+    db.add(farmer)
+    db.flush()
+    db.add(User(
+        mobile_no=farmer.mobile_no, password_hash=hash_password(DEFAULT_FARMER_PASSWORD),
+        role="FARMER", farmer_id=farmer.id, district_id=farmer.district_id,
+        name=f"{farmer.first_name} {farmer.last_name}".strip(),
+    ))
+    for land in land_rows:
+        db.add(Land(farmer_id=farmer.id, **land))
+    for asset in asset_rows:
+        year = asset.get("acquisition_year")
+        db.add(AssetInstance(
+            asset_type_id=asset["asset_type_id"], owner_type="FARMER", owner_id=farmer.id,
+            quantity=asset.get("quantity") or 1,
+            acquisition_date=date(year, 1, 1) if year else None,
+            acquisition_mode="SELF_DECLARED_AT_REGISTRATION",
+            confidence="FARMER_SELF_DECLARED", created_by_user_id=created_by_user_id,
+            asset_code=asset_code(next_asset_seq(db)),
+        ))
+    return farmer
+
+
+# --- Bulk upload -----------------------------------------------------------------
+# Registered above GET /farmers/{farmer_id}: FastAPI matches in declaration order, so a
+# literal path defined later would be swallowed by the catch-all.
+
+def _bulk_district(user: User) -> str:
+    district_id = active_district(user)
+    if not district_id:
+        raise HTTPException(400, "No active district — pick one from the district switcher")
+    return district_id
+
+
+# An .xlsx/.xlsm is a ZIP; a real Excel 97-2003 .xls is an OLE2 compound file.
+# Written as hex so the non-printable bytes survive any editing tool intact.
+_ZIP_MAGIC = bytes.fromhex("504b0304")     # "PK" + 03 04
+_OLE2_MAGIC = bytes.fromhex("d0cf11e0")
+
+
+async def _read_upload(file: UploadFile) -> bytes:
+    """Decide by content, never by filename.
+
+    The filename is not trustworthy: Windows reports 8.3 short names, which truncate the
+    extension to three characters, so a perfectly good
+    "Farmer Registration - Bulk Upload Template.xlsx" arrives as "FARMER~1.XLS" and an
+    extension check rejects it. Users can rename files too. The leading bytes cannot lie,
+    and they let the error say something useful."""
+    data = await file.read()
+    if not data:
+        raise HTTPException(400, "That file is empty")
+    if data.startswith(_OLE2_MAGIC):
+        raise HTTPException(400, "That is an older Excel format (.xls). Open it in Excel and "
+                                 "use Save As → Excel Workbook (.xlsx), then upload again.")
+    if not data.startswith(_ZIP_MAGIC):
+        raise HTTPException(400, "That does not look like an Excel workbook — please upload the "
+                                 "filled-in .xlsx template.")
+    return data
+
+
+@router.get("/bulk-template")
+def bulk_template(user: User = Depends(require_roles("DISTRICT_ADMIN")),
+                  db: Session = Depends(get_session)):
+    content = farmer_bulk.build_template_xlsx(db, _bulk_district(user))
+    return Response(
+        content=content,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition":
+                 'attachment; filename="Farmer Registration - Bulk Upload Template.xlsx"'},
+    )
+
+
+@router.post("/bulk-validate")
+async def bulk_validate(file: UploadFile = File(...),
+                        user: User = Depends(require_roles("DISTRICT_ADMIN")),
+                        db: Session = Depends(get_session)):
+    """Dry run — parses and checks the sheet and writes absolutely nothing."""
+    data = await _read_upload(file)
+    ready, errors, sheet_errors = farmer_bulk.parse_and_validate(db, _bulk_district(user), data)
+    return {"ready_count": len(ready), "error_count": len(errors),
+            "errors": errors[:200], "sheet_errors": sheet_errors}
+
+
+@router.post("/bulk-errors")
+async def bulk_errors(file: UploadFile = File(...),
+                      user: User = Depends(require_roles("DISTRICT_ADMIN")),
+                      db: Session = Depends(get_session)):
+    data = await _read_upload(file)
+    _, errors, sheet_errors = farmer_bulk.parse_and_validate(db, _bulk_district(user), data)
+    return Response(
+        content=farmer_bulk.errors_to_xlsx(errors, sheet_errors),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="bulk-upload-errors.xlsx"'},
+    )
+
+
+@router.post("/bulk-import")
+async def bulk_import(file: UploadFile = File(...),
+                      user: User = Depends(require_roles("DISTRICT_ADMIN")),
+                      db: Session = Depends(get_session)):
+    """Re-validates against current data, then creates every farmer in one transaction.
+
+    The client re-posts the same file rather than the server holding parsed rows behind a
+    token: this app keeps no server-side session state, and re-checking at commit time
+    also catches a mobile someone else registered since the preview."""
+    data = await _read_upload(file)
+    district_id = _bulk_district(user)
+    ready, errors, sheet_errors = farmer_bulk.parse_and_validate(db, district_id, data)
+    if sheet_errors or errors:
+        raise HTTPException(400, "The file still has errors — re-check the preview before importing")
+    if not ready:
+        raise HTTPException(400, "There are no farmers to import in that file")
+
+    created = []
+    try:
+        for payload in ready:
+            aadhaar_digits = payload.get("aadhaar_no")
+            farmer = _persist_farmer(db, payload, aadhaar_digits, user.id)
+            created.append(farmer)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(400, "The import clashed with existing data and was rolled back — "
+                                 "nothing was saved. Re-run the preview and try again.")
+    return {"imported": len(created),
+            "farmer_codes": [f.farmer_code for f in created]}
 
 
 @router.post("")
@@ -109,33 +257,7 @@ def create_farmer(body: FarmerIn, user: User = Depends(require_roles("DISTRICT_A
             if at.ownership_level == "FIG":
                 raise HTTPException(400, f"'{at.name}' is a FIG-level shared asset — it cannot be declared for an individual farmer")
 
-    seq = _next_farmer_seq(db)
-    data = body.model_dump()
-    land_rows = data.pop("lands")
-    asset_rows = data.pop("assets")
-    data.pop("aadhaar_no", None)  # write-only input — stored as the three derived columns below
-    farmer = Farmer(farmer_code=_fcode(seq), **data)
-    if aadhaar_digits:
-        _set_aadhaar(farmer, aadhaar_digits)
-    db.add(farmer)
-    db.flush()
-    db.add(User(
-        mobile_no=farmer.mobile_no, password_hash=hash_password(DEFAULT_FARMER_PASSWORD),
-        role="FARMER", farmer_id=farmer.id, district_id=farmer.district_id,
-        name=f"{farmer.first_name} {farmer.last_name}".strip(),
-    ))
-    for land in land_rows:
-        db.add(Land(farmer_id=farmer.id, **land))
-    for asset in asset_rows:
-        year = asset.get("acquisition_year")
-        db.add(AssetInstance(
-            asset_type_id=asset["asset_type_id"], owner_type="FARMER", owner_id=farmer.id,
-            quantity=asset.get("quantity") or 1,
-            acquisition_date=date(year, 1, 1) if year else None,
-            acquisition_mode="SELF_DECLARED_AT_REGISTRATION",
-            confidence="FARMER_SELF_DECLARED", created_by_user_id=user.id,
-            asset_code=asset_code(next_asset_seq(db)),
-        ))
+    farmer = _persist_farmer(db, body.model_dump(), aadhaar_digits, user.id)
     db.commit()
     db.refresh(farmer)
     return {"id": farmer.id, "farmer_code": farmer.farmer_code}

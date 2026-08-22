@@ -27,11 +27,11 @@ export interface OfficeFields {
 }
 export interface District extends OfficeFields { id: string; district_name: string }
 export interface Designation { id: string; designation_name: string; display_order: number; is_active: boolean }
-export interface SubdivisionCdc extends OfficeFields {
-  id: string; office_type: "Sub-division Office" | "CDC"; district_id: string; is_active: boolean;
+export interface Lac {
+  id: string; lac_no?: number | null; lac_name: string; district_id: string; is_active: boolean;
 }
 export interface SericultureCircle extends OfficeFields {
-  id: string; circle_name: string; district_id: string; subdivision_cdc_id?: string | null;
+  id: string; circle_name: string; district_id: string; lac_id?: string | null;
 }
 export interface DirectorateOffice {
   id: string; office_name: string; office_address?: string | null;
@@ -511,4 +511,9 @@ export interface ActivityOnboardingResponse {
   items: ActivityOnboardingItem[];
   /** Headcount. Lower than the sum of `farmers` whenever anyone does more than one activity. */
   distinct_farmers: number;
+}
+
+export interface BulkRowError { row: number; name: string; errors: string[] }
+export interface BulkValidateResult {
+  ready_count: number; error_count: number; errors: BulkRowError[]; sheet_errors: string[];
 }

@@ -16,6 +16,7 @@ import {
 } from "@phosphor-icons/react";
 import type { Role } from "@/lib/types";
 import { ChangePasswordModal } from "@/components/ChangePasswordModal";
+import { Attribution } from "@/components/Attribution";
 
 type NavItem = { href: string; label: string; icon: React.ElementType; testId?: string };
 type NavGroup = { group: string; items: NavItem[]; collapsible?: boolean };
@@ -23,7 +24,7 @@ type NavGroup = { group: string; items: NavItem[]; collapsible?: boolean };
 const MASTERS_CHILDREN: NavItem[] = [
   { href: "/masters/directorate", label: "Directorate Office", icon: Buildings },
   { href: "/masters/districts", label: "Districts", icon: MapPin },
-  { href: "/masters/subdivision-cdc", label: "Sub-division/CDC", icon: Buildings },
+  { href: "/masters/lacs", label: "LAC", icon: Buildings },
   { href: "/masters/sericulture-circles", label: "Sericulture Circles", icon: Buildings },
   { href: "/masters/designations", label: "Designations", icon: IdentificationBadge },
   { href: "/masters/caste", label: "Caste", icon: UsersIco },
@@ -321,6 +322,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <button onClick={logout} data-testid="logout-btn" className="btn-secondary w-full flex items-center justify-center gap-2">
             <SignOut size={16} weight="bold" /> Sign out
           </button>
+          <Attribution className="mt-3 pt-3 border-t px-2 text-center"
+                       style={{ borderColor: "var(--border)", color: "var(--text-muted)" }} />
         </div>
       </aside>
       <main className="flex-1 min-w-0 overflow-x-hidden pt-[60px] md:pt-0">

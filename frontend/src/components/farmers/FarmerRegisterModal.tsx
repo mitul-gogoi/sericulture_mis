@@ -4,8 +4,8 @@ import FileUpload from "@/components/FileUpload";
 import { LandRowsEditor, type LandRow } from "@/components/LandRowsEditor";
 import { AssetRowsEditor, type AssetRow } from "@/components/AssetRowsEditor";
 import { StapGroupPicker } from "./StapGroupPicker";
-import { sdoCdcName } from "@/lib/sdoCdc";
-import type { District, SericultureCircle, SubdivisionCdc, Caste, Religion, EducationLevel, Activity, AssetType, SilkTypeActivityProduct, Farmer } from "@/lib/types";
+import { lacName } from "@/lib/lac";
+import type { District, SericultureCircle, Lac, Caste, Religion, EducationLevel, Activity, AssetType, SilkTypeActivityProduct, Farmer } from "@/lib/types";
 
 
 export interface FarmerForm {
@@ -31,12 +31,12 @@ function SectionHeading({ children, first }: { children: React.ReactNode; first?
 
 export function FarmerRegisterModal({
   form, setForm, onClose, onSubmit, isStateAdmin,
-  districts, circles, subdivisionCdcs, educationLevels, castes, religions, activities, staps, assetTypes,
+  districts, circles, lacs, educationLevels, castes, religions, activities, staps, assetTypes,
   lastFarmer,
 }: {
   form: FarmerForm; setForm: (f: FarmerForm) => void; onClose: () => void; onSubmit: (e: React.FormEvent) => void;
   isStateAdmin: boolean;
-  districts: District[]; circles: SericultureCircle[]; subdivisionCdcs: SubdivisionCdc[]; educationLevels: EducationLevel[]; castes: Caste[];
+  districts: District[]; circles: SericultureCircle[]; lacs: Lac[]; educationLevels: EducationLevel[]; castes: Caste[];
   religions: Religion[]; activities: Activity[]; staps: SilkTypeActivityProduct[]; assetTypes: AssetType[];
   /** Most recently registered farmer, used only by the "Copy address from …" shortcut. */
   lastFarmer?: Farmer | null;
@@ -106,8 +106,8 @@ export function FarmerRegisterModal({
               <option value="">Select</option>
               {circles.map((c) => <option key={c.id} value={c.id}>{c.circle_name}</option>)}
             </select></div>
-          <div><label className="label-tag">Sub-division Office (SDO)/ CDC Office</label>
-            <input disabled className="input mt-1" value={sdoCdcName(form.seri_circle_id, circles, subdivisionCdcs)} /></div>
+          <div><label className="label-tag">LAC</label>
+            <input disabled className="input mt-1" value={lacName(form.seri_circle_id, circles, lacs)} /></div>
           <div className="col-span-full"><label className="label-tag">Village</label><input required className="input mt-1" value={form.village_name} onChange={(e) => setForm({ ...form, village_name: e.target.value })} /></div>
           <div><label className="label-tag">Panchayat</label><input className="input mt-1" value={form.gaon_panchayat} onChange={(e) => setForm({ ...form, gaon_panchayat: e.target.value })} /></div>
           <div><label className="label-tag">Development Block</label><input className="input mt-1" value={form.development_block} onChange={(e) => setForm({ ...form, development_block: e.target.value })} /></div>

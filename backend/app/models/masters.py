@@ -7,7 +7,7 @@ from sqlalchemy import UniqueConstraint, Text
 from ._common import _uuid, _now
 
 __all__ = ["Designation", 
-    "District", "SubdivisionCdc", "DirectorateOffice", "FigSettings", "SericultureCircle",
+    "District", "Lac", "DirectorateOffice", "FigSettings", "SericultureCircle",
     "Caste", "Religion", "EducationLevel", "LossReason", "InputSourceCategory", "InputSourceType",
     "SilkType", "Activity", "Product", "SilkTypeActivityProduct", "StapSourceType", "ConversionStandard",
 ]
@@ -26,18 +26,20 @@ class District(SQLModel, table=True):
     officer_in_charge_name: Optional[str] = Field(default=None, max_length=120)
 
 
-class SubdivisionCdc(SQLModel, table=True):
-    __tablename__ = "subdivision_cdc_offices"
+class Lac(SQLModel, table=True):
+    """Legislative Assembly Constituency — what a Sericulture Circle is mapped to.
+
+    Replaces the old Sub-division Office / CDC master: the Directorate does not work in
+    terms of SDOs, and CDC offices only exist in some places, so the constituency is the
+    one label that covers all of Assam uniformly."""
+    __tablename__ = "lacs"
     id: str = Field(default_factory=_uuid, primary_key=True)
     district_id: str = Field(foreign_key="districts.id", index=True)
-    office_type: str = Field(max_length=20)  # "Sub-division Office" | "CDC"
-    office_name: str = Field(max_length=160)
+    lac_no: Optional[int] = None          # official 1–126 numbering
+    lac_name: str = Field(max_length=160)
     is_active: bool = True
     created_at: datetime = Field(default_factory=_now)
-    office_address: Optional[str] = Field(default=None, sa_column=Column(Text))
-    office_contact_no: Optional[str] = Field(default=None, max_length=15)
-    officer_in_charge_name: Optional[str] = Field(default=None, max_length=120)
-    __table_args__ = (UniqueConstraint("district_id", "office_name"),)
+    __table_args__ = (UniqueConstraint("district_id", "lac_name"),)
 
 
 class DirectorateOffice(SQLModel, table=True):
@@ -61,7 +63,7 @@ class SericultureCircle(SQLModel, table=True):
     __tablename__ = "sericulture_circles"
     id: str = Field(default_factory=_uuid, primary_key=True)
     district_id: str = Field(foreign_key="districts.id", index=True)
-    subdivision_cdc_id: Optional[str] = Field(default=None, foreign_key="subdivision_cdc_offices.id", index=True)
+    lac_id: Optional[str] = Field(default=None, foreign_key="lacs.id", index=True)
     circle_name: str = Field(max_length=80)
     is_active: bool = True
     created_at: datetime = Field(default_factory=_now)

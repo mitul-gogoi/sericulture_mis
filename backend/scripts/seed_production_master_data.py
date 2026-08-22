@@ -19,11 +19,12 @@ from app.core.db import SessionLocal
 from app.models import SilkType, Activity, Product, SilkTypeActivityProduct, InputSourceCategory
 
 # Each silk type's process, in step order. "leaves" is tracked as an output-only metric
-# (Food Plant Plantation's yield), not wired as an input to Rearing, matching the source data.
+# (the silk type's Food Plant Plantation yield), not wired as an input to Rearing,
+# matching the source data.
 SILK_TYPE_SPECS = {
     "Eri": {
         "activities": [
-            "Food Plant Plantation", "Eri Egg Production (Eri Grainage)", "Eri Rearing",
+            "Eri Food Plant Plantation", "Eri Egg Production (Eri Grainage)", "Eri Rearing",
             "Eri Spinning", "Eri Weaving",
         ],
         "products": {
@@ -38,8 +39,8 @@ SILK_TYPE_SPECS = {
         },
         # (activity_name, role, product_name, input_group)
         "stap": [
-            ("Food Plant Plantation", "INPUT", "Seedlings for Eri", None),
-            ("Food Plant Plantation", "OUTPUT", "Quality Leaves for Eri Silkworm Rearing", None),
+            ("Eri Food Plant Plantation", "INPUT", "Seedlings for Eri", None),
+            ("Eri Food Plant Plantation", "OUTPUT", "Quality Leaves for Eri Silkworm Rearing", None),
             ("Eri Egg Production (Eri Grainage)", "INPUT", "Eri Seed Cocoon", None),
             ("Eri Egg Production (Eri Grainage)", "OUTPUT", "Eri Egg (DFL)", None),
             ("Eri Rearing", "INPUT", "Eri Egg (DFL)", None),
@@ -53,7 +54,7 @@ SILK_TYPE_SPECS = {
     },
     "Muga": {
         "activities": [
-            "Food Plant Plantation", "Muga Grainage", "Muga Rearing", "Muga Reeling", "Muga Weaving",
+            "Muga Food Plant Plantation", "Muga Grainage", "Muga Rearing", "Muga Reeling", "Muga Weaving",
         ],
         "products": {
             "Seedlings for Muga": ("Number", "Land Related", False, False),
@@ -69,8 +70,8 @@ SILK_TYPE_SPECS = {
             "Muga Fabric": ("Meter", None, False, False),
         },
         "stap": [
-            ("Food Plant Plantation", "INPUT", "Seedlings for Muga", None),
-            ("Food Plant Plantation", "OUTPUT", "Quality Leaves for Muga Silkworm Rearing", None),
+            ("Muga Food Plant Plantation", "INPUT", "Seedlings for Muga", None),
+            ("Muga Food Plant Plantation", "OUTPUT", "Quality Leaves for Muga Silkworm Rearing", None),
             ("Muga Grainage", "INPUT", "Muga Seed Cocoon", None),
             ("Muga Grainage", "OUTPUT", "Muga Egg (DFL)", None),
             ("Muga Grainage", "OUTPUT", "Muga Cut Cocoon", None),
@@ -85,7 +86,7 @@ SILK_TYPE_SPECS = {
     },
     "Mulberry": {
         "activities": [
-            "Food Plant Plantation", "Mulberry Grainage", "Mulberry Rearing", "Mulberry Reeling", "Mulberry Weaving",
+            "Mulberry Food Plant Plantation", "Mulberry Grainage", "Mulberry Rearing", "Mulberry Reeling", "Mulberry Weaving",
         ],
         "products": {
             "Seedlings for Mulberry": ("Number", "Land Related", False, False),
@@ -99,8 +100,8 @@ SILK_TYPE_SPECS = {
             "Mulberry Fabric": ("Meter", None, False, False),
         },
         "stap": [
-            ("Food Plant Plantation", "INPUT", "Seedlings for Mulberry", None),
-            ("Food Plant Plantation", "OUTPUT", "Quality Leaves for Mulberry Silkworm Rearing", None),
+            ("Mulberry Food Plant Plantation", "INPUT", "Seedlings for Mulberry", None),
+            ("Mulberry Food Plant Plantation", "OUTPUT", "Quality Leaves for Mulberry Silkworm Rearing", None),
             ("Mulberry Grainage", "INPUT", "Mulberry Seed Cocoon", None),
             ("Mulberry Grainage", "OUTPUT", "Mulberry Egg (DFL)", None),
             ("Mulberry Grainage", "OUTPUT", "Mulberry Cut Cocoon", None),

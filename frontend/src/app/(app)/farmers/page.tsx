@@ -7,7 +7,9 @@ import api, { fmtErr } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fyOptions } from "@/lib/fiscal";
 import { ExportButtons } from "@/components/ExportButtons";
-import { Plus, ChartLineUp } from "@phosphor-icons/react";
+import { BulkUploadModal } from "@/components/farmers/BulkUploadModal";
+import { downloadFarmerBulkTemplate } from "@/lib/export";
+import { Plus, ChartLineUp, DownloadSimple, UploadSimple } from "@phosphor-icons/react";
 import { toast } from "sonner";
 import { type LandRow } from "@/components/LandRowsEditor";
 import { type AssetRow } from "@/components/AssetRowsEditor";
@@ -16,7 +18,7 @@ import { FarmerFilterPanel, type FarmerReportFilters } from "@/components/farmer
 import { FarmerRegisterModal, type FarmerForm } from "@/components/farmers/FarmerRegisterModal";
 import { FarmerEditModal, type FarmerEditForm } from "@/components/farmers/FarmerEditModal";
 import { FarmerViewModal } from "@/components/farmers/FarmerViewModal";
-import type { Farmer, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, Caste, Religion, EducationLevel, Activity, Land, AssetType, AssetInstance, ActivityOnboardingResponse } from "@/lib/types";
+import type { Farmer, District, SericultureCircle, Lac, SilkTypeActivityProduct, Caste, Religion, EducationLevel, Activity, Land, AssetType, AssetInstance, ActivityOnboardingResponse } from "@/lib/types";
 
 const MultiSeriesTrendChart = dynamic(() => import("../dashboard/charts").then((m) => m.MultiSeriesTrendChart), { ssr: false });
 
@@ -111,6 +113,15 @@ export default function FarmersPage() {
   }, [searchParams, isReportRole]);
 
   const [open, setOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
+
+  async function downloadTemplate() {
+    try {
+      await downloadFarmerBulkTemplate();
+    } catch {
+      toast.error("Could not build the template — check that your district has sericulture circles set up");
+    }
+  }
   const [form, setForm] = useState<FarmerForm>(emptyForm());
   const [editing, setEditing] = useState<Farmer | null>(null);
   const [editForm, setEditForm] = useState<FarmerEditForm | null>(null);
@@ -153,7 +164,7 @@ export default function FarmersPage() {
   const activitySum = (activityOnboarding?.items ?? []).reduce((n, i) => n + i.farmers, 0);
 
   const { data: districts = [] } = useQuery<District[]>({ queryKey: ["districts"], queryFn: async () => (await api.get("/master/districts")).data });
-  const { data: subdivisionCdcs = [] } = useQuery<SubdivisionCdc[]>({ queryKey: ["subdivision-cdc-all"], queryFn: async () => (await api.get("/master/subdivision-cdc")).data });
+  const { data: lacs = [] } = useQuery<Lac[]>({ queryKey: ["lacs-all"], queryFn: async () => (await api.get("/master/lacs")).data });
   const { data: staps = [] } = useQuery<SilkTypeActivityProduct[]>({ queryKey: ["staps", "output"], queryFn: async () => (await api.get("/master/silk-type-activity-products?role=OUTPUT")).data });
   const { data: castes = [] } = useQuery<Caste[]>({ queryKey: ["castes"], queryFn: async () => (await api.get("/master/castes")).data });
   const { data: religions = [] } = useQuery<Religion[]>({ queryKey: ["religions"], queryFn: async () => (await api.get("/master/religions")).data });
@@ -339,7 +350,19 @@ export default function FarmersPage() {
             {user?.role === "STATE_ADMIN" ? "State-wide register" : user?.role === "DISTRICT_ADMIN" ? "Your district’s register" : "Members of your FIG"}
           </p>
         </div>
-        {canRegisterEdit && <button onClick={() => setOpen(true)} className="btn-primary inline-flex items-center gap-2" data-testid="add-farmer-btn"><Plus size={16} weight="bold" />Register farmer</button>}
+        <div className="flex items-center gap-2 flex-wrap">
+          {canRegisterEdit && (
+            <>
+              <button onClick={downloadTemplate} className="btn-secondary inline-flex items-center gap-2" data-testid="bulk-template-btn">
+                <DownloadSimple size={16} weight="bold" />Download template
+              </button>
+              <button onClick={() => setBulkOpen(true)} className="btn-secondary inline-flex items-center gap-2" data-testid="bulk-upload-btn">
+                <UploadSimple size={16} weight="bold" />Bulk upload
+              </button>
+            </>
+          )}
+          {canRegisterEdit && <button onClick={() => setOpen(true)} className="btn-primary inline-flex items-center gap-2" data-testid="add-farmer-btn"><Plus size={16} weight="bold" />Register farmer</button>}
+        </div>
       </div>
 
       <FarmerFilterPanel
@@ -483,9 +506,16 @@ export default function FarmersPage() {
         <FarmerRegisterModal
           form={form} setForm={setForm} onClose={() => setOpen(false)} onSubmit={submit}
           isStateAdmin={user?.role === "STATE_ADMIN"}
-          districts={districts} circles={circles} subdivisionCdcs={subdivisionCdcs} educationLevels={educationLevels} castes={castes}
+          districts={districts} circles={circles} lacs={lacs} educationLevels={educationLevels} castes={castes}
           religions={religions} activities={activities} staps={staps} assetTypes={assetTypes}
           lastFarmer={reportData?.items?.[0] ?? null}
+        />
+      )}
+
+      {bulkOpen && (
+        <BulkUploadModal
+          onClose={() => setBulkOpen(false)}
+          onImported={() => qc.invalidateQueries({ queryKey: ["farmers-report"] })}
         />
       )}
 
@@ -493,7 +523,7 @@ export default function FarmersPage() {
         <FarmerEditModal
           editing={editing} editForm={editForm} setEditForm={setEditForm}
           onClose={() => { setEditing(null); setEditForm(null); }} onSubmit={submitEdit}
-          editCircles={editCircles} subdivisionCdcs={subdivisionCdcs} educationLevels={educationLevels} castes={castes} religions={religions}
+          editCircles={editCircles} lacs={lacs} educationLevels={educationLevels} castes={castes} religions={religions}
           activities={activities} staps={staps} assetTypes={assetTypes}
           editLands={editLands} editAssets={editAssets}
           editNewLands={editNewLands} setEditNewLands={setEditNewLands}
@@ -506,7 +536,7 @@ export default function FarmersPage() {
       {viewing && (
         <FarmerViewModal
           viewing={viewing} onClose={() => { setViewing(null); setResetPassword(""); }}
-          viewCircles={viewCircles} subdivisionCdcs={subdivisionCdcs} viewLands={viewLands} viewAssets={viewAssets}
+          viewCircles={viewCircles} lacs={lacs} viewLands={viewLands} viewAssets={viewAssets}
           districts={districts} castes={castes} religions={religions} educationLevels={educationLevels}
           activities={activities} staps={staps}
           canResetPassword={canResetPassword} resetPassword={resetPassword} setResetPassword={setResetPassword}
