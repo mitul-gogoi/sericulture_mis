@@ -1,8 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin } from "@phosphor-icons/react";
-import api, { DISTRICT_KEY } from "@/lib/api";
+import api from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import type { District } from "@/lib/types";
 
@@ -16,22 +15,15 @@ import type { District } from "@/lib/types";
  * call, so this control is a convenience, not the security boundary.
  */
 export function DistrictSwitcher() {
-  const { user } = useAuth();
+  const { user, activeDistrictId, setActiveDistrict } = useAuth();
   const qc = useQueryClient();
   const ids = user?.district_ids || [];
   const multi = user?.role === "DISTRICT_ADMIN" && ids.length > 1;
 
-  const [active, setActive] = useState<string>("");
-
-  useEffect(() => {
-    if (!multi) return;
-    const saved = localStorage.getItem(DISTRICT_KEY);
-    // Fall back to the primary if nothing is stored, or if a stored district was since
-    // taken away — otherwise every request would 403 with no obvious cause.
-    const next = saved && ids.includes(saved) ? saved : ids[0];
-    localStorage.setItem(DISTRICT_KEY, next);
-    setActive(next);
-  }, [multi, ids.join(",")]);
+  // Choosing and validating the active district lives in AuthProvider, not here: this
+  // component does not render for a single-district officer, and if the correction lived
+  // here a stale district would survive being relieved of additional charge and lock them
+  // out of every page.
 
   const { data: districts = [] } = useQuery<District[]>({
     queryKey: ["districts-for-switcher"],
@@ -42,10 +34,9 @@ export function DistrictSwitcher() {
   if (!multi) return null;
 
   function change(id: string) {
-    localStorage.setItem(DISTRICT_KEY, id);
-    setActive(id);
-    // Every cached list was fetched under the previous district, so none of it is valid
-    // any more.
+    setActiveDistrict(id);
+    // activeDistrictId is part of every district-scoped query key, so those refetch on
+    // their own. This sweeps up anything not keyed on it.
     qc.invalidateQueries();
   }
 
@@ -59,7 +50,7 @@ export function DistrictSwitcher() {
       </div>
       <select
         className="input mt-1 text-sm"
-        value={active}
+        value={activeDistrictId || ""}
         data-testid="district-switcher"
         onChange={(e) => change(e.target.value)}
       >

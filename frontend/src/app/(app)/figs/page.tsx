@@ -44,7 +44,7 @@ function filterParamsFrom(f: FigReportFilters, q: string) {
 }
 
 export default function FIGsPage() {
-  const { user } = useAuth();
+  const { user, activeDistrictId } = useAuth();
   const qc = useQueryClient();
   const searchParams = useSearchParams();
   const canRegisterFig = user?.role === "DISTRICT_ADMIN";
@@ -113,27 +113,27 @@ export default function FIGsPage() {
   const { data: subdivisionCdcs = [] } = useQuery<SubdivisionCdc[]>({ queryKey: ["subdivision-cdc-all"], queryFn: async () => (await api.get("/master/subdivision-cdc")).data });
   const { data: assetTypes = [] } = useQuery<AssetType[]>({ queryKey: ["master-asset-types-all"], queryFn: async () => (await api.get("/master/asset-types?all=true")).data });
   const { data: circles = [] } = useQuery<SericultureCircle[]>({
-    queryKey: ["circles-fig", form.district_id || user?.district_id],
+    queryKey: ["circles-fig", form.district_id || activeDistrictId],
     queryFn: async () => {
-      const did = form.district_id || user?.district_id;
+      const did = form.district_id || activeDistrictId;
       if (!did) return [];
       return (await api.get("/master/sericulture-circles", { params: { district_id: did } })).data;
     },
-    enabled: !!(form.district_id || user?.district_id),
+    enabled: !!(form.district_id || activeDistrictId),
   });
   const { data: filterCircles = [] } = useQuery<SericultureCircle[]>({
-    queryKey: ["circles-filter-figs", reportFilters.district_id || user?.district_id],
+    queryKey: ["circles-filter-figs", reportFilters.district_id || activeDistrictId],
     queryFn: async () => {
-      const did = reportFilters.district_id || user?.district_id;
+      const did = reportFilters.district_id || activeDistrictId;
       if (!did) return [];
       return (await api.get("/master/sericulture-circles", { params: { district_id: did } })).data;
     },
-    enabled: user?.role !== "FIG_PRESIDENT" && !!(reportFilters.district_id || user?.district_id),
+    enabled: user?.role !== "FIG_PRESIDENT" && !!(reportFilters.district_id || activeDistrictId),
   });
   const { data: unassignedFarmers = [] } = useQuery<Farmer[]>({
-    queryKey: ["farmers-unassigned", form.district_id || user?.district_id],
-    queryFn: async () => (await api.get("/farmers", { params: { unassigned: true, district_id: form.district_id || user?.district_id } })).data,
-    enabled: open && !!(form.district_id || user?.district_id),
+    queryKey: ["farmers-unassigned", form.district_id || activeDistrictId],
+    queryFn: async () => (await api.get("/farmers", { params: { unassigned: true, district_id: form.district_id || activeDistrictId } })).data,
+    enabled: open && !!(form.district_id || activeDistrictId),
   });
   const { data: detail } = useQuery<FigDetail>({
     queryKey: ["fig", detailId], queryFn: async () => (await api.get(`/figs/${detailId}`)).data,
@@ -169,7 +169,7 @@ export default function FIGsPage() {
     try {
       const body = {
         fig_name: form.fig_name, stap_id: form.stap_id, seri_circle_id: form.seri_circle_id,
-        district_id: user?.role === "DISTRICT_ADMIN" ? user.district_id : form.district_id,
+        district_id: user?.role === "DISTRICT_ADMIN" ? activeDistrictId : form.district_id,
         formation_date: form.formation_date, meeting_venue: form.meeting_venue,
         village_name: form.village_name, panchayat_name: form.panchayat_name,
         post_office: form.post_office, pin_code: form.pin_code,
@@ -189,7 +189,7 @@ export default function FIGsPage() {
       // skipping the documents leaves it created and flagged, never rolled back.
       setNewFig({
         id: created!.id, fig_code: created!.fig_code, fig_name: form.fig_name,
-        district_id: user?.role === "DISTRICT_ADMIN" ? (user.district_id as string) : form.district_id,
+        district_id: user?.role === "DISTRICT_ADMIN" ? (activeDistrictId as string) : form.district_id,
         seri_circle_id: form.seri_circle_id,
       });
       setNewFigDocs({ minutes_path: null, group_photo_path: null });
@@ -347,7 +347,7 @@ export default function FIGsPage() {
       {open && (
         <FigRegisterModal
           form={form} setForm={setForm} onClose={() => { setOpen(false); resetCreateForm(); }} onSubmit={submit}
-          isStateAdmin={user?.role === "STATE_ADMIN"} userDistrictId={user?.district_id} minMembers={minMembers}
+          isStateAdmin={user?.role === "STATE_ADMIN"} userDistrictId={activeDistrictId} minMembers={minMembers}
           districts={districts} circles={circles} subdivisionCdcs={subdivisionCdcs} staps={staps} unassignedFarmers={unassignedFarmers}
           assetTypes={assetTypes}
           touchedLocation={touchedLocation} setTouchedLocation={setTouchedLocation}

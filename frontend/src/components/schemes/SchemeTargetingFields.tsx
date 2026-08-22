@@ -3,7 +3,9 @@ import { toggleInList, type SchemeFormState } from "./schemeForm";
 import type { SilkType, District, AssetType, Caste, Religion, EducationLevel, SchemeBeneficiaryKind } from "@/lib/types";
 
 const GENDERS = ["Male", "Female", "Other"];
-const FARMER_TYPES = ["Small", "Marginal", "Medium", "Large"];
+// Must stay in step with the Farmer Type options on the farmer register/edit forms --
+// targeting a type no farmer can hold would silently match nobody.
+const FARMER_TYPES = ["Small", "Medium", "Large"];
 
 export function SchemeTargetingFields({
   form, setForm, districts, silkTypes, assetTypes, castes, religions, educationLevels,

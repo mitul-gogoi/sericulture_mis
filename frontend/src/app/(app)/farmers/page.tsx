@@ -73,7 +73,7 @@ function filterParamsFrom(f: FarmerReportFilters, q: string) {
 }
 
 export default function FarmersPage() {
-  const { user } = useAuth();
+  const { user, activeDistrictId } = useAuth();
   const qc = useQueryClient();
   const searchParams = useSearchParams();
   const isReportRole = user?.role === "STATE_ADMIN" || user?.role === "DISTRICT_ADMIN" || user?.role === "FIG_PRESIDENT";
@@ -161,13 +161,13 @@ export default function FarmersPage() {
   const { data: educationLevels = [] } = useQuery<EducationLevel[]>({ queryKey: ["education-levels"], queryFn: async () => (await api.get("/master/education-levels")).data });
   const { data: activities = [] } = useQuery<Activity[]>({ queryKey: ["activities"], queryFn: async () => (await api.get("/master/activities")).data });
   const { data: circles = [] } = useQuery<SericultureCircle[]>({
-    queryKey: ["circles", form.district_id || user?.district_id],
+    queryKey: ["circles", form.district_id || activeDistrictId],
     queryFn: async () => {
-      const did = form.district_id || user?.district_id;
+      const did = form.district_id || activeDistrictId;
       if (!did) return [];
       return (await api.get("/master/sericulture-circles", { params: { district_id: did } })).data;
     },
-    enabled: !!(form.district_id || user?.district_id),
+    enabled: !!(form.district_id || activeDistrictId),
   });
   const { data: editCircles = [] } = useQuery<SericultureCircle[]>({
     queryKey: ["circles-edit", editing?.district_id],
@@ -204,13 +204,13 @@ export default function FarmersPage() {
     enabled: !!viewing,
   });
   const { data: filterCircles = [] } = useQuery<SericultureCircle[]>({
-    queryKey: ["circles-filter", reportFilters.district_id || user?.district_id],
+    queryKey: ["circles-filter", reportFilters.district_id || activeDistrictId],
     queryFn: async () => {
-      const did = reportFilters.district_id || user?.district_id;
+      const did = reportFilters.district_id || activeDistrictId;
       if (!did) return [];
       return (await api.get("/master/sericulture-circles", { params: { district_id: did } })).data;
     },
-    enabled: isReportRole && !!(reportFilters.district_id || user?.district_id),
+    enabled: isReportRole && !!(reportFilters.district_id || activeDistrictId),
   });
 
   const runSearch = (e: React.FormEvent) => {
@@ -224,7 +224,7 @@ export default function FarmersPage() {
     e.preventDefault();
     try {
       const body = toApiBody(form);
-      if (user?.role === "DISTRICT_ADMIN") body.district_id = user.district_id;
+      if (user?.role === "DISTRICT_ADMIN") body.district_id = activeDistrictId;
       body.lands = form.lands.filter((row) => row.dag_no || row.patta_no);
       body.assets = form.assets
         .filter((row) => row.asset_type_id)

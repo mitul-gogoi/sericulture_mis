@@ -77,7 +77,7 @@ interface EditFormState {
 }
 
 export default function AssetsPage() {
-  const { user } = useAuth();
+  const { user, activeDistrictId } = useAuth();
   const qc = useQueryClient();
   const searchParams = useSearchParams();
   const canApprovePhysical = user?.role === "DISTRICT_ADMIN";
@@ -135,13 +135,13 @@ export default function AssetsPage() {
     enabled: user?.role === "STATE_ADMIN",
   });
   const { data: filterCircles = [] } = useQuery<SericultureCircle[]>({
-    queryKey: ["circles-filter-assets", reportFilters.district_id || user?.district_id],
+    queryKey: ["circles-filter-assets", reportFilters.district_id || activeDistrictId],
     queryFn: async () => {
-      const did = reportFilters.district_id || user?.district_id;
+      const did = reportFilters.district_id || activeDistrictId;
       if (!did) return [];
       return (await api.get("/master/sericulture-circles", { params: { district_id: did } })).data;
     },
-    enabled: user?.role !== "FIG_PRESIDENT" && !!(reportFilters.district_id || user?.district_id),
+    enabled: user?.role !== "FIG_PRESIDENT" && !!(reportFilters.district_id || activeDistrictId),
   });
 
   const assets = reportData?.items ?? [];

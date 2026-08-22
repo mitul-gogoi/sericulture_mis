@@ -119,7 +119,7 @@ export function FarmerRegisterModal({
           <SectionHeading>Socio-economic details</SectionHeading>
           <div><label className="label-tag">Farmer type</label>
             <select className="input mt-1" value={form.farmer_type} onChange={(e) => setForm({ ...form, farmer_type: e.target.value })}>
-              <option>Small</option><option>Marginal</option><option>Medium</option><option>Large</option>
+              <option>Small</option><option>Medium</option><option>Large</option>
             </select></div>
           <div><label className="label-tag">Education level</label>
             <select className="input mt-1" value={form.education_level_id} onChange={(e) => setForm({ ...form, education_level_id: e.target.value })}>

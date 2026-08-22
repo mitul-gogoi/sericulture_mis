@@ -27,6 +27,23 @@ api.interceptors.response.use(
   async (err) => {
     if (typeof window === "undefined") return Promise.reject(err);
     const original = err.config;
+
+    // A district that was valid a moment ago can be taken away mid-session, when a State
+    // Admin removes someone's additional charge. Every request would then fail with 403
+    // until the page happened to be reloaded. Drop the stale choice and retry once; the
+    // server falls back to the officer's primary district when no header is sent.
+    //
+    // Narrow on purpose: only this one server message, and only once per request. A blanket
+    // retry on 403 would mask genuine permission errors.
+    if (err.response?.status === 403 && !original?._districtRetry &&
+        typeof err.response?.data?.detail === "string" &&
+        err.response.data.detail.includes("not assigned to that district")) {
+      original._districtRetry = true;
+      localStorage.removeItem(DISTRICT_KEY);
+      delete original.headers["X-District-Id"];
+      return api(original);
+    }
+
     if (err.response?.status === 401 && !original._retry) {
       const refresh = localStorage.getItem("seri_refresh");
       if (refresh && !isRefreshing) {

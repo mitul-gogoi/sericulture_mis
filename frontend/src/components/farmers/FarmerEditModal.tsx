@@ -112,7 +112,7 @@ export function FarmerEditModal({
           <SectionHeading>Socio-economic details</SectionHeading>
           <div><label className="label-tag">Farmer type</label>
             <select className="input mt-1" value={editForm.farmer_type} onChange={(e) => setEditForm({ ...editForm, farmer_type: e.target.value })}>
-              <option>Small</option><option>Marginal</option><option>Medium</option><option>Large</option>
+              <option>Small</option><option>Medium</option><option>Large</option>
             </select></div>
           <div><label className="label-tag">Education level</label>
             <select className="input mt-1" value={editForm.education_level_id} onChange={(e) => setEditForm({ ...editForm, education_level_id: e.target.value })}>
