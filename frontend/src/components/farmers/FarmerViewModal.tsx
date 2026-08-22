@@ -57,7 +57,6 @@ export function FarmerViewModal({
           <ViewField label="PAN number" value={viewing.pan_no} />
           <ViewField label="Farmer type" value={viewing.farmer_type} />
           <ViewField label="Education level" value={educationLevelName(viewing.education_level_id)} />
-          <ViewField label="Experience (years)" value={viewing.experience_years} />
           <ViewField label="Caste" value={casteName(viewing.caste_id)} />
           <ViewField label="Religion" value={religionName(viewing.religion_id)} />
           <ViewField label="Family members (male)" value={viewing.family_member_male} />
@@ -83,6 +82,7 @@ export function FarmerViewModal({
               stapActivityLabels(viewing.stap_ids || [], staps).join(", ") || null
             } />
           </div>
+          <ViewField label="Experience (years)" value={viewing.experience_years} />
           <div className="col-span-full">
             <ViewField label="Farmer experience in activities" value={
               (viewing.experience_activity_ids && viewing.experience_activity_ids.length > 0)

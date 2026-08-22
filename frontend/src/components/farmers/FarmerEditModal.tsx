@@ -118,7 +118,6 @@ export function FarmerEditModal({
               <option value="">Select</option>
               {educationLevels.map((e) => <option key={e.id} value={e.id}>{e.education_level_name}</option>)}
             </select></div>
-          <div><label className="label-tag">Experience (years)</label><input type="number" min={0} className="input mt-1" value={editForm.experience_years} onChange={(e) => setEditForm({ ...editForm, experience_years: Number(e.target.value) })} /></div>
           <div><label className="label-tag">Caste</label>
             <select className="input mt-1" value={editForm.caste_id} onChange={(e) => setEditForm({ ...editForm, caste_id: e.target.value })}>
               <option value="">Select</option>
@@ -136,13 +135,23 @@ export function FarmerEditModal({
           <SectionHeading>Sericulture activity</SectionHeading>
           <div className="col-span-full">
             <label className="label-tag">Silk type / activity</label>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              What this farmer produces — required before they can submit monthly yield.
+            </p>
             <div className="mt-2">
               <StapGroupPicker staps={staps} selected={editForm.stap_ids}
                 onChange={(next) => setEditForm({ ...editForm, stap_ids: next })} />
             </div>
           </div>
+
+          {/* ---- 5. Experience ---- */}
+          <SectionHeading>Experience</SectionHeading>
+          <div><label className="label-tag">Experience (years)</label><input type="number" min={0} className="input mt-1" value={editForm.experience_years} onChange={(e) => setEditForm({ ...editForm, experience_years: Number(e.target.value) })} /></div>
           <div className="col-span-full">
             <label className="label-tag">Farmer experience in activities</label>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              Activities they have prior experience in — used for scheme eligibility.
+            </p>
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-3 border rounded" style={{ borderColor: "var(--border)" }}>
               {activities.map((a) => (
                 <label key={a.id} className="flex items-center gap-2 text-sm">
@@ -158,7 +167,7 @@ export function FarmerEditModal({
             </div>
           </div>
 
-          {/* ---- 5. Land ---- */}
+          {/* ---- 6. Land ---- */}
           <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <h4 className="font-heading text-sm font-bold mb-1">Land details</h4>
             {editLands.length > 0 && (
@@ -170,7 +179,7 @@ export function FarmerEditModal({
             <LandRowsEditor value={editNewLands} onChange={setEditNewLands} />
           </div>
 
-          {/* ---- 6. Assets ---- */}
+          {/* ---- 7. Assets ---- */}
           <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <h4 className="font-heading text-sm font-bold mb-1">Existing Assets (Self-Declared)</h4>
             {editAssets.length > 0 && (
@@ -184,7 +193,7 @@ export function FarmerEditModal({
             <AssetRowsEditor value={editNewAssets} onChange={setEditNewAssets} assetTypes={assetTypes} ownerKind="FARMER" />
           </div>
 
-          {/* ---- 7. Bank & documents ---- */}
+          {/* ---- 8. Bank & documents ---- */}
           <SectionHeading>Bank &amp; documents</SectionHeading>
           <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>

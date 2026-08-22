@@ -125,7 +125,6 @@ export function FarmerRegisterModal({
               <option value="">Select</option>
               {educationLevels.map((e) => <option key={e.id} value={e.id}>{e.education_level_name}</option>)}
             </select></div>
-          <div><label className="label-tag">Experience (years)</label><input type="number" min={0} className="input mt-1" value={form.experience_years} onChange={(e) => setForm({ ...form, experience_years: Number(e.target.value) })} /></div>
           <div><label className="label-tag">Caste</label>
             <select className="input mt-1" value={form.caste_id} onChange={(e) => setForm({ ...form, caste_id: e.target.value })}>
               <option value="">Select</option>
@@ -143,13 +142,23 @@ export function FarmerRegisterModal({
           <SectionHeading>Sericulture activity</SectionHeading>
           <div className="col-span-full">
             <label className="label-tag">Silk type / activity</label>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              What this farmer produces — required before they can submit monthly yield.
+            </p>
             <div className="mt-2">
               <StapGroupPicker staps={staps} selected={form.stap_ids}
                 onChange={(next) => setForm({ ...form, stap_ids: next })} />
             </div>
           </div>
+
+          {/* ---- 5. Experience ---- */}
+          <SectionHeading>Experience</SectionHeading>
+          <div><label className="label-tag">Experience (years)</label><input type="number" min={0} className="input mt-1" value={form.experience_years} onChange={(e) => setForm({ ...form, experience_years: Number(e.target.value) })} /></div>
           <div className="col-span-full">
             <label className="label-tag">Farmer experience in activities</label>
+            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+              Activities they have prior experience in — used for scheme eligibility.
+            </p>
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-3 border rounded" style={{ borderColor: "var(--border)" }}>
               {activities.map((a) => (
                 <label key={a.id} className="flex items-center gap-2 text-sm">
@@ -165,14 +174,14 @@ export function FarmerRegisterModal({
             </div>
           </div>
 
-          {/* ---- 5. Land ---- */}
+          {/* ---- 6. Land ---- */}
           <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <h4 className="font-heading text-sm font-bold mb-1">Land details</h4>
             <p className="text-xs mt-1 mb-2" style={{ color: "var(--text-muted)" }}>Optional — a farmer may have one or more land parcels; GPS boundary is added later by the FIG President.</p>
             <LandRowsEditor value={form.lands} onChange={(next) => setForm({ ...form, lands: next })} />
           </div>
 
-          {/* ---- 6. Assets ---- */}
+          {/* ---- 7. Assets ---- */}
           <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
             <h4 className="font-heading text-sm font-bold mb-1">Existing Assets (Self-Declared)</h4>
             <p className="text-xs mt-1 mb-2" style={{ color: "var(--text-muted)" }}>
@@ -182,7 +191,7 @@ export function FarmerRegisterModal({
             <AssetRowsEditor value={form.assets} onChange={(next) => setForm({ ...form, assets: next })} assetTypes={assetTypes} ownerKind="FARMER" />
           </div>
 
-          {/* ---- 7. Bank & documents ---- */}
+          {/* ---- 8. Bank & documents ---- */}
           <SectionHeading>Bank &amp; documents</SectionHeading>
           <div className="col-span-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
