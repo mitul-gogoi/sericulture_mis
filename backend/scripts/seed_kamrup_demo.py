@@ -23,6 +23,7 @@ from app.core.aadhaar import aadhaar_fields
 from app.services.geo import polygon_area_sqm, points_to_wkt
 from app.seed import _fcode, _gcode
 from app.models import (
+    FigActivity,
     District, SericultureCircle, SubdivisionCdc, SilkType, Activity, Product, SilkTypeActivityProduct,
     Caste, Religion, EducationLevel, AssetType, InputSourceType, LossReason,
     User, Farmer, Fig, FigMember, Land, AssetInstance,
@@ -195,7 +196,7 @@ def resolve_stap(db, silk_type_name: str, activity_name: str, product_name: str)
     stap, st, act, prod = row
     return {
         "id": stap.id, "activity_id": act.id, "product_id": prod.id, "product_name": prod.product_name,
-        "uom": prod.unit_of_measure, "silk_type": st.silk_type_name,
+        "uom": prod.unit_of_measure, "silk_type": st.silk_type_name, "silk_type_id": st.id,
     }
 
 
@@ -233,7 +234,7 @@ def create_figs_and_farmers(db, district, circles) -> list[dict]:
         stap = resolve_stap(db, plan["silk_type"], plan["activity"], plan["product"])
         formation_date = TODAY - timedelta(days=random.randint(365, 730))
         fig = Fig(
-            fig_code=_gcode(fig_seq.next()), fig_name=plan["fig_name"], stap_id=stap["id"],
+            fig_code=_gcode(fig_seq.next()), fig_name=plan["fig_name"], silk_type_id=stap["silk_type_id"],
             district_id=district.id, seri_circle_id=circle.id, formation_date=formation_date,
             village_name=plan["village"], panchayat_name=plan["panchayat"], post_office=plan["post_office"],
             pin_code=plan["pin_code"],
@@ -242,6 +243,8 @@ def create_figs_and_farmers(db, district, circles) -> list[dict]:
         )
         db.add(fig)
         db.flush()
+        # A FIG's activities live in their own table now, not on a single stap_id.
+        db.add(FigActivity(fig_id=fig.id, activity_id=stap["activity_id"]))
 
         fig_farmers = []
         for _ in range(5):
@@ -260,7 +263,7 @@ def create_figs_and_farmers(db, district, circles) -> list[dict]:
                 district_id=district.id, seri_circle_id=circle.id, village_name=plan["village"],
                 gaon_panchayat=plan["panchayat"], development_block=f"{plan['circle_name']} Development Block",
                 post_office=plan["post_office"], pin_code=plan["pin_code"],
-                stap_ids=[stap["id"]], primary_stap_id=stap["id"], experience_activity_ids=[stap["activity_id"]],
+                stap_ids=[stap["id"]], experience_activity_ids=[stap["activity_id"]],
                 account_number="".join(str(random.randint(0, 9)) for _ in range(11)),
                 bank_name=bank_name, branch_name=branch_name, ifsc_code=ifsc,
             )

@@ -1,6 +1,6 @@
 "use client";
 import { ViewField } from "@/components/ViewField";
-import { stapLabel } from "./stapOptgroups";
+import { figActivityLabel } from "./figActivities";
 import { sdoCdcName } from "@/lib/sdoCdc";
 import { fileViewerUrl } from "@/lib/fileUrl";
 import { Paperclip } from "@phosphor-icons/react";
@@ -15,14 +15,13 @@ export function FigDetailView({ detail, staps, districts, allCircles, subdivisio
       <Paperclip size={14} weight="bold" /> Open
     </a>
   ) : <span className="badge badge-warning">Not uploaded</span>;
-  const stap = staps.find((s) => s.id === detail.stap_id);
   const president = detail.members?.find((m) => m.role === "President");
   return (
     <div className="mb-5 border-b pb-5" style={{ borderColor: "var(--border)" }}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="col-span-full"><ViewField label="FIG Name" value={detail.fig_name} /></div>
         <ViewField label="FIG Formation Date" value={detail.formation_date?.slice(0, 10)} />
-        <ViewField label="Primary silk type / activity / product" value={stap ? stapLabel(stap) : null} />
+        <ViewField label="Primary silk type / activity" value={figActivityLabel(detail.silk_type_id, detail.activity_ids, staps)} />
         <ViewField label="District" value={districts.find((d) => d.id === detail.district_id)?.district_name} />
         <ViewField label="Sericulture Circle" value={allCircles.find((c) => c.id === detail.seri_circle_id)?.circle_name} />
         <ViewField label="Sub-division Office (SDO)/ CDC Office" value={sdoCdcName(detail.seri_circle_id, allCircles, subdivisionCdcs)} />

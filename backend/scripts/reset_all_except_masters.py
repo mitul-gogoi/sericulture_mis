@@ -63,6 +63,7 @@ STEPS = [
     ("Delete Meeting (references figs)", 'DELETE FROM meetings'),
     ("Delete Land (references farmers)", 'DELETE FROM lands'),
     ("Delete FigMember (references figs, farmers)", 'DELETE FROM fig_members'),
+    ("Delete FigActivity (references figs, activities)", 'DELETE FROM fig_activities'),
     ("Delete all Users (references figs — must precede Fig delete)", 'DELETE FROM users'),
     ("Delete Fig", 'DELETE FROM figs'),
     ("Delete Farmer", 'DELETE FROM farmers'),

@@ -267,6 +267,59 @@ export interface paths {
         patch: operations["toggle_circle_api_master_sericulture_circles__circle_id__active_patch"];
         trace?: never;
     };
+    "/api/master/designations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Designations */
+        get: operations["list_designations_api_master_designations_get"];
+        put?: never;
+        /** Create Designation */
+        post: operations["create_designation_api_master_designations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/master/designations/{designation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Designation */
+        delete: operations["delete_designation_api_master_designations__designation_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Designation */
+        patch: operations["update_designation_api_master_designations__designation_id__patch"];
+        trace?: never;
+    };
+    "/api/master/designations/{designation_id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Toggle Designation */
+        patch: operations["toggle_designation_api_master_designations__designation_id__active_patch"];
+        trace?: never;
+    };
     "/api/master/castes": {
         parameters: {
             query?: never;
@@ -2993,6 +3046,15 @@ export interface components {
             /** Is Active */
             is_active?: boolean | null;
         };
+        /** DesignationIn */
+        DesignationIn: {
+            /** Designation Name */
+            designation_name: string;
+            /** Display Order */
+            display_order?: number | null;
+            /** Is Active */
+            is_active?: boolean | null;
+        };
         /** DirectorateOfficeIn */
         DirectorateOfficeIn: {
             /** Office Name */
@@ -3013,7 +3075,14 @@ export interface components {
             /** Password */
             password: string;
             /** District Id */
-            district_id: string;
+            district_id?: string | null;
+            /**
+             * District Ids
+             * @default []
+             */
+            district_ids: string[];
+            /** Designation Id */
+            designation_id?: string | null;
         };
         /** DistrictIn */
         DistrictIn: {
@@ -3134,8 +3203,6 @@ export interface components {
             pin_code: string | null;
             /** Stap Ids */
             stap_ids?: string[];
-            /** Primary Stap Id */
-            primary_stap_id?: string | null;
             /** Experience Activity Ids */
             experience_activity_ids?: string[];
             /** Account Number */
@@ -3228,8 +3295,6 @@ export interface components {
             pin_code?: string | null;
             /** Stap Ids */
             stap_ids?: string[] | null;
-            /** Primary Stap Id */
-            primary_stap_id?: string | null;
             /** Experience Activity Ids */
             experience_activity_ids?: string[] | null;
             /** Account Number */
@@ -3247,8 +3312,10 @@ export interface components {
         FigIn: {
             /** Fig Name */
             fig_name: string;
-            /** Stap Id */
-            stap_id: string;
+            /** Silk Type Id */
+            silk_type_id: string;
+            /** Activity Ids */
+            activity_ids: string[];
             /** Seri Circle Id */
             seri_circle_id: string;
             /** District Id */
@@ -3327,8 +3394,10 @@ export interface components {
         FigUpdateIn: {
             /** Fig Name */
             fig_name?: string | null;
-            /** Stap Id */
-            stap_id?: string | null;
+            /** Silk Type Id */
+            silk_type_id?: string | null;
+            /** Activity Ids */
+            activity_ids?: string[] | null;
             /** Seri Circle Id */
             seri_circle_id?: string | null;
             /** Formation Date */
@@ -3792,6 +3861,8 @@ export interface components {
             mobile_no: string;
             /** Password */
             password: string;
+            /** Designation Id */
+            designation_id?: string | null;
         };
         /** SubdivisionCdcIn */
         SubdivisionCdcIn: {
@@ -3920,6 +3991,8 @@ export interface components {
              * @default
              */
             participant_names: string | null;
+            /** District Id */
+            district_id?: string | null;
         };
         /** UserUpdateIn */
         UserUpdateIn: {
@@ -3931,6 +4004,10 @@ export interface components {
             password?: string | null;
             /** District Id */
             district_id?: string | null;
+            /** District Ids */
+            district_ids?: string[] | null;
+            /** Designation Id */
+            designation_id?: string | null;
         };
         /** ValidationError */
         ValidationError: {
@@ -4643,6 +4720,171 @@ export interface operations {
             header?: never;
             path: {
                 circle_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActiveToggleIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_designations_api_master_designations_get: {
+        parameters: {
+            query?: {
+                all?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_designation_api_master_designations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesignationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_designation_api_master_designations__designation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                designation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_designation_api_master_designations__designation_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                designation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DesignationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    toggle_designation_api_master_designations__designation_id__active_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                designation_id: string;
             };
             cookie?: never;
         };

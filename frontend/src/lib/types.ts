@@ -86,7 +86,7 @@ export interface Farmer {
   district_id: string; seri_circle_id: string; village_name: string;
   gaon_panchayat?: string | null; development_block?: string | null; post_office?: string | null;
   pin_code?: string | null;
-  stap_ids: string[]; primary_stap_id?: string | null;
+  stap_ids: string[];
   experience_activity_ids?: string[];
   farmer_type?: string | null;
   account_number?: string | null; bank_name?: string | null;
@@ -113,7 +113,7 @@ export interface AssetDetail { asset_type_id: string; quantity: number; acquisit
 
 export interface Fig {
   id: string; fig_code: string; fig_name: string;
-  stap_id: string; district_id: string; seri_circle_id: string;
+  silk_type_id: string; activity_ids?: string[]; district_id: string; seri_circle_id: string;
   formation_date: string; meeting_venue?: string | null;
   village_name?: string | null; panchayat_name?: string | null;
   post_office?: string | null; pin_code?: string | null;

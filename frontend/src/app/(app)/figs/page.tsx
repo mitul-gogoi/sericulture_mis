@@ -22,7 +22,7 @@ import type { Fig, FigDetail, Farmer, District, SericultureCircle, SubdivisionCd
 const MultiSeriesTrendChart = dynamic(() => import("../dashboard/charts").then((m) => m.MultiSeriesTrendChart), { ssr: false });
 
 const emptyCreateForm = (): FigCreateForm => ({
-  fig_name: "", stap_id: "", seri_circle_id: "", district_id: "", formation_date: "", meeting_venue: "",
+  fig_name: "", silk_type_id: "", activity_ids: [], seri_circle_id: "", district_id: "", formation_date: "", meeting_venue: "",
   village_name: "", panchayat_name: "", post_office: "", pin_code: "", address: "",
   member_ids: [], president_farmer_id: "", assets: [],
 });
@@ -168,7 +168,8 @@ export default function FIGsPage() {
     let created: { id: string; fig_code: string } | null = null;
     try {
       const body = {
-        fig_name: form.fig_name, stap_id: form.stap_id, seri_circle_id: form.seri_circle_id,
+        fig_name: form.fig_name, silk_type_id: form.silk_type_id, activity_ids: form.activity_ids,
+        seri_circle_id: form.seri_circle_id,
         district_id: user?.role === "DISTRICT_ADMIN" ? activeDistrictId : form.district_id,
         formation_date: form.formation_date, meeting_venue: form.meeting_venue,
         village_name: form.village_name, panchayat_name: form.panchayat_name,
@@ -243,7 +244,7 @@ export default function FIGsPage() {
   const openFigEdit = () => {
     if (!detail) return;
     setEditForm({
-      fig_name: detail.fig_name, stap_id: detail.stap_id,
+      fig_name: detail.fig_name, silk_type_id: detail.silk_type_id, activity_ids: detail.activity_ids || [],
       formation_date: detail.formation_date?.slice(0, 10) || "",
       meeting_venue: detail.meeting_venue || "",
       village_name: detail.village_name || "", panchayat_name: detail.panchayat_name || "",
@@ -300,7 +301,7 @@ export default function FIGsPage() {
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
         <table className="seri-table">
-          <thead><tr><th>Code</th><th>Name</th><th>Silk Type / Activity / Product</th><th>District</th><th>Sericulture Circle</th><th>Total Members</th><th>Members</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Code</th><th>Name</th><th>Silk Type / Activity</th><th>District</th><th>Sericulture Circle</th><th>Total Members</th><th>Members</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>
             {figsRows.map((f) => (
               <FigRow key={f.id} f={f} staps={staps} districts={districts} allCircles={allCircles} onView={() => setDetailId(f.id)} />

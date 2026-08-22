@@ -11,6 +11,7 @@ from app.models import (
     SilkType, Activity, Product, SilkTypeActivityProduct, InputSourceType, StapSourceType,
     InputSourceCategory, User, Yield_, ByproductEntry, YieldInputEntry, Stock, Training, Fig, Farmer,
     ConversionStandard,
+    FigActivity,
 )
 from ._common import _SA, _q, _get_or_404, ActiveToggleIn
 
@@ -579,15 +580,20 @@ def toggle_stap(stap_id: str, body: ActiveToggleIn, user: User = Depends(_SA), d
 
 def _stap_reference_summary(db: Session, stap_id: str) -> dict:
     """Everything still pointing at this STAP row: real transactional history (Yield_) plus the
-    two soft (JSON/plain-string) references — Fig.stap_id and Farmer.stap_ids/primary_stap_id —
-    that the DB's own FKs can't see, so delete_stap can name them instead of a generic 400.
-    Farmer.stap_ids is a plain JSON column (not JSONB), so containment is checked in Python
-    rather than a Postgres @> operator — fine at this app's farmer-table scale."""
-    figs = db.query(Fig).filter(Fig.stap_id == stap_id).all()
-    farmers = [
-        f for f in db.query(Farmer).all()
-        if f.primary_stap_id == stap_id or stap_id in (f.stap_ids or [])
-    ]
+    soft reference the DB's own FKs cannot see -- Farmer.stap_ids -- so delete_stap can name it
+    instead of returning a generic 400. stap_ids is plain JSON (not JSONB), so containment is
+    checked in Python rather than with a Postgres @> operator; fine at this table's scale.
+
+    FIGs are matched through fig_activities now rather than a single stap_id: a FIG holds a
+    silk type and a set of activities, so it blocks this row when it runs the same activity
+    within the same silk type."""
+    stap = db.query(SilkTypeActivityProduct).filter(SilkTypeActivityProduct.id == stap_id).first()
+    figs = []
+    if stap:
+        figs = db.query(Fig).join(FigActivity, FigActivity.fig_id == Fig.id).filter(
+            FigActivity.activity_id == stap.activity_id,
+            Fig.silk_type_id == stap.silk_type_id).all()
+    farmers = [f for f in db.query(Farmer).all() if stap_id in (f.stap_ids or [])]
     return {
         "yields": db.query(Yield_).filter(Yield_.stap_id == stap_id).count(),
         "figs": [{"id": f.id, "fig_name": f.fig_name} for f in figs],

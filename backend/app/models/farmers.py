@@ -41,7 +41,6 @@ class Farmer(SQLModel, table=True):
     post_office: Optional[str] = Field(default=None, max_length=120)
     pin_code: Optional[str] = Field(default=None, max_length=10)
     stap_ids: List[str] = Field(default_factory=list, sa_column=Column(JSON))
-    primary_stap_id: Optional[str] = Field(default=None)
     experience_activity_ids: List[str] = Field(default_factory=list, sa_column=Column(JSON))
     account_number: Optional[str] = Field(default=None, max_length=30)
     bank_name: Optional[str] = Field(default=None, max_length=120)

@@ -9,7 +9,11 @@ __all__ = ["FigIn", "FigMemberIn", "PresidentSetIn", "FigUpdateIn"]
 
 class FigIn(BaseModel):
     fig_name: str
-    stap_id: str
+    # A FIG runs one silk type and one or more activities within it. Both are validated
+    # server-side: the activities must share this silk type, and each must be performed by
+    # at least one of the members being added.
+    silk_type_id: str
+    activity_ids: List[str]
     seri_circle_id: str
     district_id: str
     formation_date: date
@@ -38,7 +42,8 @@ class PresidentSetIn(BaseModel):
 
 class FigUpdateIn(BaseModel):
     fig_name: Optional[str] = None
-    stap_id: Optional[str] = None
+    silk_type_id: Optional[str] = None
+    activity_ids: Optional[List[str]] = None
     seri_circle_id: Optional[str] = None
     formation_date: Optional[date] = None
     village_name: Optional[str] = None

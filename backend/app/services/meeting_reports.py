@@ -269,7 +269,6 @@ def serialize_farmer_correction_preview(db: Session, submission: FarmerSubmissio
         sold_rate = float(e.get("sold_rate", 0) or 0)
         entries.append({
             "stap_id": e["stap_id"], "activity_name": activities.get(stap.activity_id, "—") if stap else "—",
-            "is_primary_stage": bool(stap and stap.id == (farmer.primary_stap_id if farmer else None)),
             "output": {
                 "product_name": products.get(stap.product_id, "—") if stap else "—",
                 "planned_yield": float(e.get("planned", 0) or 0), "actual_yield": float(e.get("actual", 0) or 0),

@@ -113,7 +113,6 @@ def farmer_report_rows(query: Query, db: Session) -> list[dict]:
             "pan_no": f.pan_no,
             "education_level_name": education_level_names.get(f.education_level_id),
             "experience_years": f.experience_years,
-            "primary_activity": stap_activity.get(f.primary_stap_id) if f.primary_stap_id else None,
             "all_activities": ", ".join(all_activities) if all_activities else None,
             "caste_name": caste_names.get(f.caste_id),
             "religion_name": religion_names.get(f.religion_id),

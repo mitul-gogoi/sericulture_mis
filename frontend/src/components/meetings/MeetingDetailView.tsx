@@ -107,9 +107,6 @@ export function MeetingDetailView({ detail, actions }: { detail: MeetingDetail; 
                 <div key={e.stap_id} className="mb-6">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="font-semibold">{e.activity_name}</span>
-                    <span className={`badge ${e.is_primary_stage ? "badge-success" : "badge-muted"}`}>
-                      {e.is_primary_stage ? "Primary Activity" : "Secondary Activity"}
-                    </span>
                   </div>
                   <div className="overflow-x-auto mb-3">
                     <table className="seri-table">

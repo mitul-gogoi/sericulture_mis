@@ -27,7 +27,7 @@ const emptyForm = (): FarmerForm => ({
   mobile_no: "", aadhaar_no: "", pan_no: "",
   district_id: "", seri_circle_id: "", village_name: "", gaon_panchayat: "", development_block: "",
   post_office: "", pin_code: "",
-  stap_ids: [], primary_stap_id: "", experience_activity_ids: [],
+  stap_ids: [], experience_activity_ids: [],
   farmer_type: "Small", education_level_id: "", experience_years: 0,
   caste_id: "", religion_id: "", family_member_male: 0, family_member_female: 0,
   photo_path: null,
@@ -51,7 +51,6 @@ function toApiBody(form: Record<string, any>) {
   // sending "" fails the foreign-key constraint with a 500 instead of storing "unset" —
   // which is exactly what happens when a farmer is registered with no silk type /
   // activity / product picked, since that field is optional on the form.
-  if (!body.primary_stap_id) body.primary_stap_id = null;
   return body;
 }
 
@@ -254,7 +253,7 @@ export default function FarmersPage() {
       seri_circle_id: f.seri_circle_id, village_name: f.village_name,
       gaon_panchayat: f.gaon_panchayat || "", development_block: f.development_block || "", post_office: f.post_office || "",
       pin_code: f.pin_code || "",
-      stap_ids: f.stap_ids || [], primary_stap_id: f.primary_stap_id || "",
+      stap_ids: f.stap_ids || [],
       experience_activity_ids: f.experience_activity_ids || [],
       farmer_type: f.farmer_type || "Small",
       education_level_id: f.education_level_id || "", experience_years: f.experience_years || 0,

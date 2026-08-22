@@ -1,9 +1,11 @@
 "use client";
 import { MagnifyingGlass } from "@phosphor-icons/react";
-import { stapOptgroups } from "./stapOptgroups";
+import { activityOptgroups } from "./figActivities";
 import type { District, SericultureCircle, SilkTypeActivityProduct } from "@/lib/types";
 
 export interface FigReportFilters {
+  /** A representative STAP id for the chosen (silk type, activity) pair — the server
+   *  matches FIGs running that activity within that silk type. */
   stap_id: string; district_id: string; seri_circle_id: string;
   formation_date_from: string; formation_date_to: string; is_active: string;
 }
@@ -23,12 +25,12 @@ export function FigFilterPanel({
         <input data-testid="search-figs" className="input flex-1 max-w-md" placeholder="Search by FIG code, FIG name, member code or mobile" value={qInput} onChange={(e) => setQInput(e.target.value)} />
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div><label className="label-tag">Silk type / activity / product</label>
+        <div><label className="label-tag">Silk type / activity</label>
           <select className="input mt-1" value={filters.stap_id} onChange={(e) => setFilters({ ...filters, stap_id: e.target.value })}>
             <option value="">Any</option>
-            {stapOptgroups(staps).map(([label, group]) => (
+            {activityOptgroups(staps).map(([label, group]) => (
               <optgroup key={label} label={label}>
-                {group.map((s) => <option key={s.id} value={s.id}>{s.activity_name} · {s.product_name}</option>)}
+                {group.map((a) => <option key={a.activityId} value={a.stapId}>{a.activityName}</option>)}
               </optgroup>
             ))}
           </select></div>

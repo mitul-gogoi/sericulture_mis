@@ -514,15 +514,11 @@ export default function MonthlySubmissionPage() {
                       <div className="font-semibold mb-3">{farmer?.first_name} {farmer?.last_name}</div>
                       {stapIds.map((stapId, idx) => {
                         const opts = optionsByStap[stapId];
-                        const isPrimary = stapId === farmer?.primary_stap_id;
                         const activity = getEntry(m.farmer_id, stapId);
                         return (
                           <div key={stapId} className={idx > 0 ? "border-t pt-3 mt-3" : ""} style={{ borderColor: "var(--border)" }}>
                             <div className="flex items-center gap-2 mb-2">
                               <span className="font-semibold text-sm">{opts?.primary?.product_name || "Loading activity…"}</span>
-                              <span className={`badge ${isPrimary ? "badge-success" : "badge-muted"}`}>
-                                {isPrimary ? "Primary Activity" : "Secondary Activity"}
-                              </span>
                             </div>
                             {!opts ? (
                               <p className="text-sm" style={{ color: "var(--text-muted)" }}>Loading options…</p>

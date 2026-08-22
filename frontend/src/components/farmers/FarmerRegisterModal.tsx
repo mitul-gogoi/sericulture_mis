@@ -7,14 +7,13 @@ import { StapGroupPicker } from "./StapGroupPicker";
 import { sdoCdcName } from "@/lib/sdoCdc";
 import type { District, SericultureCircle, SubdivisionCdc, Caste, Religion, EducationLevel, Activity, AssetType, SilkTypeActivityProduct, Farmer } from "@/lib/types";
 
-const stapLabel = (s: SilkTypeActivityProduct) => `${s.silk_type_name} · ${s.activity_name} · ${s.product_name}`;
 
 export interface FarmerForm {
   first_name: string; middle_name: string; last_name: string; gender: string; date_of_birth: string;
   mobile_no: string; aadhaar_no: string; pan_no: string;
   district_id: string; seri_circle_id: string; village_name: string; gaon_panchayat: string; development_block: string;
   post_office: string; pin_code: string;
-  stap_ids: string[]; primary_stap_id: string; experience_activity_ids: string[];
+  stap_ids: string[]; experience_activity_ids: string[];
   farmer_type: string; education_level_id: string; experience_years: number;
   caste_id: string; religion_id: string; family_member_male: number; family_member_female: number;
   photo_path: string | null;
@@ -143,22 +142,12 @@ export function FarmerRegisterModal({
           {/* ---- 4. Sericulture activity ---- */}
           <SectionHeading>Sericulture activity</SectionHeading>
           <div className="col-span-full">
-            <label className="label-tag">Silk type / activity / product</label>
+            <label className="label-tag">Silk type / activity</label>
             <div className="mt-2">
-              <StapGroupPicker staps={staps} selected={form.stap_ids} onChange={(next) =>
-                setForm({ ...form, stap_ids: next, primary_stap_id: next.includes(form.primary_stap_id) ? form.primary_stap_id : next[0] || "" })
-              } />
+              <StapGroupPicker staps={staps} selected={form.stap_ids}
+                onChange={(next) => setForm({ ...form, stap_ids: next })} />
             </div>
           </div>
-          {form.stap_ids.length > 0 && (
-            <div className="col-span-full"><label className="label-tag">Primary silk type / activity / product</label>
-              <select required className="input mt-1" value={form.primary_stap_id} onChange={(e) => setForm({ ...form, primary_stap_id: e.target.value })}>
-                {form.stap_ids.map((sid) => {
-                  const s = staps.find((x) => x.id === sid);
-                  return <option key={sid} value={sid}>{s ? stapLabel(s) : sid}</option>;
-                })}
-              </select></div>
-          )}
           <div className="col-span-full">
             <label className="label-tag">Farmer experience in activities</label>
             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-40 overflow-y-auto p-3 border rounded" style={{ borderColor: "var(--border)" }}>

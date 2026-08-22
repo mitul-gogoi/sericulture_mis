@@ -78,8 +78,7 @@ def figs_in_circle(db: Session, seri_circle_id: str) -> list[dict]:
     rows = db.query(
         Fig.id, Fig.fig_name, Fig.fig_code, Fig.formation_date, SilkType.silk_type_name,
         func.count(func.distinct(FigMember.id)).label("member_count"),
-    ).join(SilkTypeActivityProduct, SilkTypeActivityProduct.id == Fig.stap_id) \
-     .join(SilkType, SilkType.id == SilkTypeActivityProduct.silk_type_id) \
+    ).join(SilkType, SilkType.id == Fig.silk_type_id) \
      .outerjoin(FigMember, (FigMember.fig_id == Fig.id) & (FigMember.is_active)) \
      .filter(Fig.is_active, Fig.seri_circle_id == seri_circle_id) \
      .group_by(Fig.id, Fig.fig_name, Fig.fig_code, Fig.formation_date, SilkType.silk_type_name) \

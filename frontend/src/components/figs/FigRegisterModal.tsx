@@ -1,13 +1,13 @@
 "use client";
 import { useEffect } from "react";
 import { X } from "@phosphor-icons/react";
-import { stapOptgroups } from "./stapOptgroups";
+import { FigActivityPicker } from "./FigActivityPicker";
 import { sdoCdcName } from "@/lib/sdoCdc";
 import { AssetRowsEditor, type AssetRow } from "@/components/AssetRowsEditor";
 import type { District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, Farmer, AssetType } from "@/lib/types";
 
 export interface FigCreateForm {
-  fig_name: string; stap_id: string; seri_circle_id: string; district_id: string; formation_date: string;
+  fig_name: string; silk_type_id: string; activity_ids: string[]; seri_circle_id: string; district_id: string; formation_date: string;
   meeting_venue: string; village_name: string; panchayat_name: string; post_office: string;
   pin_code: string; address: string;
   member_ids: string[]; president_farmer_id: string;
@@ -104,18 +104,9 @@ export function FigRegisterModal({
           <div className="col-span-full"><h4 className="font-heading text-sm font-bold">FIG details</h4></div>
           <div className="col-span-full"><label className="label-tag">FIG Name</label><input required data-testid="fig-name" className="input mt-1" value={form.fig_name} onChange={(e) => setForm({ ...form, fig_name: e.target.value })} /></div>
           <div><label className="label-tag">FIG Formation Date</label><input type="date" required className="input mt-1" value={form.formation_date} onChange={(e) => setForm({ ...form, formation_date: e.target.value })} /></div>
-          <div><label className="label-tag">Primary silk type / activity / product</label>
-            <select required className="input mt-1" value={form.stap_id} onChange={(e) => setForm({ ...form, stap_id: e.target.value })}>
-              <option value="">Select</option>
-              {stapOptgroups(staps).map(([label, group]) => (
-                <optgroup key={label} label={label}>
-                  {group.map((s) => <option key={s.id} value={s.id}>{s.activity_name} · {s.product_name}</option>)}
-                </optgroup>
-              ))}
-            </select></div>
           {isStateAdmin ? (
             <div><label className="label-tag">District</label>
-              <select required className="input mt-1" value={form.district_id} onChange={(e) => { setTouchedLocation([]); setForm({ ...form, district_id: e.target.value, seri_circle_id: "", member_ids: [], president_farmer_id: "" }); }}>
+              <select required className="input mt-1" value={form.district_id} onChange={(e) => { setTouchedLocation([]); setForm({ ...form, district_id: e.target.value, seri_circle_id: "", member_ids: [], president_farmer_id: "", silk_type_id: "", activity_ids: [] }); }}>
                 <option value="">Select</option>{districts.map((d) => <option key={d.id} value={d.id}>{d.district_name}</option>)}
               </select></div>
           ) : (
@@ -143,6 +134,22 @@ export function FigRegisterModal({
                 {form.district_id || userDistrictId ? "No unassigned farmers in this district" : "Select a district first"}
               </div>}
             </div>
+          </div>
+
+          {/* ---- 3. Activities, drawn from whoever is selected above ---- */}
+          <div className={sectionClass} style={sectionStyle}>
+            <h4 className="font-heading text-sm font-bold mb-1">Primary silk type / activity</h4>
+            <p className="text-xs mt-1 mb-2" style={{ color: "var(--text-muted)" }}>
+              Only the activities your selected members actually perform are listed. A FIG is
+              formed around a single silk type, so picking one greys out the others.
+            </p>
+            <FigActivityPicker
+              staps={staps}
+              members={unassignedFarmers.filter((f) => form.member_ids.includes(f.id))}
+              silkTypeId={form.silk_type_id}
+              activityIds={form.activity_ids}
+              onChange={(silk_type_id, activity_ids) => setForm({ ...form, silk_type_id, activity_ids })}
+            />
           </div>
 
           {form.member_ids.length > 0 && (

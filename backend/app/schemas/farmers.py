@@ -38,7 +38,6 @@ class FarmerIn(BaseModel):
     post_office: Optional[str] = ""
     pin_code: Optional[str] = ""
     stap_ids: List[str] = Field(default_factory=list)
-    primary_stap_id: Optional[str] = None
     experience_activity_ids: List[str] = Field(default_factory=list)
     account_number: Optional[str] = None
     bank_name: Optional[str] = None
@@ -74,7 +73,6 @@ class FarmerUpdateIn(BaseModel):
     post_office: Optional[str] = None
     pin_code: Optional[str] = None
     stap_ids: Optional[List[str]] = None
-    primary_stap_id: Optional[str] = None
     experience_activity_ids: Optional[List[str]] = None
     account_number: Optional[str] = None
     bank_name: Optional[str] = None

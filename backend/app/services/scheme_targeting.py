@@ -12,7 +12,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.models import Farmer, Fig, FigMember, Beneficiary, SilkTypeActivityProduct
+from app.models import FigActivity, Farmer, Fig, FigMember, Beneficiary, SilkTypeActivityProduct
 from app.services.assets import check_asset_cooldown
 
 
@@ -93,11 +93,13 @@ def candidate_figs(db: Session, scheme, district_id: str) -> list[dict]:
 
     out = []
     for g in figs:
-        if target_silk_types and stap_silk_type.get(g.stap_id) not in target_silk_types:
+        if target_silk_types and g.silk_type_id not in target_silk_types:
             continue
         if target_activities:
-            stap = db.query(SilkTypeActivityProduct).filter(SilkTypeActivityProduct.id == g.stap_id).first()
-            if not stap or stap.activity_id not in target_activities:
+            # A FIG runs several activities now; it qualifies if ANY of them is targeted.
+            fig_acts = {fa.activity_id for fa in db.query(FigActivity).filter(
+                FigActivity.fig_id == g.id).all()}
+            if not (fig_acts & set(target_activities)):
                 continue
 
         cooldown = (check_asset_cooldown(db, "FIG", g.id, scheme.grants_asset_type_id)

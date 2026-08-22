@@ -92,8 +92,6 @@ def create_farmer(body: FarmerIn, user: User = Depends(require_roles("DISTRICT_A
         aadhaar_digits = _aadhaar_digits_or_400(body.aadhaar_no)
         if db.query(Farmer).filter(Farmer.aadhaar_hash == aadhaar_hash(aadhaar_digits)).first():
             raise HTTPException(400, "Aadhaar already registered")
-    if body.stap_ids and body.primary_stap_id and body.primary_stap_id not in body.stap_ids:
-        raise HTTPException(400, "Primary stap must be in staps")
     _require_output_staps(db, body.stap_ids)
     for land in body.lands:
         if land.land_type not in VALID_LAND_TYPES:
@@ -449,10 +447,6 @@ def update_farmer(farmer_id: str, body: FarmerUpdateIn,
         if new_hash != f.aadhaar_hash and db.query(Farmer).filter(
                 Farmer.aadhaar_hash == new_hash, Farmer.id != farmer_id).first():
             raise HTTPException(400, "Aadhaar already registered")
-    stap_ids = data.get("stap_ids", f.stap_ids)
-    primary_stap_id = data.get("primary_stap_id", f.primary_stap_id)
-    if stap_ids and primary_stap_id and primary_stap_id not in stap_ids:
-        raise HTTPException(400, "Primary stap must be in staps")
     if "stap_ids" in data:
         _require_output_staps(db, data["stap_ids"])
     for k, v in data.items():

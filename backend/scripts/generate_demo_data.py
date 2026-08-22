@@ -20,6 +20,7 @@ from app.core.security import hash_password
 from app.services.geo import polygon_area_sqm, points_to_wkt
 from app.seed import seed_all, _fcode, _gcode
 from app.models import (
+    FigActivity,
     District, SericultureCircle, SilkType, Activity, Product, SilkTypeActivityProduct,
     User, Farmer, Fig, FigMember, Meeting, Attendance, Yield_, ByproductEntry, YieldInputEntry, Stock,
     Land, Scheme, Allocation, Beneficiary, Training, Notification, NotificationRecipient, LossReason, InputSourceType,
@@ -299,7 +300,7 @@ def generate_demo_data(db) -> dict:
     for stap, st, act, prod in stap_join:
         row = {
             "id": stap.id, "silk_type": st.silk_type_name, "activity": act.activity_name,
-            "activity_id": stap.activity_id,
+            "activity_id": stap.activity_id, "silk_type_id": stap.silk_type_id,
             "product_id": prod.id, "product_name": prod.product_name,
             "uom": prod.unit_of_measure, "is_byproduct_product": prod.is_byproduct,
         }
@@ -357,12 +358,14 @@ def generate_demo_data(db) -> dict:
                 village = _village_name()
                 fig = Fig(
                     fig_code=_gcode(fig_seq.next()), fig_name=f"{village} {stap['silk_type']} Producers FIG",
-                    stap_id=stap["id"], district_id=district.id, seri_circle_id=circle.id,
+                    silk_type_id=stap["silk_type_id"], district_id=district.id, seri_circle_id=circle.id,
                     formation_date=_random_formation_date(), meeting_venue=f"Community Hall, {village}",
                 )
                 db.add(fig)
                 db.flush()  # models have no ORM relationship() declarations, so flush ordering
                             # across tables isn't automatic — make dependent rows' FK targets real
+                # A FIG's activities live in their own table now, not on a single stap_id.
+                db.add(FigActivity(fig_id=fig.id, activity_id=stap["activity_id"]))
 
                 fig_farmers: list[tuple[Farmer, dict | None]] = []
                 for _ in range(random.randint(13, 16)):
@@ -380,7 +383,7 @@ def generate_demo_data(db) -> dict:
                     farmer = Farmer(
                         farmer_code=_fcode(farmer_seq.next()), first_name=first, last_name=last, gender=gender,
                         mobile_no=str(farmer_mobile[0]), district_id=district.id, seri_circle_id=circle.id,
-                        village_name=_village_name(), stap_ids=stap_ids, primary_stap_id=stap["id"],
+                        village_name=_village_name(), stap_ids=stap_ids,
                         farmer_type=random.choice(["Small", "Small", "Marginal", "Marginal", "Medium"]),
                         created_at=created_at, updated_at=created_at,
                     )

@@ -9,7 +9,7 @@ from app.core.db import get_session
 from app.core.security import hash_password, DEFAULT_FARMER_PASSWORD
 from app.core.deps import get_current_user, require_roles
 from datetime import date
-from app.models import Fig, FigMember, Farmer, User, SilkTypeActivityProduct, FigSettings, AssetType, AssetInstance
+from app.models import FigActivity, Activity, Fig, FigMember, Farmer, User, SilkTypeActivityProduct, FigSettings, AssetType, AssetInstance
 from app.schemas import FigIn, FigMemberIn, PresidentSetIn, FigUpdateIn
 from app.services.fig_reports import apply_fig_filters, member_names_by_fig
 from app.services.assets import next_asset_seq, asset_code
@@ -43,10 +43,63 @@ def _next_fig_seq(db: Session) -> int:
     return candidate
 
 
-def _require_output_stap(db: Session, stap_id: str) -> None:
-    stap = db.query(SilkTypeActivityProduct).filter(SilkTypeActivityProduct.id == stap_id).first()
-    if not stap or stap.role != "OUTPUT":
-        raise HTTPException(400, "A FIG's production stage must be an output stage, not an input")
+def _activity_ids_by_fig(db: Session, fig_ids: list[str]) -> dict[str, list[str]]:
+    """Batch-loaded so a list of FIGs costs one query, not one per row."""
+    out: dict[str, list[str]] = {}
+    for fa in db.query(FigActivity).filter(FigActivity.fig_id.in_(fig_ids or [""])).all():
+        out.setdefault(fa.fig_id, []).append(fa.activity_id)
+    return out
+
+
+def _member_activity_ids(db: Session, farmer_ids: list[str]) -> set[str]:
+    """Activities the given farmers actually perform, via their STAP assignments."""
+    stap_ids: set[str] = set()
+    for f in db.query(Farmer).filter(Farmer.id.in_(farmer_ids or [""])).all():
+        stap_ids.update(f.stap_ids or [])
+    if not stap_ids:
+        return set()
+    return {r.activity_id for r in db.query(SilkTypeActivityProduct).filter(
+        SilkTypeActivityProduct.id.in_(stap_ids)).all()}
+
+
+def _validate_fig_activities(db: Session, silk_type_id: str, activity_ids: list[str],
+                             member_ids: list[str]) -> list[str]:
+    """A FIG runs one silk type, and only activities its own members actually perform.
+
+    Both rules are enforced here rather than only in the form: the UI greys out the other
+    silk types and lists only the members' activities, but neither survives a direct API call.
+    """
+    wanted = [a for i, a in enumerate(activity_ids or []) if a and a not in activity_ids[:i]]
+    if not wanted:
+        raise HTTPException(400, "Select at least one activity")
+
+    rows = db.query(SilkTypeActivityProduct).filter(
+        SilkTypeActivityProduct.activity_id.in_(wanted),
+        SilkTypeActivityProduct.role == "OUTPUT").all()
+    silk_of: dict[str, set[str]] = {}
+    for r in rows:
+        silk_of.setdefault(r.activity_id, set()).add(r.silk_type_id)
+
+    for a in wanted:
+        if a not in silk_of:
+            raise HTTPException(400, "One or more activities are not mapped to any product")
+        if silk_type_id not in silk_of[a]:
+            raise HTTPException(400, "All activities must belong to the FIG's silk type")
+
+    performed = _member_activity_ids(db, member_ids)
+    missing = [a for a in wanted if a not in performed]
+    if missing:
+        names = {x.id: x.activity_name for x in db.query(Activity).filter(Activity.id.in_(missing)).all()}
+        raise HTTPException(
+            400, "None of the selected members perform: " +
+                 ", ".join(names.get(a, a) for a in missing))
+    return wanted
+
+
+def _set_fig_activities(db: Session, fig_id: str, activity_ids: list[str]) -> None:
+    db.query(FigActivity).filter(FigActivity.fig_id == fig_id).delete(synchronize_session=False)
+    for a in activity_ids:
+        db.add(FigActivity(fig_id=fig_id, activity_id=a))
 
 
 @router.post("")
@@ -54,7 +107,6 @@ def create_fig(body: FigIn, user: User = Depends(require_roles("DISTRICT_ADMIN")
                db: Session = Depends(get_session)):
     if user.role == "DISTRICT_ADMIN" and body.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
-    _require_output_stap(db, body.stap_id)
     settings = db.query(FigSettings).first()
     min_members = settings.min_members if settings else 1
     if len(body.member_ids) < min_members:
@@ -75,13 +127,18 @@ def create_fig(body: FigIn, user: User = Depends(require_roles("DISTRICT_ADMIN")
             if at.ownership_level == "INDIVIDUAL":
                 raise HTTPException(400, f"'{at.name}' is an individually-owned asset — it cannot be declared for a FIG")
 
+    activity_ids = _validate_fig_activities(
+        db, body.silk_type_id, body.activity_ids, body.member_ids)
+
     seq = _next_fig_seq(db)
     data = body.model_dump()
     data.pop("member_ids")
+    data.pop("activity_ids", None)
     asset_rows = data.pop("assets")
     fig = Fig(fig_code=_gcode(seq), **data)
     db.add(fig)
-    db.flush()  # assign fig.id before creating members/assets, same transaction
+    db.flush()  # assign fig.id before creating members/activities/assets, same transaction
+    _set_fig_activities(db, fig.id, activity_ids)
     for farmer_id in body.member_ids:
         db.add(FigMember(fig_id=fig.id, farmer_id=farmer_id))
     for asset in asset_rows:
@@ -141,9 +198,11 @@ def list_figs(
         counts = dict(db.query(FigMember.fig_id, func.count(FigMember.id)).filter(
             FigMember.fig_id.in_(fig_ids or [""]), FigMember.is_active).group_by(FigMember.fig_id).all())
         names = member_names_by_fig(fig_ids, db)
+        acts = _activity_ids_by_fig(db, fig_ids)
         out = []
         for f in figs:
             d = f.model_dump()
+            d["activity_ids"] = acts.get(f.id, [])
             d["total_members"] = counts.get(f.id, 0)
             d["member_names"] = names.get(f.id, [])
             out.append(d)
@@ -175,6 +234,7 @@ def get_fig(fig_id: str, user: User = Depends(get_current_user), db: Session = D
     farmer_ids = [m.farmer_id for m in members]
     farmers = {fr.id: fr for fr in db.query(Farmer).filter(Farmer.id.in_(farmer_ids or [""])).all()}
     data = f.model_dump()
+    data["activity_ids"] = _activity_ids_by_fig(db, [f.id]).get(f.id, [])
     data["total_members"] = len(members)
     data["members"] = [{
         "id": m.id, "fig_id": m.fig_id, "farmer_id": m.farmer_id, "role": m.role,
@@ -192,11 +252,17 @@ def update_fig(fig_id: str, body: FigUpdateIn,
         raise HTTPException(404, "Not found")
     if fig.district_id != active_district(user):
         raise HTTPException(403, "District scope mismatch")
-    if body.stap_id is not None:
-        _require_output_stap(db, body.stap_id)
     data = body.model_dump(exclude_unset=True)
+    new_activities = data.pop("activity_ids", None)
+    if new_activities is not None:
+        current_members = [m.farmer_id for m in db.query(FigMember).filter(
+            FigMember.fig_id == fig_id, FigMember.is_active).all()]
+        new_activities = _validate_fig_activities(
+            db, data.get("silk_type_id", fig.silk_type_id), new_activities, current_members)
     for k, v in data.items():
         setattr(fig, k, v)
+    if new_activities is not None:
+        _set_fig_activities(db, fig.id, new_activities)
     fig.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(fig)

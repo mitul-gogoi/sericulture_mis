@@ -6,7 +6,19 @@ import { AssetsList } from "@/components/AssetsList";
 import { sdoCdcName } from "@/lib/sdoCdc";
 import type { Farmer, District, SericultureCircle, SubdivisionCdc, Caste, Religion, EducationLevel, Activity, SilkTypeActivityProduct, Land, AssetInstance } from "@/lib/types";
 
-const stapLabel = (s: SilkTypeActivityProduct) => `${s.silk_type_name} · ${s.activity_name} · ${s.product_name}`;
+/** Registration is activity-level, so several STAP ids collapse to one line here — a farmer
+ *  doing Eri Rearing holds both its output rows and should read as one activity, not two. */
+function stapActivityLabels(stapIds: string[], staps: SilkTypeActivityProduct[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of stapIds) {
+    const s = staps.find((x) => x.id === id);
+    if (!s || seen.has(s.activity_id)) continue;
+    seen.add(s.activity_id);
+    out.push(`${s.silk_type_name} · ${s.activity_name}`);
+  }
+  return out.sort((a, b) => a.localeCompare(b));
+}
 
 export function FarmerViewModal({
   viewing, onClose, viewCircles, subdivisionCdcs, viewLands, viewAssets,
@@ -25,7 +37,6 @@ export function FarmerViewModal({
   const districtName = (id?: string | null) => districts.find((d) => d.id === id)?.district_name || "—";
   const circleName = (id?: string | null) => viewCircles.find((c) => c.id === id)?.circle_name || "—";
   const activityName = (id: string) => activities.find((a) => a.id === id)?.activity_name || id;
-  const stapName = (id?: string | null) => { const s = staps.find((x) => x.id === id); return s ? stapLabel(s) : "—"; };
   const fileName = (path?: string | null) => path ? path.split("/").pop() : "—";
 
   return (
@@ -68,12 +79,9 @@ export function FarmerViewModal({
             <AssetsList assets={viewAssets} />
           </div>
           <div className="col-span-full">
-            <ViewField label="Silk type / activity / product" value={
-              (viewing.stap_ids && viewing.stap_ids.length > 0) ? viewing.stap_ids.map((sid) => stapName(sid)).join(", ") : null
+            <ViewField label="Silk type / activity" value={
+              stapActivityLabels(viewing.stap_ids || [], staps).join(", ") || null
             } />
-          </div>
-          <div className="col-span-full">
-            <ViewField label="Primary silk type / activity / product" value={viewing.primary_stap_id ? stapName(viewing.primary_stap_id) : null} />
           </div>
           <div className="col-span-full">
             <ViewField label="Farmer experience in activities" value={

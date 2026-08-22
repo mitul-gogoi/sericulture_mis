@@ -160,7 +160,6 @@ def _apply_yield_entries(db: Session, entries: list[dict], *, yield_month: str, 
             meeting_id=meeting_id, farmer_submission_id=farmer_submission_id,
             district_id=farmer.district_id, seri_circle_id=farmer.seri_circle_id,
             yield_month=yield_month,
-            is_primary_stage=(stap.id == farmer.primary_stap_id),
             planned_yield=planned, actual_yield=actual,
             next_month_plan=float(e.get("next_plan", 0) or 0),
             stock_balance=float(e.get("stock", 0) or 0),
@@ -468,7 +467,6 @@ def _serialize_correction_preview(db: Session, meeting: Meeting, correction: Mee
         entries.append({
             "farmer_id": e["farmer_id"], "farmer_name": _farmer_name(e["farmer_id"]),
             "stap_id": e["stap_id"], "activity_name": activities.get(stap.activity_id, "—") if stap else "—",
-            "is_primary_stage": bool(stap and farmer and stap.id == farmer.primary_stap_id),
             "output": {
                 "product_name": _product_name(stap.product_id) if stap else "—",
                 "planned_yield": float(e.get("planned", 0) or 0), "actual_yield": float(e.get("actual", 0) or 0),

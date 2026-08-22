@@ -2,8 +2,9 @@
 paginated table, and Excel/PDF export — shared by routers/figs.py (list_figs)
 and routers/reports.py (export dispatcher's "figs" branch)."""
 from typing import Optional
+from sqlalchemy import select
 from sqlalchemy.orm import Query, Session
-from app.models import Fig, FigMember, Farmer, District, SericultureCircle, SilkTypeActivityProduct, SilkType, Activity, Product
+from app.models import FigActivity, Fig, FigMember, Farmer, District, SericultureCircle, SilkTypeActivityProduct, SilkType, Activity, Product
 
 
 def apply_fig_filters(
@@ -16,7 +17,14 @@ def apply_fig_filters(
     """Pure additive filter application — every param is optional and a no-op when None,
     so callers that never pass these (the legacy GET /figs consumers) are unaffected."""
     if stap_id:
-        query = query.filter(Fig.stap_id == stap_id)
+        # Kept as `stap_id` for callers' sake, but a FIG no longer points at one STAP row:
+        # match any FIG running that row's activity within that row's silk type.
+        query = query.filter(Fig.id.in_(
+            select(FigActivity.fig_id)
+            .join(SilkTypeActivityProduct,
+                  SilkTypeActivityProduct.activity_id == FigActivity.activity_id)
+            .where(SilkTypeActivityProduct.id == stap_id,
+                   SilkTypeActivityProduct.silk_type_id == Fig.silk_type_id)))
     if formation_date_from:
         query = query.filter(Fig.formation_date >= formation_date_from)
     if formation_date_to:
@@ -65,11 +73,20 @@ def fig_report_rows(query: Query, db: Session) -> list[dict]:
     members = member_names_by_fig(fig_ids, db)
     presidents = president_by_fig(fig_ids, db)
 
-    def stap_label(stap_id: Optional[str]) -> Optional[str]:
-        s = staps.get(stap_id)
-        if not s:
+    # One row per FIG activity, batch-loaded so the label costs no extra query per FIG.
+    acts_by_fig: dict[str, list[str]] = {}
+    for fa in db.query(FigActivity).filter(
+            FigActivity.fig_id.in_([f.id for f in rows] or [""])).all():
+        acts_by_fig.setdefault(fa.fig_id, []).append(activities.get(fa.activity_id) or "?")
+
+    def stap_label(fig) -> Optional[str]:
+        """Silk type plus the activities the FIG runs -- no product, which is chosen per
+        submission rather than fixed at registration."""
+        st = silk_types.get(fig.silk_type_id)
+        acts = sorted(acts_by_fig.get(fig.id, []))
+        if not st:
             return None
-        return f"{silk_types.get(s.silk_type_id)} · {activities.get(s.activity_id)} · {products.get(s.product_id)}"
+        return f"{st} · {', '.join(acts)}" if acts else st
 
     out = []
     for f in rows:
@@ -77,7 +94,7 @@ def fig_report_rows(query: Query, db: Session) -> list[dict]:
         out.append({
             "fig_code": f.fig_code,
             "fig_name": f.fig_name,
-            "stap_label": stap_label(f.stap_id),
+            "stap_label": stap_label(f),
             "district_name": district_names.get(f.district_id),
             "circle_name": circle_names.get(f.seri_circle_id),
             "formation_date": f.formation_date.isoformat() if f.formation_date else None,

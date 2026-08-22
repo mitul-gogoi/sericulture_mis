@@ -1,14 +1,12 @@
 "use client";
 import { Eye } from "@phosphor-icons/react";
 import { figDocumentsPending } from "@/components/figs/FigDocumentsStep";
+import { figActivityLabel } from "./figActivities";
 import type { Fig, District, SericultureCircle, SilkTypeActivityProduct } from "@/lib/types";
-
-const stapLabel = (s: SilkTypeActivityProduct) => `${s.silk_type_name} · ${s.activity_name} · ${s.product_name}`;
 
 export function FigRow({ f, staps, districts, allCircles, onView }: {
   f: Fig; staps: SilkTypeActivityProduct[]; districts: District[]; allCircles: SericultureCircle[]; onView: () => void;
 }) {
-  const stap = staps.find((s) => s.id === f.stap_id);
   const district = districts.find((d) => d.id === f.district_id);
   const circle = allCircles.find((c) => c.id === f.seri_circle_id);
   const names = f.member_names || [];
@@ -18,7 +16,7 @@ export function FigRow({ f, staps, districts, allCircles, onView }: {
     <tr>
       <td className="font-mono text-xs">{f.fig_code}</td>
       <td className="font-semibold">{f.fig_name}</td>
-      <td>{stap ? stapLabel(stap) : "—"}</td>
+      <td>{figActivityLabel(f.silk_type_id, f.activity_ids, staps)}</td>
       <td>{district?.district_name || "—"}</td>
       <td>{circle?.circle_name || "—"}</td>
       <td>{f.total_members}</td>

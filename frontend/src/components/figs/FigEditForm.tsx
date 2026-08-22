@@ -1,5 +1,5 @@
 "use client";
-import { stapOptgroups } from "./stapOptgroups";
+import { FigActivityPicker } from "./FigActivityPicker";
 import { sdoCdcName } from "@/lib/sdoCdc";
 import { AssetRowsEditor, type AssetRow } from "@/components/AssetRowsEditor";
 import { AssetsList } from "@/components/AssetsList";
@@ -7,7 +7,8 @@ import { FigDocumentsStep } from "@/components/figs/FigDocumentsStep";
 import type { FigDetail, District, SericultureCircle, SubdivisionCdc, SilkTypeActivityProduct, AssetType, AssetInstance } from "@/lib/types";
 
 export interface FigEditFormState {
-  fig_name: string; stap_id: string; formation_date: string; meeting_venue: string;
+  fig_name: string; silk_type_id: string; activity_ids: string[];
+  formation_date: string; meeting_venue: string;
   village_name: string; panchayat_name: string; post_office: string;
   pin_code: string; address: string;
   minutes_path: string | null; group_photo_path: string | null;
@@ -23,6 +24,11 @@ export function FigEditForm({
   assetTypes: AssetType[]; editAssets: AssetInstance[];
   editNewAssets: AssetRow[]; setEditNewAssets: (rows: AssetRow[]) => void; onDeleteAsset: (assetId: string) => void;
 }) {
+  // The picker only offers activities the FIG's own members perform, so it needs their
+  // farmer records — the same rule the server re-checks on save.
+  const memberFarmers = (detail.members || [])
+    .filter((m) => m.is_active && m.farmer)
+    .map((m) => m.farmer!);
   return (
     <div className="mb-5 border-b pb-5" style={{ borderColor: "var(--border)" }}>
       <h4 className="font-heading font-bold mb-3">Edit FIG</h4>
@@ -30,14 +36,12 @@ export function FigEditForm({
         <div className="col-span-full"><h4 className="font-heading text-sm font-bold">FIG details</h4></div>
         <div className="col-span-full"><label className="label-tag">FIG Name</label><input className="input mt-1" value={editForm.fig_name} onChange={(e) => setEditForm({ ...editForm, fig_name: e.target.value })} /></div>
         <div><label className="label-tag">FIG Formation Date</label><input type="date" className="input mt-1" value={editForm.formation_date} onChange={(e) => setEditForm({ ...editForm, formation_date: e.target.value })} /></div>
-        <div><label className="label-tag">Primary silk type / activity / product</label>
-          <select className="input mt-1" value={editForm.stap_id} onChange={(e) => setEditForm({ ...editForm, stap_id: e.target.value })}>
-            {stapOptgroups(staps).map(([label, group]) => (
-              <optgroup key={label} label={label}>
-                {group.map((s) => <option key={s.id} value={s.id}>{s.activity_name} · {s.product_name}</option>)}
-              </optgroup>
-            ))}
-          </select></div>
+        <div className="col-span-full"><label className="label-tag">Primary silk type / activity</label>
+          <div className="mt-1">
+            <FigActivityPicker staps={staps} members={memberFarmers}
+                               silkTypeId={editForm.silk_type_id} activityIds={editForm.activity_ids}
+                               onChange={(silk, acts) => setEditForm({ ...editForm, silk_type_id: silk, activity_ids: acts })} />
+          </div></div>
         <div className="col-span-full border-t pt-4" style={{ borderColor: "var(--border)" }}>
           <h4 className="font-heading text-sm font-bold">Location</h4></div>
         <div><label className="label-tag">District</label>

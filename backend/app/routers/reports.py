@@ -19,7 +19,7 @@ from app.core.scope import active_district
 from app.models import (
     Farmer, Fig, District, Land, Training, FigMember, Meeting, Yield_,
     User, Product, ByproductEntry, Stock, MeetingCorrection,
-    SilkType, Activity, SilkTypeActivityProduct, AssetInstance,
+    SilkType, Activity, SilkTypeActivityProduct, AssetInstance, FigActivity,
 )
 
 router = APIRouter(prefix="/reports", tags=["reports"])
@@ -65,8 +65,8 @@ def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_
                 Farmer.district_id == active_district(user), Farmer.is_active).scalar() or 0,
             "figs": db.query(func.count(Fig.id)).filter(
                 Fig.district_id == active_district(user), Fig.is_active).scalar() or 0,
-            "activities": db.query(func.count(func.distinct(SilkTypeActivityProduct.activity_id))).join(
-                Fig, Fig.stap_id == SilkTypeActivityProduct.id).filter(
+            "activities": db.query(func.count(func.distinct(FigActivity.activity_id))).join(
+                Fig, Fig.id == FigActivity.fig_id).filter(
                 Fig.district_id == active_district(user), Fig.is_active).scalar() or 0,
             "total_members": db.query(func.count(FigMember.id)).filter(
                 FigMember.fig_id.in_(fig_ids or [""]), FigMember.is_active).scalar() or 0,

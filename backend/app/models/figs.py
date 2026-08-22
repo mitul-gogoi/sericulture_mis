@@ -2,10 +2,10 @@
 from datetime import datetime, date
 from typing import Optional
 from sqlmodel import SQLModel, Field, Column
-from sqlalchemy import Text
+from sqlalchemy import Text, UniqueConstraint
 from ._common import _uuid, _now
 
-__all__ = ["Fig", "FigMember"]
+__all__ = ["Fig", "FigMember", "FigActivity"]
 
 
 class Fig(SQLModel, table=True):
@@ -13,7 +13,11 @@ class Fig(SQLModel, table=True):
     id: str = Field(default_factory=_uuid, primary_key=True)
     fig_code: str = Field(unique=True, max_length=30, index=True)
     fig_name: str = Field(max_length=160)
-    stap_id: str = Field(foreign_key="silk_type_activity_products.id")
+    # A FIG is always built around exactly ONE silk type, but may run several activities
+    # within it (see FigActivity). This replaces the old single stap_id: nearly every
+    # consumer joined through STAP only to reach the silk type, so holding it directly makes
+    # those queries shorter as well as allowing more than one activity.
+    silk_type_id: str = Field(foreign_key="silk_types.id", index=True)
     district_id: str = Field(foreign_key="districts.id", index=True)
     seri_circle_id: str = Field(foreign_key="sericulture_circles.id", index=True)
     formation_date: date
@@ -45,3 +49,18 @@ class FigMember(SQLModel, table=True):
     is_active: bool = True
     created_at: datetime = Field(default_factory=_now)
     updated_at: datetime = Field(default_factory=_now)
+
+
+class FigActivity(SQLModel, table=True):
+    """The activities a FIG runs, all within its single silk type.
+
+    A join table rather than a JSON column on Fig: scheme targeting and the reports filter on
+    it, and Farmer.stap_ids is the cautionary example here -- it is `json`, not `jsonb`, so
+    every consumer has to resolve it in Python.
+    """
+    __tablename__ = "fig_activities"
+    id: str = Field(default_factory=_uuid, primary_key=True)
+    fig_id: str = Field(foreign_key="figs.id", index=True)
+    activity_id: str = Field(foreign_key="activities.id", index=True)
+    created_at: datetime = Field(default_factory=_now)
+    __table_args__ = (UniqueConstraint("fig_id", "activity_id", name="uq_fig_activity"),)
